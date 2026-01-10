@@ -1,59 +1,248 @@
-# MEPPOS
+# MEPPOS - Seafood Restaurant POS System
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.0.4.
+Point of Sale (POS) system for seafood restaurants, built with Angular and Node.js.
 
-## Development server
+## 🏗️ Project Structure (Mono-repo)
 
-To start a local development server, run:
-
-```bash
-ng serve
+```
+MEPPOS/
+├── frontend/          # Angular Application
+├── backend/           # REST API with Node.js + Express
+├── docker-compose.yml # Containerized PostgreSQL
+└── README.md          # This file
 ```
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+## 🚀 Quick Start
 
-## Code scaffolding
+### Prerequisites
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+- Node.js 18+
+- Docker and Docker Compose (for PostgreSQL)
+- npm or pnpm
 
-```bash
-ng generate component component-name
-```
-
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+### 1. Clone the repository
 
 ```bash
-ng generate --help
+git clone <your-repo-url>
+cd MEPPOS
 ```
 
-## Building
-
-To build the project run:
+### 2. Setup and start the database
 
 ```bash
-ng build
+# Start PostgreSQL with Docker
+docker-compose up -d
+
+# Verify it's running
+docker-compose ps
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
+### 3. Setup the Backend
 
 ```bash
-ng test
+cd backend
+
+# Install dependencies
+npm install
+
+# Copy environment variables
+cp .env.example .env
+
+# Generate Prisma Client
+npm run prisma:generate
+
+# Run migrations
+npm run prisma:migrate
+
+# Seed database with sample data (optional)
+npm run prisma:seed
+
+# Start development server
+npm run dev
 ```
 
-## Running end-to-end tests
+Backend will be running at `http://localhost:3000`
 
-For end-to-end (e2e) testing, run:
+### 4. Setup the Frontend
 
 ```bash
-ng e2e
+cd frontend
+
+# Install dependencies
+npm install
+
+# Start development server
+npm start
 ```
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+Frontend will be running at `http://localhost:4200`
 
-## Additional Resources
+## 📦 Available Scripts
 
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+### Backend (`/backend`)
+
+```bash
+npm run dev          # Development with hot-reload
+npm run build        # Compile to JavaScript
+npm start            # Run compiled version
+npm run prisma:migrate    # Create/apply migrations
+npm run prisma:studio     # Open Prisma Studio (DB GUI)
+npm run prisma:seed       # Seed database with sample data
+```
+
+### Frontend (`/frontend`)
+
+```bash
+npm start            # Development server
+npm run build        # Production build
+npm test             # Run tests
+```
+
+## 🗄️ Database
+
+### Management with Prisma
+
+```bash
+# View data in web interface
+cd backend
+npm run prisma:studio
+
+# Create new migration
+npm run prisma:migrate
+
+# Reset database (careful in production!)
+npm run db:reset
+```
+
+### Direct connection to PostgreSQL
+
+```bash
+# Using psql
+docker exec -it meppos-db psql -U postgres -d meppos_db
+
+# Using any PostgreSQL client
+Host: localhost
+Port: 5432
+Database: meppos_db
+User: postgres
+Password: postgres
+```
+
+## 🔧 Configuration
+
+### Environment Variables
+
+**Backend** (`backend/.env`):
+```env
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/meppos_db"
+PORT=3000
+NODE_ENV=development
+FRONTEND_URL=http://localhost:4200
+```
+
+## 📚 API Endpoints
+
+### Products
+
+- `GET /api/products` - List all products
+- `GET /api/products/:id` - Get a product
+- `POST /api/products` - Create product
+- `PUT /api/products/:id` - Update product
+- `DELETE /api/products/:id` - Delete product
+
+### Health Check
+
+- `GET /health` - Check server status
+
+## 🛠️ Tech Stack
+
+### Frontend
+- Angular 17+
+- TypeScript
+- Tailwind CSS
+- DaisyUI
+
+### Backend
+- Node.js 18+
+- Express.js
+- TypeScript
+- Prisma ORM
+- Zod (validation)
+
+### Database
+- PostgreSQL 15
+
+## 📖 Project Phases
+
+### ✅ Phase 1 (Current) - MVP Calculator
+- Product catalog with variants
+- Real-time bill calculator
+- Product CRUD
+- No sales persistence
+
+### 🔜 Phase 2 - Persistence and Reports
+- Sales storage
+- Daily history
+- Basic reports
+- Authentication
+
+### 🔜 Phase 3 - Multi-terminal
+- Support for multiple terminals
+- Table assignment
+- Ticket printing
+
+### 🔜 Phase 4 - Integrations
+- Payment gateway integration
+- Advanced dashboard
+- Public API
+
+## 🐛 Troubleshooting
+
+### Database won't connect
+
+```bash
+# Check if Docker is running
+docker-compose ps
+
+# View PostgreSQL logs
+docker-compose logs postgres
+
+# Restart container
+docker-compose restart postgres
+```
+
+### Backend won't start
+
+```bash
+# Check environment variables
+cd backend
+cat .env
+
+# Reinstall dependencies
+rm -rf node_modules package-lock.json
+npm install
+
+# Regenerate Prisma Client
+npm run prisma:generate
+```
+
+### Frontend won't connect to backend
+
+- Verify backend is running on port 3000
+- Check CORS in `backend/src/index.ts`
+- Review browser console for errors
+
+## 📝 Development Notes
+
+- This project uses **mono-repo** with frontend and backend in the same repository
+- Database runs in Docker for easier development
+- In production, use a managed PostgreSQL database
+- Frontend and backend are deployed separately
+
+## 🤝 Contributing
+
+This is an individual development project. For questions or suggestions, open an issue.
+
+## 📄 License
+
+Private project - All rights reserved

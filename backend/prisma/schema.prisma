@@ -1,0 +1,51 @@
+// This is your Prisma schema file
+// Learn more: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// PRODUCTS AND VARIANTS
+// ============================================
+
+model Product {
+  id          String            @id @default(uuid()) @db.Uuid
+  name        String            @db.VarChar(255)
+  category    String?           @db.VarChar(100)
+  hasVariants Boolean           @default(false) @map("has_variants")
+  basePrice   Decimal?          @map("base_price") @db.Decimal(10, 2)
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
+  
+  // Relations
+  variants    ProductVariant[]
+
+  @@map("products")
+}
+
+model ProductVariant {
+  id        String   @id @default(uuid()) @db.Uuid
+  productId String   @map("product_id") @db.Uuid
+  sizeName  String   @map("size_name") @db.VarChar(100)
+  price     Decimal  @db.Decimal(10, 2)
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("product_variants")
+}
+
+// ============================================
+// NOTES:
+// - Phase 1: Products and variants only
+// - Phase 2: Add Orders, Users, etc. tables
+// ============================================

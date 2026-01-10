@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: meppos-db
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: meppos_db
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # pgAdmin (optional - web interface to manage PostgreSQL)
+  # Uncomment if you want to use pgAdmin
+  # pgadmin:
+  #   image: dpage/pgadmin4:latest
+  #   container_name: meppos-pgadmin
+  #   restart: unless-stopped
+  #   ports:
+  #     - "5050:80"
+  #   environment:
+  #     PGADMIN_DEFAULT_EMAIL: admin@meppos.com
+  #     PGADMIN_DEFAULT_PASSWORD: admin
+  #   depends_on:
+  #     - postgres
+
+volumes:
+  postgres-data:
+    driver: local
+
+# Usage:
+# docker-compose up -d          # Start database
+# docker-compose down           # Stop
+# docker-compose logs postgres  # View logs
+# docker-compose ps             # View status
