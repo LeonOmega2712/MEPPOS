@@ -8,7 +8,36 @@
   "projects": {
     "MEPPOS": {
       "projectType": "application",
-      "schematics": {},
+      "schematics": {
+        "@schematics/angular:component": {
+          "skipTests": true,
+          "path": "src/components"
+        },
+        "@schematics/angular:service": {
+          "skipTests": true,
+          "path": "src/core/services"
+        },
+        "@schematics/angular:guard": {
+          "skipTests": true,
+          "path": "src/core/guard"
+        },
+        "@schematics/angular:interceptor": {
+          "skipTests": true,
+          "path": "src/core/interceptors"
+        },
+        "@schematics/angular:resolver": {
+          "skipTests": true,
+          "path": "src/core/resolvers"
+        },
+        "@schematics/angular:pipe": {
+          "skipTests": true,
+          "path": "src/core/pipes"
+        },
+        "@schematics/angular:directive": {
+          "skipTests": true,
+          "path": "src/shared/directives"
+        }
+      },
       "root": "",
       "sourceRoot": "src",
       "prefix": "app",
