@@ -11,9 +11,11 @@ This document describes the complete menu system implemented for MEPPOS (Seafood
 ### Main Entities
 
 #### 1. **MenuCategory** (Menu Categories)
+
 Organizes the menu hierarchically in a tree structure.
 
 **Fields:**
+
 - `id` (UUID): Unique identifier
 - `name` (string): Category name (e.g., "Drinks", "Food")
 - `nameKey` (string, optional): Key for future i18n
@@ -24,11 +26,13 @@ Organizes the menu hierarchically in a tree structure.
 - `createdAt`, `updatedAt` (timestamp)
 
 **Relationships:**
+
 - Self-reference: A category can have subcategories
 - `1:N` with MenuItem: A category can have many items
 
 **Examples:**
-```
+
+```bash
 Drinks (root)
   ├─ Soda
   │   ├─ Screw Cap
@@ -42,9 +46,11 @@ Drinks (root)
 ---
 
 #### 2. **MenuItem** (Menu Items)
+
 Represents a product/dish/drink in the menu.
 
 **Fields:**
+
 - `id` (UUID): Unique identifier
 - `categoryId` (UUID): Category ID
 - `name` (string): Item name
@@ -59,11 +65,13 @@ Represents a product/dish/drink in the menu.
 - `createdAt`, `updatedAt` (timestamp)
 
 **Relationships:**
+
 - `N:1` with MenuCategory
 - `1:N` with MenuVariant
 - `N:M` with Ingredient (through MenuItemIngredient)
 
 **Business Rules:**
+
 - If `hasVariants = false`, MUST have `basePrice`
 - If `hasVariants = true`, MUST have at least one variant
 - If `isConfigurable = true`, MUST have at least one ingredient
@@ -71,9 +79,11 @@ Represents a product/dish/drink in the menu.
 ---
 
 #### 3. **VariantType** (Variant Types)
+
 Defines the type of variation (size, flavor, type, brand).
 
 **Fields:**
+
 - `id` (UUID): Unique identifier
 - `name` (string, unique): Type name (e.g., "Size", "Flavor")
 - `nameKey` (string, optional): Key for i18n
@@ -81,9 +91,11 @@ Defines the type of variation (size, flavor, type, brand).
 - `createdAt`, `updatedAt` (timestamp)
 
 **Relationships:**
+
 - `1:N` with MenuVariant
 
 **Examples:**
+
 - Size: Small, Medium, Large
 - Flavor: Mango, Guava, Strawberry
 - Type: Regular, Light, Zero
@@ -91,9 +103,11 @@ Defines the type of variation (size, flavor, type, brand).
 ---
 
 #### 4. **MenuVariant** (Item Variants)
+
 Specific variation of a menu item.
 
 **Fields:**
+
 - `id` (UUID): Unique identifier
 - `menuItemId` (UUID): Item ID it belongs to
 - `variantTypeId` (UUID): Variant type ID
@@ -105,19 +119,23 @@ Specific variation of a menu item.
 - `createdAt`, `updatedAt` (timestamp)
 
 **Relationships:**
+
 - `N:1` with MenuItem
 - `N:1` with VariantType
 
 **Important Note:**
+
 - Each variant is **unique and complete**
 - Example: "Coca-cola Small Regular" is ONE variant, not a combination
 
 ---
 
 #### 5. **Ingredient** (Ingredients)
+
 Available ingredients for configurable items.
 
 **Fields:**
+
 - `id` (UUID): Unique identifier
 - `name` (string): Ingredient name
 - `nameKey` (string, optional): Key for i18n
@@ -126,18 +144,22 @@ Available ingredients for configurable items.
 - `createdAt`, `updatedAt` (timestamp)
 
 **Relationships:**
+
 - `N:M` with MenuItem (through MenuItemIngredient)
 
 **Usage:**
+
 - Seafood: Shrimp, Squid, Oyster, Abalone
 - For items like Cocktails and Tostadas that allow ingredient selection
 
 ---
 
 #### 6. **MenuItemIngredient** (Junction Table)
+
 Relates menu items with ingredients.
 
 **Fields:**
+
 - `id` (UUID): Unique identifier
 - `menuItemId` (UUID): Item ID
 - `ingredientId` (UUID): Ingredient ID
@@ -145,6 +167,7 @@ Relates menu items with ingredients.
 - `createdAt` (timestamp)
 
 **Usage:**
+
 - Configurable items: `isDefault = false` (user chooses)
 - Fixed items: `isDefault = true` (always included)
 - Example: Seafood soup ALWAYS has all 4 seafood types (`isDefault = true`)
@@ -153,7 +176,7 @@ Relates menu items with ingredients.
 
 ## Backend Folder Structure
 
-```
+```bash
 backend/
 ├── src/
 │   ├── controllers/
@@ -186,14 +209,17 @@ backend/
 ### Categories
 
 #### `GET /api/categories`
+
 Get all categories (flat list).
 
 **Query Parameters:**
+
 - `parentId` (UUID, optional): Filter by parent category
 - `isActive` (boolean, optional): Filter by status
 - `search` (string, optional): Search in name/description
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -216,9 +242,11 @@ Get all categories (flat list).
 ---
 
 #### `GET /api/categories/tree`
+
 Get complete category tree (hierarchical).
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -243,19 +271,23 @@ Get complete category tree (hierarchical).
 ---
 
 #### `GET /api/categories/root`
+
 Get only root categories (no parent).
 
 ---
 
 #### `GET /api/categories/:id`
+
 Get a specific category with its children and items.
 
 ---
 
 #### `GET /api/categories/:id/path`
+
 Get breadcrumb path for a category.
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -270,9 +302,11 @@ Get breadcrumb path for a category.
 ---
 
 #### `POST /api/categories`
+
 Create a new category.
 
 **Request Body:**
+
 ```json
 {
   "name": "New Category",
@@ -285,21 +319,26 @@ Create a new category.
 ---
 
 #### `PUT /api/categories/:id`
+
 Update a category.
 
 **Validations:**
+
 - Cannot be its own parent
 - Cannot create circular references
 
 ---
 
 #### `DELETE /api/categories/:id`
+
 Delete a category.
 
 **Query Parameters:**
+
 - `hard` (boolean): true = permanent deletion, false = soft delete
 
 **Validations:**
+
 - Cannot have subcategories
 - Cannot have items
 
@@ -308,9 +347,11 @@ Delete a category.
 ### Menu Items
 
 #### `GET /api/menu-items`
+
 Get all menu items.
 
 **Query Parameters:**
+
 - `categoryId` (UUID): Filter by category
 - `isActive` (boolean): Filter by status
 - `isConfigurable` (boolean): Filter configurable items
@@ -318,6 +359,7 @@ Get all menu items.
 - `search` (string): Search in name/description
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -348,22 +390,27 @@ Get all menu items.
 ---
 
 #### `GET /api/menu-items/:id`
+
 Get a specific item with all its relationships.
 
 ---
 
 #### `GET /api/menu-items/category/:categoryId`
+
 Get items from a category.
 
 **Query Parameters:**
+
 - `includeSubcategories` (boolean): Include items from subcategories
 
 ---
 
 #### `POST /api/menu-items`
+
 Create a new menu item.
 
 **Request Body (without variants):**
+
 ```json
 {
   "categoryId": "uuid",
@@ -375,6 +422,7 @@ Create a new menu item.
 ```
 
 **Request Body (with variants):**
+
 ```json
 {
   "categoryId": "uuid",
@@ -402,6 +450,7 @@ Create a new menu item.
 ---
 
 #### `PUT /api/menu-items/:id`
+
 Update a menu item.
 
 **Note:** If variants are sent, all existing ones are replaced.
@@ -409,9 +458,11 @@ Update a menu item.
 ---
 
 #### `DELETE /api/menu-items/:id`
+
 Delete a menu item.
 
 **Query Parameters:**
+
 - `hard` (boolean): true = permanent, false = soft delete
 
 ---
@@ -419,9 +470,11 @@ Delete a menu item.
 ### Variants
 
 #### `POST /api/menu-items/:id/variants`
+
 Add a variant to an existing item.
 
 **Request Body:**
+
 ```json
 {
   "variantTypeId": "uuid",
@@ -434,11 +487,13 @@ Add a variant to an existing item.
 ---
 
 #### `PUT /api/variants/:id`
+
 Update a variant.
 
 ---
 
 #### `DELETE /api/variants/:id`
+
 Delete a variant.
 
 ---
@@ -446,14 +501,17 @@ Delete a variant.
 ### Variant Types
 
 #### `GET /api/variant-types`
+
 Get all variant types.
 
 ---
 
 #### `POST /api/variant-types`
+
 Create a new variant type.
 
 **Request Body:**
+
 ```json
 {
   "name": "Flavor",
@@ -467,14 +525,17 @@ Create a new variant type.
 ### Ingredients
 
 #### `GET /api/ingredients`
+
 Get all ingredients.
 
 ---
 
 #### `POST /api/ingredients`
+
 Create a new ingredient.
 
 **Request Body:**
+
 ```json
 {
   "name": "Shrimp",
@@ -501,6 +562,7 @@ npm run prisma:seed
 ```
 
 The seed creates:
+
 - 4 variant types (Size, Type, Flavor, Brand)
 - 4 ingredients (seafood)
 - Complete menu structure based on `menu.md`
@@ -571,7 +633,7 @@ const item = {
 ## Differences vs Previous System
 
 | Aspect | Previous System | New System |
-|---------|-----------------|------------|
+| -------- | ---------------- | ------------ |
 | Categories | Not supported | Hierarchical (tree) |
 | Variants | Only size/price | Typed (Size, Flavor, Type) |
 | Ingredients | Not supported | Complete N:M relationship |
@@ -585,17 +647,20 @@ const item = {
 ## Future Phases
 
 ### Phase 2: Sales Persistence
+
 - Add `Orders` table (bills)
 - Add `OrderItems` table (bill items)
 - Sales history
 - Basic reports
 
 ### Phase 3: Price History
+
 - `MenuVariantPriceHistory` table
 - Price change tracking
 - Reports with historical prices
 
 ### Phase 4: Internationalization
+
 - `Translation` table
 - Complete multi-language support
 - UI for managing translations
@@ -605,6 +670,7 @@ const item = {
 ## Development Notes
 
 ### Conventions
+
 - All source code in **English**
 - Documentation and UI in **Spanish**
 - Table names in **snake_case**
@@ -612,11 +678,13 @@ const item = {
 - Validations with **Zod**
 
 ### Performance
+
 - Indexes on frequently searched fields
 - `sortOrder` indexed for fast ordering
 - `isActive` indexed for common filters
 
 ### Security
+
 - Zod validation on all endpoints
 - Circular reference prevention in categories
 - Dependency validation before deletion
@@ -626,6 +694,7 @@ const item = {
 ## Support
 
 For questions or issues:
+
 1. Review this documentation
 2. Check validation schemas in `validation.schemas.ts`
 3. Review seed examples in `seed.ts`

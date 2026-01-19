@@ -4,7 +4,7 @@ Point of Sale (POS) system for seafood restaurants, built with Angular and Node.
 
 ## 🏗️ Project Structure (Mono-repo)
 
-```
+```bash
 MEPPOS/
 ├── frontend/          # Angular Application
 ├── backend/           # REST API with Node.js + Express
@@ -142,6 +142,7 @@ Password: postgres
 ### Environment Variables
 
 **Backend** (`backend/.env`):
+
 ```env
 DATABASE_URL="postgresql://postgres:postgres@localhost:5432/meppos_db"
 PORT=3000
@@ -160,6 +161,7 @@ The complete menu system is documented in [`MENU_SYSTEM.md`](./MENU_SYSTEM.md).
 ### Main Endpoints
 
 #### Categories
+
 - `GET /api/categories` - List all categories
 - `GET /api/categories/tree` - Hierarchical category tree
 - `POST /api/categories` - Create category
@@ -167,6 +169,7 @@ The complete menu system is documented in [`MENU_SYSTEM.md`](./MENU_SYSTEM.md).
 - `DELETE /api/categories/:id` - Delete category
 
 #### Menu Items
+
 - `GET /api/menu-items` - List all items
 - `GET /api/menu-items/:id` - Get an item
 - `GET /api/menu-items/category/:categoryId` - Items by category
@@ -175,15 +178,18 @@ The complete menu system is documented in [`MENU_SYSTEM.md`](./MENU_SYSTEM.md).
 - `DELETE /api/menu-items/:id` - Delete item
 
 #### Variants
+
 - `POST /api/menu-items/:id/variants` - Add variant
 - `PUT /api/variants/:id` - Update variant
 - `DELETE /api/variants/:id` - Delete variant
 
 #### Variant Types
+
 - `GET /api/variant-types` - List variant types
 - `POST /api/variant-types` - Create variant type
 
 #### Ingredients
+
 - `GET /api/ingredients` - List ingredients
 - `POST /api/ingredients` - Create ingredient
 
@@ -197,12 +203,14 @@ The complete menu system is documented in [`MENU_SYSTEM.md`](./MENU_SYSTEM.md).
 ## 🛠️ Tech Stack
 
 ### Frontend
+
 - Angular 21+
 - TypeScript
 - Tailwind CSS v4
 - DaisyUI
 
 ### Backend
+
 - Node.js 18+
 - Express.js
 - TypeScript
@@ -210,6 +218,7 @@ The complete menu system is documented in [`MENU_SYSTEM.md`](./MENU_SYSTEM.md).
 - Zod (validation)
 
 ### Database
+
 - PostgreSQL 15+
 
 ### Data Model
@@ -230,6 +239,7 @@ See [`MENU_SYSTEM.md`](./MENU_SYSTEM.md) for complete model documentation.
 ## 📖 Project Phases
 
 ### ✅ Phase 1 (Completed) - Menu System
+
 - ✅ Product catalog with hierarchical categories
 - ✅ Products with variants (size, flavor, type)
 - ✅ Configurable ingredients
@@ -239,6 +249,7 @@ See [`MENU_SYSTEM.md`](./MENU_SYSTEM.md) for complete model documentation.
 - ✅ Seed with sample data
 
 ### 🔜 Phase 2 - Calculator and Bill Persistence
+
 - Calculator interface (frontend)
 - Bills/sales storage
 - Daily sales history
@@ -246,12 +257,14 @@ See [`MENU_SYSTEM.md`](./MENU_SYSTEM.md) for complete model documentation.
 - Simple authentication
 
 ### 🔜 Phase 3 - Multi-terminal and UX Improvements
+
 - Support for multiple terminals
 - Table assignment
 - Ticket printing
 - Excel/PDF exports
 
 ### 🔜 Phase 4 - Integrations and Scaling
+
 - POS/payment methods integration
 - Advanced dashboard with analytics
 - API for online ordering
@@ -330,7 +343,7 @@ npm run prisma:seed
 
 ### Backend Folder Structure
 
-```
+```bash
 backend/src/
 ├── controllers/       # HTTP handlers
 ├── services/         # Business logic
@@ -342,7 +355,7 @@ backend/src/
 
 ### Frontend Folder Structure
 
-```
+```bash
 frontend/src/
 ├── app/              # Main configuration
 ├── components/       # Angular components
