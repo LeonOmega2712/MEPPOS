@@ -198,9 +198,12 @@ backend/
 │   ├── schema.prisma
 │   ├── seed.ts
 │   └── migrations/
+├── prisma.config.ts    # Prisma 7 configuration (root level)
 ├── package.json
 └── tsconfig.json
 ```
+
+**Note:** This project uses Prisma ORM 7 with adapter-based architecture. Database configuration is in `prisma.config.ts` at the project root.
 
 ---
 

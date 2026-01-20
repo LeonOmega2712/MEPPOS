@@ -24,7 +24,7 @@ export class MenuController {
       if (!filterValidation.success) {
         return res.status(400).json({
           error: 'Invalid query parameters',
-          details: filterValidation.error.errors
+          details: filterValidation.error.issues
         });
       }
 
@@ -117,7 +117,7 @@ export class MenuController {
       if (!validation.success) {
         return res.status(400).json({
           error: 'Invalid data',
-          details: validation.error.errors
+          details: validation.error.issues
         });
       }
 
@@ -160,7 +160,7 @@ export class MenuController {
       if (!validation.success) {
         return res.status(400).json({
           error: 'Invalid data',
-          details: validation.error.errors
+          details: validation.error.issues
         });
       }
 
@@ -234,7 +234,7 @@ export class MenuController {
       if (!validation.success) {
         return res.status(400).json({
           error: 'Invalid data',
-          details: validation.error.errors
+          details: validation.error.issues
         });
       }
 
@@ -276,7 +276,7 @@ export class MenuController {
       if (!validation.success) {
         return res.status(400).json({
           error: 'Invalid data',
-          details: validation.error.errors
+          details: validation.error.issues
         });
       }
 

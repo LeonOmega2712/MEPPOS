@@ -1,11 +1,9 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import {
   CreateMenuCategoryInput,
   UpdateMenuCategoryInput,
   MenuCategoryFilterInput
 } from '../validation/validation.schemas';
-
-const prisma = new PrismaClient();
 
 export class CategoryService {
   // ============================================

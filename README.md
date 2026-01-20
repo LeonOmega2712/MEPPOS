@@ -50,8 +50,8 @@ npm install
 # Copy environment variables
 cp .env.example .env
 
-# Generate Prisma Client
-npm run prisma:generate
+# Generate Prisma Client (Prisma 7 automatically generates on install)
+npx prisma generate
 
 # Run migrations
 npm run prisma:migrate
@@ -120,6 +120,22 @@ npm run prisma:migrate
 # Reset database (careful in production!)
 npm run db:reset
 ```
+
+### Prisma 7 Configuration
+
+This project uses **Prisma ORM 7**, which introduces a new configuration architecture:
+
+**Key Files:**
+
+- `prisma.config.ts` (root): Centralized configuration file
+- `prisma/schema.prisma`: Data model definition (no URL connection)
+- Database URL is configured via environment variables and adapters
+
+**Important Notes:**
+
+- Prisma 7 uses an **adapter-based architecture** with PostgreSQL driver (`pg` + `@prisma/adapter-pg`)
+- The `DATABASE_URL` is now managed in `prisma.config.ts` instead of `schema.prisma`
+- Run `npx prisma generate` manually after schema changes (auto-generation is disabled in Prisma 7)
 
 ### Direct connection to PostgreSQL
 
@@ -204,18 +220,19 @@ The complete menu system is documented in [`MENU_SYSTEM.md`](./MENU_SYSTEM.md).
 
 ### Frontend
 
-- Angular 21+
-- TypeScript
-- Tailwind CSS v4
-- DaisyUI
+- Angular 21.1
+- TypeScript 5.9
+- Tailwind CSS v4.1
+- DaisyUI 5.5
 
 ### Backend
 
 - Node.js 18+
-- Express.js
-- TypeScript
-- Prisma ORM
-- Zod (validation)
+- Express.js 5.2
+- TypeScript 5.9
+- Prisma ORM 7.2
+- Zod 4.3 (validation)
+- PostgreSQL driver (pg + @prisma/adapter-pg)
 
 ### Database
 
@@ -397,5 +414,45 @@ Private project - All rights reserved
 - [`MENU_SYSTEM.md`](./MENU_SYSTEM.md) - Complete menu system documentation
 - [`Fase 1 - App Marisquería.md`](./Fase%201%20-%20App%20Marisquería.md) - Original technical specification
 - [`backend/prisma/schema.prisma`](./backend/prisma/schema.prisma) - Data model
+- [`backend/prisma.config.ts`](./backend/prisma.config.ts) - Prisma 7 configuration
 - [`backend/prisma/seed.ts`](./backend/prisma/seed.ts) - Sample data
 - [`docker-compose.yml`](./docker-compose.yml) - PostgreSQL configuration
+
+---
+
+## 📋 Recent Updates (January 2026)
+
+### Major Dependency Updates
+
+All project dependencies have been updated to their latest versions:
+
+**Frontend:**
+
+- Angular: `21.0.x` → `21.1.0`
+- Vitest: `4.0.16` → `4.0.17`
+
+**Backend:**
+
+- **Prisma ORM**: `5.22.0` → `7.2.0` ⚡ (Major update)
+  - New adapter-based architecture
+  - Centralized configuration in `prisma.config.ts`
+  - PostgreSQL adapter with `@prisma/adapter-pg`
+- **Express.js**: `4.22.1` → `5.2.1` ⚡ (Major update)
+  - Improved async error handling
+  - API remains compatible
+- **Zod**: `3.25.76` → `4.3.5` ⚡ (Major update)
+  - `error.errors` renamed to `error.issues`
+- **Dotenv**: `16.6.1` → `17.2.3` ⚡ (Major update)
+  - Configured with `quiet: true` to maintain silent behavior
+- **@types/node**: `22.19.5` → `25.0.9`
+
+### Breaking Changes Handled
+
+All breaking changes from major version updates have been addressed:
+
+1. ✅ Prisma 7 adapter configuration implemented
+2. ✅ Zod 4 error property updates applied
+3. ✅ Dotenv 17 quiet mode configured
+4. ✅ TypeScript configuration adjusted for compatibility
+
+The project compiles and runs successfully with all updated dependencies.

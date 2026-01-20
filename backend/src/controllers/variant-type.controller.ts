@@ -1,13 +1,11 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import {
   CreateIngredientSchema,
   UpdateIngredientSchema,
   CreateVariantTypeSchema,
   UpdateVariantTypeSchema
 } from '../validation/validation.schemas';
-
-const prisma = new PrismaClient();
 
 // ============================================
 // VARIANT TYPE CONTROLLER
@@ -95,7 +93,7 @@ export class VariantTypeController {
       if (!validation.success) {
         return res.status(400).json({
           error: 'Invalid data',
-          details: validation.error.errors
+          details: validation.error.issues
         });
       }
 
@@ -135,7 +133,7 @@ export class VariantTypeController {
       if (!validation.success) {
         return res.status(400).json({
           error: 'Invalid data',
-          details: validation.error.errors
+          details: validation.error.issues
         });
       }
 
