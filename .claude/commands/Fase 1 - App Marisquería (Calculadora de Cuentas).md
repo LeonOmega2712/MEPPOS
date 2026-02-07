@@ -80,16 +80,17 @@ Aplicación web para agilizar el cálculo de cuentas en una marisquería. Los us
 │  Express API    │
 │  (Backend)      │
 │                 │
-│  - GET products │
-│  - CRUD         │
+│  - GET /menu    │
+│  - CRUD categ.  │
+│  - CRUD prod.   │
 └────────┬────────┘
          │
          ↓
 ┌─────────────────┐
 │  PostgreSQL     │
 │                 │
+│  - categories   │
 │  - products     │
-│  - variants     │
 └─────────────────┘
 ```
 
@@ -106,72 +107,164 @@ Aplicación web para agilizar el cálculo de cuentas en una marisquería. Los us
 
 ## 4. Modelo de Datos
 
+Referencia completa del diagrama ER en `.claude/commands/menu.mermaid.md`
+
+### Tabla: `categories`
+
+```sql
+CREATE TABLE categories (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL UNIQUE,
+  description TEXT,
+  base_price DECIMAL(10,2),        -- precio base heredado por productos sin precio propio
+  image VARCHAR(500),
+  display_order INTEGER DEFAULT 0,
+  active BOOLEAN DEFAULT true,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP
+);
+```
+
 ### Tabla: `products`
 
 ```sql
 CREATE TABLE products (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name VARCHAR(255) NOT NULL,
-  category VARCHAR(100),
-  has_variants BOOLEAN DEFAULT false,
-  base_price DECIMAL(10,2), -- precio si no tiene variantes
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
+  id SERIAL PRIMARY KEY,
+  category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+  name VARCHAR(255) NOT NULL UNIQUE,
+  description TEXT,
+  price DECIMAL(10,2),             -- nullable: si es NULL, hereda category.base_price
+  image VARCHAR(500),
+  display_order INTEGER DEFAULT 0,
+  customizable BOOLEAN DEFAULT false,
+  active BOOLEAN DEFAULT true,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP
 );
 ```
 
-### Tabla: `product_variants`
+**Relaciones:**
 
-```sql
-CREATE TABLE product_variants (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  product_id UUID REFERENCES products(id) ON DELETE CASCADE,
-  size_name VARCHAR(100) NOT NULL, -- "Chico", "Mediano", "Grande", "1kg", etc.
-  price DECIMAL(10,2) NOT NULL,
-  sort_order INT DEFAULT 0, -- para ordenar variantes
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
-);
-```
+- `Category` 1:N `Product` (una categoría contiene muchos productos)
+- ON DELETE CASCADE: al eliminar una categoría se eliminan sus productos
+
+**Herencia de precios:**
+
+- Si `product.price` es NOT NULL, se usa ese precio
+- Si `product.price` es NULL, se hereda `category.base_price`
+- In GET responses, `price` is always resolved (product price or inherited category base_price)
 
 **Ejemplos:**
 
-- **Producto simple:** "Refresco" → `has_variants: false`, `base_price: 25.00`
-- **Producto con variantes:** "Cóctel de Camarón" → `has_variants: true`, variantes: [{size: "Chico", price: 100}, {size: "Grande", price: 150}]
+- **Producto con precio propio:** "Cóctel de Mariscos - Chico" → `price: 60.00` (categoría: Alimentos)
+- **Producto que hereda precio:** "Coca-Cola Retornable" → `price: NULL`, hereda `base_price: 25.00` de categoría "Refrescos Retornables"
 
 ---
 
 ## 5. API REST (Endpoints Fase 1)
 
-### Productos
+Todas las respuestas siguen el formato: `{ success: boolean, data: T, count?: number, message?: string }`
 
-#### `GET /api/products`
+### Menú completo (para calculadora)
 
-Obtiene todos los productos con sus variantes.
+#### `GET /api/menu`
+
+Obtiene todas las categorías activas con sus productos activos y precios efectivos calculados. Endpoint optimizado para la pantalla de calculadora.
 
 **Response:**
 
 ```json
-[
-  {
-    "id": "uuid",
-    "name": "Cóctel de Camarón",
-    "category": "Cócteles",
-    "hasVariants": true,
-    "variants": [
-      {"id": "uuid", "sizeName": "Chico", "price": 100},
-      {"id": "uuid", "sizeName": "Grande", "price": 150}
-    ]
-  },
-  {
-    "id": "uuid",
-    "name": "Refresco",
-    "category": "Bebidas",
-    "hasVariants": false,
-    "basePrice": 25
-  }
-]
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "name": "Alimentos",
+      "description": "Platillos de mariscos",
+      "basePrice": null,
+      "image": null,
+      "displayOrder": 1,
+      "products": [
+        {
+          "id": 1,
+          "name": "Cóctel de Mariscos - Chico",
+          "description": "Cóctel chico de mariscos al gusto",
+          "price": 60,
+          "image": null,
+          "displayOrder": 1,
+          "customizable": true
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Refrescos Retornables",
+      "basePrice": 25,
+      "products": [
+        {
+          "id": 10,
+          "name": "Coca-Cola Retornable",
+          "price": 25,
+          "customizable": false
+        }
+      ]
+    }
+  ],
+  "count": 7
+}
 ```
+
+### Categorías
+
+#### `GET /api/categories`
+
+Obtiene todas las categorías con conteo de productos. Soporta `?active=true`.
+
+#### `GET /api/categories/:id`
+
+Obtiene una categoría con todos sus productos incluidos.
+
+#### `POST /api/categories`
+
+Crea una nueva categoría.
+
+**Request:**
+
+```json
+{
+  "name": "Nueva Categoría",
+  "description": "Descripción opcional",
+  "basePrice": 25.00,
+  "displayOrder": 8,
+  "active": true
+}
+```
+
+#### `PUT /api/categories/:id`
+
+Actualiza una categoría existente.
+
+#### `DELETE /api/categories/:id`
+
+Elimina una categoría (CASCADE: elimina todos sus productos).
+
+### Productos
+
+#### `GET /api/products`
+
+Obtiene todos los productos con `price` resuelto (propio o heredado de categoría). Soporta `?active=true`.
+
+#### `GET /api/products/:id`
+
+Obtiene un producto por ID con datos completos de categoría.
+
+#### `GET /api/products/:id/price`
+
+Obtiene el precio efectivo de un producto (precio propio o heredado de categoría).
+
+#### `GET /api/categories/:categoryId/products`
+
+Obtiene productos filtrados por categoría. Soporta `?active=true`.
 
 #### `POST /api/products`
 
@@ -181,23 +274,23 @@ Crea un nuevo producto.
 
 ```json
 {
+  "categoryId": 1,
   "name": "Aguachile",
-  "category": "Platillos",
-  "hasVariants": true,
-  "variants": [
-    {"sizeName": "Mediano", "price": 120},
-    {"sizeName": "Grande", "price": 180}
-  ]
+  "description": "Aguachile de camarón",
+  "price": 120.00,
+  "displayOrder": 8,
+  "customizable": true,
+  "active": true
 }
 ```
 
 #### `PUT /api/products/:id`
 
-Actualiza un producto existente.
+Actualiza un producto existente (todos los campos opcionales).
 
 #### `DELETE /api/products/:id`
 
-Elimina un producto (y sus variantes por CASCADE).
+Elimina un producto.
 
 ---
 
@@ -209,10 +302,8 @@ Elimina un producto (y sus variantes por CASCADE).
 
 **Componentes:**
 
-- Lista/grid de productos (con búsqueda rápida)
-- Al hacer click en producto:
-  - Si NO tiene variantes → agrega directo a cuenta
-  - Si tiene variantes → muestra modal para seleccionar tamaño
+- Lista/grid de productos organizados por categoría (con búsqueda rápida)
+- Al hacer click en producto → agrega directo a cuenta (cada tamaño es un producto independiente)
 - Cuenta actual (sidebar o sección):
   - Lista de items agregados con cantidad
   - Botones +/- para ajustar cantidad
@@ -226,11 +317,10 @@ Elimina un producto (y sus variantes por CASCADE).
 
 ```typescript
 interface OrderItem {
-  productId: string;
+  productId: number;
   productName: string;
-  variantId?: string;
-  variantName?: string;
-  price: number;
+  categoryName: string;
+  effectivePrice: number;
   quantity: number;
 }
 
@@ -240,15 +330,14 @@ total: number = 0;
 
 ### 6.2 Pantalla: Admin CRUD
 
-**Propósito:** Gestionar catálogo de productos.
+**Propósito:** Gestionar catálogo de categorías y productos.
 
 **Funciones:**
 
-- Listar todos los productos
-- Crear nuevo producto (con o sin variantes)
-- Editar producto existente
-- Eliminar producto
-- Formulario simple con validaciones
+- Listar todas las categorías con sus productos
+- Crear/editar/eliminar categorías (con precio base opcional)
+- Crear/editar/eliminar productos (con precio propio o heredado de categoría)
+- Formularios con validaciones
 
 ---
 
@@ -256,42 +345,43 @@ total: number = 0;
 
 ### Setup Inicial
 
-- [ ] Crear repositorio Git (mono-repo o repos separados frontend/backend)
-- [ ] Inicializar proyecto Angular (`ng new marisqueria-app`)
-- [ ] Inicializar proyecto Node.js + Express + TypeScript
-- [ ] Configurar PostgreSQL local (Docker o instalación nativa)
-- [ ] Configurar Prisma (schema, migraciones)
+- [x] Crear repositorio Git (mono-repo frontend/backend)
+- [x] Inicializar proyecto Angular
+- [x] Inicializar proyecto Node.js + Express + TypeScript
+- [x] Configurar PostgreSQL local (Docker con docker-compose)
+- [x] Configurar Prisma (schema, migraciones, seed)
 
 ### Backend
 
-- [ ] Crear esquema de BD (`products`, `product_variants`)
-- [ ] Implementar migraciones con Prisma
-- [ ] Crear seed inicial con productos de ejemplo
-- [ ] Implementar endpoints REST:
-  - [ ] GET `/api/products`
-  - [ ] POST `/api/products`
-  - [ ] PUT `/api/products/:id`
-  - [ ] DELETE `/api/products/:id`
-- [ ] Validación de datos (Zod o express-validator)
-- [ ] Manejo básico de errores y respuestas consistentes
-- [ ] CORS configurado para frontend local
+- [x] Crear esquema de BD (`categories`, `products`)
+- [x] Implementar migraciones con Prisma
+- [x] Crear seed inicial con menú completo de la marisquería
+- [x] Implementar endpoints REST:
+  - [x] GET `/api/menu` (menú completo con precios efectivos)
+  - [x] CRUD `/api/categories`
+  - [x] CRUD `/api/products`
+  - [x] GET `/api/products/:id/price` (precio efectivo)
+  - [x] GET `/api/categories/:categoryId/products`
+- [x] Validación de datos con Zod
+- [x] Manejo básico de errores y respuestas consistentes
+- [x] CORS configurado para frontend local
+- [x] Script postinstall para Prisma generate automático
 
 ### Frontend
 
-- [ ] Crear servicio `ProductsService` para llamadas HTTP
-- [ ] Crear modelo/interface TypeScript para productos y variantes
+- [ ] Crear servicio `MenuService` para llamadas HTTP
+- [ ] Crear modelos/interfaces TypeScript para categorías y productos
 - [ ] Pantalla: Calculadora
-  - [ ] Componente lista de productos
+  - [ ] Componente lista de productos organizados por categoría
   - [ ] Componente cuenta actual (sidebar)
   - [ ] Lógica de agregar/editar/quitar items
   - [ ] Cálculo automático de total
-  - [ ] Modal para selección de variantes
 - [ ] Pantalla: Admin CRUD
-  - [ ] Listar productos
-  - [ ] Formulario crear/editar producto
+  - [ ] Listar categorías y productos
+  - [ ] Formulario crear/editar categoría y producto
   - [ ] Confirmación de eliminación
 - [ ] Navegación básica entre pantallas
-- [ ] Estilos básicos (Tailwind o Angular Material)
+- [ ] Estilos con Tailwind CSS + DaisyUI
 
 ### Testing (opcional para Fase 1, pero recomendado)
 

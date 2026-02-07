@@ -53,16 +53,19 @@ app.get('/api', (_req: Request, res: Response) => {
     version: '3.0.0',
     description: 'Simplified menu management system for restaurant POS',
     endpoints: {
+      menu: {
+        'GET /api/menu': 'Get full menu (categories with products, price resolved from product or category)'
+      },
       categories: {
         'GET /api/categories': 'Get all categories (add ?active=true for active only)',
-        'GET /api/categories/:id': 'Get category by ID',
+        'GET /api/categories/:id': 'Get category by ID with products',
         'POST /api/categories': 'Create category',
         'PUT /api/categories/:id': 'Update category',
-        'DELETE /api/categories/:id': 'Delete category',
+        'DELETE /api/categories/:id': 'Delete category (CASCADE)',
         'GET /api/categories/:categoryId/products': 'Get products by category'
       },
       products: {
-        'GET /api/products': 'Get all products (add ?active=true for active only)',
+        'GET /api/products': 'Get all products with resolved price (add ?active=true for active only)',
         'GET /api/products/:id': 'Get product by ID',
         'GET /api/products/:id/price': 'Get effective price of product',
         'POST /api/products': 'Create product',

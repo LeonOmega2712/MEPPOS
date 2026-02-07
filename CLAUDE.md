@@ -4,8 +4,8 @@
 
 ## Hard Rules
 
-- Source code must always be written in English.
-- Documentation, README files, and explanations must be written in Spanish.
+- Source code must always be written in English. This includes all code, comments, variable/function names, commit messages, inline code in documentation, and bash/shell comments inside code blocks.
+- Documentation (README, specs, and explanations) must be written in English to match the existing codebase convention.
 - Before proposing, modifying, or refactoring code, review the repository and work only on the latest available version. Assuming intermediate code states is not allowed.
 - The project must be compatible with both Windows and macOS.
 - SOLID and DRY principles must be strictly applied whenever code is generated.
@@ -59,10 +59,19 @@ MEPPOS/
 
 ### REST API
 
-- `GET    /api/products` - Get all products with variants
+- `GET    /api/menu` - Get full menu (categories with products, price resolved)
+- `GET    /api/categories` - Get all categories (supports ?active=true)
+- `GET    /api/categories/:id` - Get category with products
+- `POST   /api/categories` - Create category
+- `PUT    /api/categories/:id` - Update category
+- `DELETE /api/categories/:id` - Delete category (CASCADE)
+- `GET    /api/products` - Get all products with resolved price (supports ?active=true)
+- `GET    /api/products/:id` - Get product by ID
+- `GET    /api/products/:id/price` - Get resolved price
 - `POST   /api/products` - Create product
 - `PUT    /api/products/:id` - Update product
-- `DELETE /api/products/:id` - Delete product (CASCADE)
+- `DELETE /api/products/:id` - Delete product
+- `GET    /api/categories/:categoryId/products` - Get products by category
 
 ### Reference Menu
 

@@ -45,6 +45,7 @@
   - Fanta
   - Fresca
   - Sidral
+  - Agua Mineral
 
 ### Cerveza
 
@@ -61,7 +62,6 @@
 ### Agua
 
 - Natural
-- Mineral
 - Sabor
   - Arbolito
     - Lima

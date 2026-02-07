@@ -1,42 +1,45 @@
+import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { CreateProductDTO, UpdateProductDTO } from '../types/product.types';
+
+interface ProductWithCategory {
+  price: Prisma.Decimal | null;
+  category: { id: number; name: string; basePrice: Prisma.Decimal | null };
+}
+
+function withResolvedPrice<T extends ProductWithCategory>(product: T): T & { price: number | null } {
+  const price = product.price !== null
+    ? Number(product.price)
+    : product.category.basePrice !== null
+      ? Number(product.category.basePrice)
+      : null;
+  return { ...product, price };
+}
+
+const categorySelect = { id: true, name: true, basePrice: true } as const;
 
 export class ProductService {
   /**
    * Get all products
    */
   async getAllProducts() {
-    return prisma.product.findMany({
+    const products = await prisma.product.findMany({
       orderBy: { displayOrder: 'asc' },
-      include: {
-        category: {
-          select: {
-            id: true,
-            name: true,
-            basePrice: true
-          }
-        }
-      }
+      include: { category: { select: categorySelect } }
     });
+    return products.map(withResolvedPrice);
   }
 
   /**
    * Get active products only
    */
   async getActiveProducts() {
-    return prisma.product.findMany({
+    const products = await prisma.product.findMany({
       where: { active: true },
       orderBy: { displayOrder: 'asc' },
-      include: {
-        category: {
-          select: {
-            id: true,
-            name: true,
-            basePrice: true
-          }
-        }
-      }
+      include: { category: { select: categorySelect } }
     });
+    return products.map(withResolvedPrice);
   }
 
   /**
@@ -55,41 +58,24 @@ export class ProductService {
    * Get products by category
    */
   async getProductsByCategory(categoryId: number) {
-    return prisma.product.findMany({
+    const products = await prisma.product.findMany({
       where: { categoryId },
       orderBy: { displayOrder: 'asc' },
-      include: {
-        category: {
-          select: {
-            id: true,
-            name: true,
-            basePrice: true
-          }
-        }
-      }
+      include: { category: { select: categorySelect } }
     });
+    return products.map(withResolvedPrice);
   }
 
   /**
    * Get active products by category
    */
   async getActiveProductsByCategory(categoryId: number) {
-    return prisma.product.findMany({
-      where: {
-        categoryId,
-        active: true
-      },
+    const products = await prisma.product.findMany({
+      where: { categoryId, active: true },
       orderBy: { displayOrder: 'asc' },
-      include: {
-        category: {
-          select: {
-            id: true,
-            name: true,
-            basePrice: true
-          }
-        }
-      }
+      include: { category: { select: categorySelect } }
     });
+    return products.map(withResolvedPrice);
   }
 
   /**

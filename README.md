@@ -44,14 +44,11 @@ docker-compose ps
 ```bash
 cd backend
 
-# Install dependencies
+# Install dependencies (Prisma Client is auto-generated via postinstall)
 npm install
 
 # Copy environment variables
 cp .env.example .env
-
-# Generate Prisma Client (Prisma 7 automatically generates on install)
-npx prisma generate
 
 # Run migrations
 npm run prisma:migrate
@@ -172,28 +169,34 @@ FRONTEND_URL=http://localhost:4200
 
 ### Main Endpoints
 
+#### Menu (for calculator)
+
+- `GET /api/menu` - Full menu: active categories with active products and resolved `price`
+
 #### Categories
 
-- `GET /api/categories` - List all categories
-- `GET /api/categories/:id` - Get a category
+- `GET /api/categories` - List all categories (supports `?active=true`)
+- `GET /api/categories/:id` - Get a category with its products
 - `POST /api/categories` - Create category
 - `PUT /api/categories/:id` - Update category
-- `DELETE /api/categories/:id` - Delete category
+- `DELETE /api/categories/:id` - Delete category (CASCADE: deletes all products)
 
 #### Products
 
-- `GET /api/products` - List all products
-- `GET /api/products/:id` - Get a product
-- `GET /api/products/:id/price` - Get product price (direct or inherited from category)
+- `GET /api/products` - List all products with resolved `price` (supports `?active=true`)
+- `GET /api/products/:id` - Get a product by ID
+- `GET /api/products/:id/price` - Get effective price (direct or inherited from category)
 - `POST /api/products` - Create product
 - `PUT /api/products/:id` - Update product
 - `DELETE /api/products/:id` - Delete product
 - `GET /api/categories/:categoryId/products` - List products by category
 
-### Health Check
+#### Health Check
 
 - `GET /health` - Check server status
 - `GET /api` - Endpoint documentation
+
+> **Note:** `price` in GET responses is always resolved: `product.price ?? category.base_price`. If a product has no price of its own, it inherits its category's base price.
 
 ---
 

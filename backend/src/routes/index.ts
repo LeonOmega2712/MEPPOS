@@ -1,8 +1,15 @@
 import { Router } from 'express';
+import { menuController } from '../controllers/menu.controller';
 import { categoryController } from '../controllers/category.controller';
 import { productController } from '../controllers/product.controller';
 
 const router = Router();
+
+// ============================================
+// MENU (full catalog for calculator)
+// ============================================
+
+router.get('/menu', menuController.getFullMenu.bind(menuController));
 
 // ============================================
 // CATEGORIES
