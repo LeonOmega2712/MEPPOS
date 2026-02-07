@@ -1,7 +1,7 @@
 {
   "name": "meppos-backend",
   "version": "1.0.0",
-  "description": "Backend API para MEPPOS - Marisquería POS",
+  "description": "Backend API for MEPPOS - Seafood Restaurant POS",
   "main": "dist/index.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",

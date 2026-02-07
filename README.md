@@ -170,44 +170,25 @@ FRONTEND_URL=http://localhost:4200
 
 ## 📚 API Documentation
 
-### Menu System
-
-The complete menu system is documented in [`MENU_SYSTEM.md`](./MENU_SYSTEM.md).
-
 ### Main Endpoints
 
 #### Categories
 
 - `GET /api/categories` - List all categories
-- `GET /api/categories/tree` - Hierarchical category tree
+- `GET /api/categories/:id` - Get a category
 - `POST /api/categories` - Create category
 - `PUT /api/categories/:id` - Update category
 - `DELETE /api/categories/:id` - Delete category
 
-#### Menu Items
+#### Products
 
-- `GET /api/menu-items` - List all items
-- `GET /api/menu-items/:id` - Get an item
-- `GET /api/menu-items/category/:categoryId` - Items by category
-- `POST /api/menu-items` - Create item
-- `PUT /api/menu-items/:id` - Update item
-- `DELETE /api/menu-items/:id` - Delete item
-
-#### Variants
-
-- `POST /api/menu-items/:id/variants` - Add variant
-- `PUT /api/variants/:id` - Update variant
-- `DELETE /api/variants/:id` - Delete variant
-
-#### Variant Types
-
-- `GET /api/variant-types` - List variant types
-- `POST /api/variant-types` - Create variant type
-
-#### Ingredients
-
-- `GET /api/ingredients` - List ingredients
-- `POST /api/ingredients` - Create ingredient
+- `GET /api/products` - List all products
+- `GET /api/products/:id` - Get a product
+- `GET /api/products/:id/price` - Get product price (direct or inherited from category)
+- `POST /api/products` - Create product
+- `PUT /api/products/:id` - Update product
+- `DELETE /api/products/:id` - Delete product
+- `GET /api/categories/:categoryId/products` - List products by category
 
 ### Health Check
 
@@ -240,16 +221,10 @@ The complete menu system is documented in [`MENU_SYSTEM.md`](./MENU_SYSTEM.md).
 
 ### Data Model
 
-The system uses 6 main tables:
+The system uses 2 tables:
 
-1. **menu_categories** - Hierarchical menu organization
-2. **menu_items** - Products/dishes/drinks
-3. **variant_types** - Variation types (size, flavor, type)
-4. **menu_variants** - Specific variants with prices
-5. **ingredients** - Ingredients for configurable items
-6. **menu_item_ingredients** - Items-ingredients relationship (N:M)
-
-See [`MENU_SYSTEM.md`](./MENU_SYSTEM.md) for complete model documentation.
+1. **categories** - Product categories with optional base price
+2. **products** - Individual products that can inherit price from their category or define their own
 
 ---
 
@@ -257,13 +232,11 @@ See [`MENU_SYSTEM.md`](./MENU_SYSTEM.md) for complete model documentation.
 
 ### ✅ Phase 1 (Completed) - Menu System
 
-- ✅ Product catalog with hierarchical categories
-- ✅ Products with variants (size, flavor, type)
-- ✅ Configurable ingredients
-- ✅ Complete menu CRUD
-- ✅ Complete REST API
-- ✅ Zod validations
-- ✅ Seed with sample data
+- ✅ Product catalog with flat categories
+- ✅ Category-level base pricing with per-product overrides
+- ✅ Customizable products (seafood selection)
+- ✅ Complete REST API (CRUD for categories and products)
+- ✅ Seed with real menu data
 
 ### 🔜 Phase 2 - Calculator and Bill Persistence
 
@@ -346,7 +319,7 @@ npm run prisma:seed
 - **Source code**: English (variables, functions, classes)
 - **Documentation/Comments**: English
 - **UI/User messages**: Spanish
-- **Table names**: snake_case (e.g., `menu_items`)
+- **Table names**: snake_case (e.g., `categories`, `products`)
 - **TypeScript properties**: camelCase (e.g., `menuItems`)
 - **Angular components**: PascalCase (e.g., `MenuList`)
 
@@ -364,8 +337,7 @@ npm run prisma:seed
 backend/src/
 ├── controllers/       # HTTP handlers
 ├── services/         # Business logic
-├── validation/       # Zod schemas
-├── types/            # TypeScript types/DTOs
+├── types/            # TypeScript types
 ├── routes/           # Route configuration
 └── index.ts          # Main server
 ```
@@ -411,48 +383,8 @@ Private project - All rights reserved
 
 ## 🗂️ Important Files
 
-- [`MENU_SYSTEM.md`](./MENU_SYSTEM.md) - Complete menu system documentation
 - [`Fase 1 - App Marisquería.md`](./Fase%201%20-%20App%20Marisquería.md) - Original technical specification
 - [`backend/prisma/schema.prisma`](./backend/prisma/schema.prisma) - Data model
-- [`backend/prisma.config.ts`](./backend/prisma.config.ts) - Prisma 7 configuration
+- [`backend/prisma/prisma.config.ts`](./backend/prisma/prisma.config.ts) - Prisma 7 configuration
 - [`backend/prisma/seed.ts`](./backend/prisma/seed.ts) - Sample data
 - [`docker-compose.yml`](./docker-compose.yml) - PostgreSQL configuration
-
----
-
-## 📋 Recent Updates (January 2026)
-
-### Major Dependency Updates
-
-All project dependencies have been updated to their latest versions:
-
-**Frontend:**
-
-- Angular: `21.0.x` → `21.1.0`
-- Vitest: `4.0.16` → `4.0.17`
-
-**Backend:**
-
-- **Prisma ORM**: `5.22.0` → `7.2.0` ⚡ (Major update)
-  - New adapter-based architecture
-  - Centralized configuration in `prisma.config.ts`
-  - PostgreSQL adapter with `@prisma/adapter-pg`
-- **Express.js**: `4.22.1` → `5.2.1` ⚡ (Major update)
-  - Improved async error handling
-  - API remains compatible
-- **Zod**: `3.25.76` → `4.3.5` ⚡ (Major update)
-  - `error.errors` renamed to `error.issues`
-- **Dotenv**: `16.6.1` → `17.2.3` ⚡ (Major update)
-  - Configured with `quiet: true` to maintain silent behavior
-- **@types/node**: `22.19.5` → `25.0.9`
-
-### Breaking Changes Handled
-
-All breaking changes from major version updates have been addressed:
-
-1. ✅ Prisma 7 adapter configuration implemented
-2. ✅ Zod 4 error property updates applied
-3. ✅ Dotenv 17 quiet mode configured
-4. ✅ TypeScript configuration adjusted for compatibility
-
-The project compiles and runs successfully with all updated dependencies.

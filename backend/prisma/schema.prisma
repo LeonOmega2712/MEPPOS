@@ -10,154 +10,47 @@ datasource db {
 }
 
 // ============================================
-// MENU SYSTEM - FASE 1
+// SIMPLIFIED MENU SYSTEM
+// Based on menu.mermaid.md diagram
 // ============================================
 
-// Categories organize the menu hierarchically (tree structure)
-model MenuCategory {
-  id          String   @id @default(uuid()) @db.Uuid
-  name        String   @db.VarChar(255)
-  nameKey     String?  @map("name_key") @db.VarChar(100) // For future i18n
-  description String?  @db.Text
-  parentId    String?  @map("parent_id") @db.Uuid
-  sortOrder   Int      @default(0) @map("sort_order")
-  isActive    Boolean  @default(true) @map("is_active")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+model Category {
+  id           Int       @id @default(autoincrement())
+  name         String    @db.VarChar(255)
+  description  String?   @db.Text
+  basePrice    Decimal?  @map("base_price") @db.Decimal(10, 2)
+  image        String?   @db.VarChar(500)
+  displayOrder Int       @default(0) @map("display_order")
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
 
   // Relations
-  parent   MenuCategory?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
-  children MenuCategory[] @relation("CategoryHierarchy")
-  items    MenuItem[]
+  products Product[]
 
-  @@index([parentId])
-  @@index([sortOrder])
-  @@map("menu_categories")
+  @@index([displayOrder])
+  @@index([active])
+  @@map("categories")
 }
 
-// Items are the actual products/dishes/drinks in the menu
-model MenuItem {
-  id             String   @id @default(uuid()) @db.Uuid
-  categoryId     String   @map("category_id") @db.Uuid
-  name           String   @db.VarChar(255)
-  nameKey        String?  @map("name_key") @db.VarChar(100) // For future i18n
-  description    String?  @db.Text
-  imageUrl       String?  @map("image_url") @db.VarChar(500)
-  sortOrder      Int      @default(0) @map("sort_order")
-  isActive       Boolean  @default(true) @map("is_active")
-  isConfigurable Boolean  @default(false) @map("is_configurable") // Can select ingredients
-  hasVariants    Boolean  @default(false) @map("has_variants")
-  basePrice      Decimal? @map("base_price") @db.Decimal(10, 2) // For items without variants
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+model Product {
+  id           Int      @id @default(autoincrement())
+  categoryId   Int      @map("category_id")
+  name         String   @db.VarChar(255)
+  description  String?  @db.Text
+  price        Decimal? @db.Decimal(10, 2)
+  image        String?  @db.VarChar(500)
+  displayOrder Int      @default(0) @map("display_order")
+  customizable Boolean  @default(false)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
   // Relations
-  category    MenuCategory       @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  variants    MenuVariant[]
-  ingredients MenuItemIngredient[]
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
   @@index([categoryId])
-  @@index([sortOrder])
-  @@index([isActive])
-  @@map("menu_items")
+  @@index([displayOrder])
+  @@index([active])
+  @@map("products")
 }
-
-// Variant types define the kind of variation (size, flavor, type, etc.)
-model VariantType {
-  id        String   @id @default(uuid()) @db.Uuid
-  name      String   @db.VarChar(100) // "Size", "Flavor", "Type"
-  nameKey   String?  @map("name_key") @db.VarChar(100) // For future i18n
-  sortOrder Int      @default(0) @map("sort_order")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  // Relations
-  variants MenuVariant[]
-
-  @@unique([name])
-  @@index([sortOrder])
-  @@map("variant_types")
-}
-
-// Variants are specific variations of a menu item (e.g., "Chico", "Grande")
-model MenuVariant {
-  id            String   @id @default(uuid()) @db.Uuid
-  menuItemId    String   @map("menu_item_id") @db.Uuid
-  variantTypeId String   @map("variant_type_id") @db.Uuid
-  name          String   @db.VarChar(100) // "Chico", "Grande", "Regular", "Zero"
-  nameKey       String?  @map("name_key") @db.VarChar(100) // For future i18n
-  price         Decimal  @db.Decimal(10, 2)
-  sortOrder     Int      @default(0) @map("sort_order")
-  isActive      Boolean  @default(true) @map("is_active")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
-
-  // Relations
-  menuItem    MenuItem    @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
-  variantType VariantType @relation(fields: [variantTypeId], references: [id], onDelete: Restrict)
-
-  @@index([menuItemId])
-  @@index([variantTypeId])
-  @@index([sortOrder])
-  @@index([isActive])
-  @@map("menu_variants")
-}
-
-// Ingredients available for configurable items (seafood selection)
-model Ingredient {
-  id        String   @id @default(uuid()) @db.Uuid
-  name      String   @db.VarChar(100)
-  nameKey   String?  @map("name_key") @db.VarChar(100) // For future i18n
-  sortOrder Int      @default(0) @map("sort_order")
-  isActive  Boolean  @default(true) @map("is_active")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  // Relations
-  menuItems MenuItemIngredient[]
-
-  @@index([sortOrder])
-  @@index([isActive])
-  @@map("ingredients")
-}
-
-// Junction table for many-to-many relationship between items and ingredients
-model MenuItemIngredient {
-  id           String   @id @default(uuid()) @db.Uuid
-  menuItemId   String   @map("menu_item_id") @db.Uuid
-  ingredientId String   @map("ingredient_id") @db.Uuid
-  isDefault    Boolean  @default(false) @map("is_default") // Default ingredient for the item
-  createdAt    DateTime @default(now()) @map("created_at")
-
-  // Relations
-  menuItem   MenuItem   @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
-  ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
-
-  @@unique([menuItemId, ingredientId])
-  @@index([menuItemId])
-  @@index([ingredientId])
-  @@map("menu_item_ingredients")
-}
-
-// ============================================
-// NOTES FOR FUTURE PHASES:
-// ============================================
-// Phase 2: Add price history
-// model MenuVariantPriceHistory {
-//   id            String   @id @default(uuid())
-//   variantId     String
-//   price         Decimal
-//   effectiveFrom DateTime
-//   effectiveTo   DateTime?
-//   createdBy     String?
-//   createdAt     DateTime @default(now())
-// }
-//
-// Phase 2+: Add translations table
-// model Translation {
-//   id       String @id @default(uuid())
-//   key      String
-//   locale   String // "es", "en", etc.
-//   value    String
-//   @@unique([key, locale])
-// }

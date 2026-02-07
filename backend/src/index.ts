@@ -36,10 +36,10 @@ if (process.env.NODE_ENV === 'development') {
 
 // Health check
 app.get('/health', (req: Request, res: Response) => {
-  res.json({ 
-    status: 'ok', 
+  res.json({
+    status: 'ok',
     timestamp: new Date().toISOString(),
-    service: 'MEPPOS API - Menu System'
+    service: 'MEPPOS API - Simplified Menu System'
   });
 });
 
@@ -49,46 +49,25 @@ app.use('/api', apiRoutes);
 // API Documentation route
 app.get('/api', (req: Request, res: Response) => {
   res.json({
-    name: 'MEPPOS API - Menu System',
-    version: '2.0.0',
-    description: 'Complete menu management system for seafood restaurant POS',
+    name: 'MEPPOS API - Simplified Menu System',
+    version: '3.0.0',
+    description: 'Simplified menu management system for restaurant POS',
     endpoints: {
       categories: {
-        'GET /api/categories': 'Get all categories (flat)',
-        'GET /api/categories/tree': 'Get category tree (hierarchical)',
-        'GET /api/categories/root': 'Get root categories only',
+        'GET /api/categories': 'Get all categories (add ?active=true for active only)',
         'GET /api/categories/:id': 'Get category by ID',
-        'GET /api/categories/:id/path': 'Get breadcrumb path',
         'POST /api/categories': 'Create category',
         'PUT /api/categories/:id': 'Update category',
-        'DELETE /api/categories/:id': 'Delete category'
+        'DELETE /api/categories/:id': 'Delete category',
+        'GET /api/categories/:categoryId/products': 'Get products by category'
       },
-      menuItems: {
-        'GET /api/menu-items': 'Get all menu items',
-        'GET /api/menu-items/:id': 'Get menu item by ID',
-        'GET /api/menu-items/category/:categoryId': 'Get items by category',
-        'POST /api/menu-items': 'Create menu item',
-        'PUT /api/menu-items/:id': 'Update menu item',
-        'DELETE /api/menu-items/:id': 'Delete menu item'
-      },
-      variants: {
-        'POST /api/menu-items/:id/variants': 'Add variant to item',
-        'PUT /api/variants/:id': 'Update variant',
-        'DELETE /api/variants/:id': 'Delete variant'
-      },
-      variantTypes: {
-        'GET /api/variant-types': 'Get all variant types',
-        'GET /api/variant-types/:id': 'Get variant type by ID',
-        'POST /api/variant-types': 'Create variant type',
-        'PUT /api/variant-types/:id': 'Update variant type',
-        'DELETE /api/variant-types/:id': 'Delete variant type'
-      },
-      ingredients: {
-        'GET /api/ingredients': 'Get all ingredients',
-        'GET /api/ingredients/:id': 'Get ingredient by ID',
-        'POST /api/ingredients': 'Create ingredient',
-        'PUT /api/ingredients/:id': 'Update ingredient',
-        'DELETE /api/ingredients/:id': 'Delete ingredient'
+      products: {
+        'GET /api/products': 'Get all products (add ?active=true for active only)',
+        'GET /api/products/:id': 'Get product by ID',
+        'GET /api/products/:id/price': 'Get effective price of product',
+        'POST /api/products': 'Create product',
+        'PUT /api/products/:id': 'Update product',
+        'DELETE /api/products/:id': 'Delete product'
       }
     },
     documentation: 'https://github.com/your-repo/MEPPOS#api-documentation'
@@ -124,8 +103,8 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 app.listen(PORT, () => {
   console.log(`
   ╔════════════════════════════════════════╗
-  ║  🚀 MEPPOS API Server v2.0             ║
-  ║  🍽️  Menu Management System             ║
+  ║  🚀 MEPPOS API Server v3.0             ║
+  ║  🍽️  Simplified Menu System             ║
   ║  📡 Port: ${PORT}                         ║
   ║  🌍 Environment: ${process.env.NODE_ENV || 'development'}           ║
   ║  🔗 http://localhost:${PORT}             ║

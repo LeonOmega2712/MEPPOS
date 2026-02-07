@@ -1,629 +1,463 @@
-import { PrismaClient } from '@prisma/client';
-import { PrismaPg } from '@prisma/adapter-pg';
-import pg from 'pg';
 import 'dotenv/config';
+import { PrismaClient } from '@prisma/client';
+import { Pool } from 'pg';
+import { PrismaPg } from '@prisma/adapter-pg';
 
-const pool = new pg.Pool({
-  connectionString: process.env.DATABASE_URL,
+const pool = new Pool({
+  connectionString:
+    process.env.DATABASE_URL || 'postgresql://localhost:5432/meppos',
 });
 
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  console.log('🌱 Starting menu database seed...');
-
-  // Clear existing data in correct order
-  await prisma.menuItemIngredient.deleteMany();
-  await prisma.menuVariant.deleteMany();
-  await prisma.menuItem.deleteMany();
-  await prisma.ingredient.deleteMany();
-  await prisma.variantType.deleteMany();
-  await prisma.menuCategory.deleteMany();
-
-  console.log('✅ Cleared existing data');
-
-  // ============================================
-  // VARIANT TYPES
-  // ============================================
-  const sizeType = await prisma.variantType.create({
-    data: { name: 'Tamaño', nameKey: 'size', sortOrder: 1 }
-  });
-
-  const typeType = await prisma.variantType.create({
-    data: { name: 'Tipo', nameKey: 'type', sortOrder: 2 }
-  });
-
-  const flavorType = await prisma.variantType.create({
-    data: { name: 'Sabor', nameKey: 'flavor', sortOrder: 3 }
-  });
-
-  await prisma.variantType.create({
-    data: { name: 'Marca', nameKey: 'brand', sortOrder: 4 }
-  });
-
-  console.log('✅ Created variant types');
-
-  // ============================================
-  // INGREDIENTS (Seafood)
-  // ============================================
-  const camaron = await prisma.ingredient.create({
-    data: { name: 'Camarón', nameKey: 'shrimp', sortOrder: 1 }
-  });
-
-  const calamar = await prisma.ingredient.create({
-    data: { name: 'Calamar', nameKey: 'squid', sortOrder: 2 }
-  });
-
-  const ostion = await prisma.ingredient.create({
-    data: { name: 'Ostión', nameKey: 'oyster', sortOrder: 3 }
-  });
-
-  const abulon = await prisma.ingredient.create({
-    data: { name: 'Abulón', nameKey: 'abalone', sortOrder: 4 }
-  });
-
-  const allSeafood = [camaron, calamar, ostion, abulon];
-
-  console.log('✅ Created ingredients');
+  console.log('🌱 Starting seed based on menu.md...');
 
   // ============================================
   // CATEGORIES
   // ============================================
 
-  // Root categories
-  const catAlimentos = await prisma.menuCategory.create({
-    data: { name: 'Alimentos', nameKey: 'food', sortOrder: 1 }
-  });
-
-  const catBebidas = await prisma.menuCategory.create({
-    data: { name: 'Bebidas', nameKey: 'drinks', sortOrder: 2 }
-  });
-
-  // Bebidas subcategories
-  const catRefresco = await prisma.menuCategory.create({
+  const foodCategory = await prisma.category.create({
     data: {
-      name: 'Refresco',
-      nameKey: 'soda',
-      parentId: catBebidas.id,
-      sortOrder: 1
-    }
+      name: 'Alimentos',
+      description: 'Platillos de mariscos',
+      displayOrder: 1,
+      active: true,
+    },
   });
 
-  const catCerveza = await prisma.menuCategory.create({
+  const returnableSodasCategory = await prisma.category.create({
     data: {
-      name: 'Cerveza',
-      nameKey: 'beer',
-      parentId: catBebidas.id,
-      sortOrder: 2
-    }
+      name: 'Refrescos Retornables',
+      description: 'Refrescos en envase de vidrio retornable',
+      basePrice: 25.0,
+      displayOrder: 2,
+      active: true,
+    },
   });
 
-  const catAgua = await prisma.menuCategory.create({
+  const cannedSodasCategory = await prisma.category.create({
     data: {
-      name: 'Agua',
-      nameKey: 'water',
-      parentId: catBebidas.id,
-      sortOrder: 3
-    }
+      name: 'Refrescos de Lata',
+      description: 'Refrescos en presentación de lata',
+      basePrice: 30.0,
+      displayOrder: 3,
+      active: true,
+    },
   });
 
-  // Refresco subcategories
-  const catRefrescoTaparrosca = await prisma.menuCategory.create({
+  const beerCategory = await prisma.category.create({
     data: {
-      name: 'Taparrosca',
-      nameKey: 'screw_cap',
-      parentId: catRefresco.id,
-      sortOrder: 1
-    }
+      name: 'Cervezas',
+      description: 'Presentación de vidrio y lata',
+      basePrice: 30.0,
+      displayOrder: 4,
+      active: true,
+    },
   });
 
-  const catRefrescoLata = await prisma.menuCategory.create({
+  const waterCategory = await prisma.category.create({
     data: {
-      name: 'Lata',
-      nameKey: 'can',
-      parentId: catRefresco.id,
-      sortOrder: 2
-    }
+      name: 'Agua Natural y de Sabor',
+      description: 'Agua embotellada natural y de sabor',
+      basePrice: 25.0,
+      displayOrder: 5,
+      active: true,
+    },
   });
 
-  const catRefrescoRetornable = await prisma.menuCategory.create({
+  const juiceCategory = await prisma.category.create({
     data: {
-      name: 'Retornable',
-      nameKey: 'returnable',
-      parentId: catRefresco.id,
-      sortOrder: 3
-    }
+      name: 'Jugos',
+      description: 'Jugos de sabores frutales',
+      basePrice: 30.0,
+      displayOrder: 6,
+      active: true,
+    },
   });
 
-  // Cerveza subcategories
-  const catCervezaMedia = await prisma.menuCategory.create({
+  const bottledSodasCategory = await prisma.category.create({
     data: {
-      name: 'Media',
-      nameKey: 'regular',
-      parentId: catCerveza.id,
-      sortOrder: 1
-    }
+      name: 'Refrescos de taparrosca',
+      description: 'Refrescos en envase de plastico',
+      basePrice: 25.0,
+      displayOrder: 7,
+      active: true,
+    },
   });
 
-  const catCervezaPremium = await prisma.menuCategory.create({
-    data: {
-      name: 'Premium',
-      nameKey: 'premium',
-      parentId: catCerveza.id,
-      sortOrder: 2
-    }
-  });
-
-  const catCervezaLata = await prisma.menuCategory.create({
-    data: {
-      name: 'Lata',
-      nameKey: 'can',
-      parentId: catCerveza.id,
-      sortOrder: 3
-    }
-  });
-
-  // Agua subcategories
-  const catAguaSabor = await prisma.menuCategory.create({
-    data: {
-      name: 'Sabor',
-      nameKey: 'flavored',
-      parentId: catAgua.id,
-      sortOrder: 3
-    }
-  });
-
-  const catAguaJugo = await prisma.menuCategory.create({
-    data: {
-      name: 'Jugo',
-      nameKey: 'juice',
-      parentId: catAgua.id,
-      sortOrder: 4
-    }
-  });
-
-  console.log('✅ Created categories');
+  console.log('✅ Categories created');
 
   // ============================================
-  // MENU ITEMS - ALIMENTOS
+  // FOOD PRODUCTS
   // ============================================
 
-  // Cóctel de mariscos (configurable)
-  const coctelMariscos = await prisma.menuItem.create({
-    data: {
-      categoryId: catAlimentos.id,
-      name: 'Cóctel de Mariscos',
-      nameKey: 'seafood_cocktail',
-      description: 'Cóctel de mariscos fresco con salsa especial',
-      isConfigurable: true,
-      hasVariants: true,
-      sortOrder: 1
-    }
-  });
-
-  // Add seafood ingredients to cocktail
-  for (const seafood of allSeafood) {
-    await prisma.menuItemIngredient.create({
-      data: {
-        menuItemId: coctelMariscos.id,
-        ingredientId: seafood.id,
-        isDefault: false
-      }
-    });
-  }
-
-  // Cocktail variants (sizes)
-  await prisma.menuVariant.createMany({
+  // Seafood cocktails
+  await prisma.product.createMany({
     data: [
       {
-        menuItemId: coctelMariscos.id,
-        variantTypeId: sizeType.id,
-        name: 'Chico',
-        nameKey: 'small',
-        price: 100,
-        sortOrder: 1
+        categoryId: foodCategory.id,
+        name: 'Cóctel de Mariscos - Chico',
+        description:
+          'Cóctel chico de mariscos al gusto (Camarón, Calamar, Ostión, Abulón)',
+        price: 60.0,
+        displayOrder: 1,
+        customizable: true,
+        active: true,
       },
       {
-        menuItemId: coctelMariscos.id,
-        variantTypeId: sizeType.id,
-        name: 'Mediano',
-        nameKey: 'medium',
-        price: 135,
-        sortOrder: 2
+        categoryId: foodCategory.id,
+        name: 'Cóctel de Mariscos - Mediano',
+        description:
+          'Cóctel mediano de mariscos al gusto (Camarón, Calamar, Ostión, Abulón)',
+        price: 80.0,
+        displayOrder: 2,
+        customizable: true,
+        active: true,
       },
       {
-        menuItemId: coctelMariscos.id,
-        variantTypeId: sizeType.id,
-        name: 'Grande',
-        nameKey: 'large',
-        price: 170,
-        sortOrder: 3
-      }
-    ]
+        categoryId: foodCategory.id,
+        name: 'Cóctel de Mariscos - Grande',
+        description:
+          'Cóctel grande de mariscos al gusto (Camarón, Calamar, Ostión, Abulón)',
+        price: 100.0,
+        displayOrder: 3,
+        customizable: true,
+        active: true,
+      },
+    ],
   });
 
-  // Tostadas (configurable)
-  const tostadas = await prisma.menuItem.create({
-    data: {
-      categoryId: catAlimentos.id,
-      name: 'Tostadas',
-      nameKey: 'tostadas',
-      description: 'Tostadas de mariscos o ceviche',
-      isConfigurable: true,
-      hasVariants: true,
-      sortOrder: 2
-    }
-  });
-
-  // Add seafood ingredients to tostadas
-  for (const seafood of allSeafood) {
-    await prisma.menuItemIngredient.create({
-      data: {
-        menuItemId: tostadas.id,
-        ingredientId: seafood.id,
-        isDefault: false
-      }
-    });
-  }
-
-  // Tostadas variants (types)
-  await prisma.menuVariant.createMany({
+  // Tostadas
+  await prisma.product.createMany({
     data: [
       {
-        menuItemId: tostadas.id,
-        variantTypeId: typeType.id,
-        name: 'Mariscos',
-        nameKey: 'seafood',
-        price: 80,
-        sortOrder: 1
+        categoryId: foodCategory.id,
+        name: 'Tostada de Mariscos',
+        description:
+          'Tostada con mariscos al gusto (Camarón, Calamar, Ostión, Abulón)',
+        price: 30.0,
+        displayOrder: 4,
+        customizable: true,
+        active: true,
       },
       {
-        menuItemId: tostadas.id,
-        variantTypeId: typeType.id,
-        name: 'Ceviche',
-        nameKey: 'ceviche',
-        price: 75,
-        sortOrder: 2
-      }
-    ]
+        categoryId: foodCategory.id,
+        name: 'Tostada de Ceviche',
+        description: 'Tostada de ceviche con mariscos al gusto',
+        price: 15.0,
+        displayOrder: 5,
+        customizable: true,
+        active: true,
+      },
+    ],
   });
 
-  // Sopa de mariscos (NOT configurable - always has all 4 seafood)
-  const sopaMariscos = await prisma.menuItem.create({
-    data: {
-      categoryId: catAlimentos.id,
-      name: 'Sopa de Mariscos',
-      nameKey: 'seafood_soup',
-      description: 'Sopa de mariscos con los 4 tipos de mariscos',
-      isConfigurable: false, // Always includes all seafood
-      hasVariants: true,
-      sortOrder: 3
-    }
-  });
-
-  // Add all seafood as default ingredients for soup
-  for (const seafood of allSeafood) {
-    await prisma.menuItemIngredient.create({
-      data: {
-        menuItemId: sopaMariscos.id,
-        ingredientId: seafood.id,
-        isDefault: true // All are default for soup
-      }
-    });
-  }
-
-  // Soup variants (sizes)
-  await prisma.menuVariant.createMany({
+  // Seafood soup
+  await prisma.product.createMany({
     data: [
       {
-        menuItemId: sopaMariscos.id,
-        variantTypeId: sizeType.id,
-        name: 'Chica',
-        nameKey: 'small',
-        price: 120,
-        sortOrder: 1
+        categoryId: foodCategory.id,
+        name: 'Sopa de Mariscos - Chica',
+        description:
+          'Sopa chica con los 4 mariscos (Camarón, Calamar, Ostión, Abulón)',
+        price: 70.0,
+        displayOrder: 6,
+        customizable: false,
+        active: true,
       },
       {
-        menuItemId: sopaMariscos.id,
-        variantTypeId: sizeType.id,
-        name: 'Grande',
-        nameKey: 'large',
-        price: 180,
-        sortOrder: 2
-      }
-    ]
+        categoryId: foodCategory.id,
+        name: 'Sopa de Mariscos - Grande',
+        description:
+          'Sopa grande con los 4 mariscos (Camarón, Calamar, Ostión, Abulón)',
+        price: 100.0,
+        displayOrder: 7,
+        customizable: false,
+        active: true,
+      },
+    ],
   });
 
-  console.log('✅ Created food items');
+  console.log('✅ Food products created');
 
   // ============================================
-  // MENU ITEMS - BEBIDAS (REFRESCO)
+  // DRINKS - SODAS
   // ============================================
 
-  // Coca-cola Taparrosca
-  const cocaTaparrosca = await prisma.menuItem.create({
-    data: {
-      categoryId: catRefrescoTaparrosca.id,
-      name: 'Coca-cola Taparrosca',
-      nameKey: 'coca_cola_screw_cap',
-      hasVariants: true,
-      sortOrder: 1
-    }
-  });
-
-  await prisma.menuVariant.createMany({
+  // Bottled sodas - inherits category base price ($25)
+  await prisma.product.createMany({
     data: [
       {
-        menuItemId: cocaTaparrosca.id,
-        variantTypeId: sizeType.id,
-        name: 'Chica Regular',
-        nameKey: 'small_regular',
-        price: 25,
-        sortOrder: 1
+        categoryId: bottledSodasCategory.id,
+        name: 'Coca-Cola Taparrosca Chica Regular',
+        description: 'Coca-Cola regular taparrosca tamaño chico',
+        displayOrder: 1,
+        active: true,
       },
       {
-        menuItemId: cocaTaparrosca.id,
-        variantTypeId: sizeType.id,
-        name: 'Chica Zero',
-        nameKey: 'small_zero',
-        price: 25,
-        sortOrder: 2
+        categoryId: bottledSodasCategory.id,
+        name: 'Coca-Cola Taparrosca Chica Zero',
+        description: 'Coca-Cola Zero taparrosca tamaño chico',
+        displayOrder: 2,
+        active: true,
       },
       {
-        menuItemId: cocaTaparrosca.id,
-        variantTypeId: sizeType.id,
-        name: 'Grande',
-        nameKey: 'large',
-        price: 40,
-        sortOrder: 3
-      }
-    ]
+        categoryId: bottledSodasCategory.id,
+        name: 'Coca-Cola Taparrosca Grande',
+        description: 'Coca-Cola taparrosca tamaño grande',
+        price: 30.0,
+        displayOrder: 3,
+        active: true,
+      },
+    ],
   });
 
-  // Coca-cola Lata
-  const cocaLata = await prisma.menuItem.create({
-    data: {
-      categoryId: catRefrescoLata.id,
-      name: 'Coca-cola Lata',
-      nameKey: 'coca_cola_can',
-      hasVariants: true,
-      sortOrder: 1
-    }
-  });
-
-  await prisma.menuVariant.createMany({
+  // Canned sodas - inherits category base price ($30)
+  await prisma.product.createMany({
     data: [
       {
-        menuItemId: cocaLata.id,
-        variantTypeId: typeType.id,
-        name: 'Regular',
-        nameKey: 'regular',
-        price: 30,
-        sortOrder: 1
+        categoryId: cannedSodasCategory.id,
+        name: 'Coca-Cola Lata Regular',
+        description: 'Coca-Cola regular en lata',
+        displayOrder: 1,
+        active: true,
       },
       {
-        menuItemId: cocaLata.id,
-        variantTypeId: typeType.id,
-        name: 'Light',
-        nameKey: 'light',
-        price: 30,
-        sortOrder: 2
-      }
-    ]
+        categoryId: cannedSodasCategory.id,
+        name: 'Coca-Cola Lata Light',
+        description: 'Coca-Cola Light en lata',
+        displayOrder: 2,
+        active: true,
+      },
+    ],
   });
 
-  // Refrescos Retornables (simple items)
-  const refrescosRetornables = [
-    { name: 'Coca-cola', nameKey: 'coca_cola', price: 35 },
-    { name: 'Sprite', nameKey: 'sprite', price: 35 },
-    { name: 'Fanta', nameKey: 'fanta', price: 35 },
-    { name: 'Fresca', nameKey: 'fresca', price: 35 },
-    { name: 'Sidral', nameKey: 'sidral', price: 35 }
-  ];
-
-  for (const [idx, refresco] of refrescosRetornables.entries()) {
-    await prisma.menuItem.create({
-      data: {
-        categoryId: catRefrescoRetornable.id,
-        name: refresco.name,
-        nameKey: refresco.nameKey,
-        hasVariants: false,
-        basePrice: refresco.price,
-        sortOrder: idx + 1
-      }
-    });
-  }
-
-  console.log('✅ Created soda items');
-
-  // ============================================
-  // MENU ITEMS - BEBIDAS (CERVEZA)
-  // ============================================
-
-  // Cervezas Media
-  await prisma.menuItem.create({
-    data: {
-      categoryId: catCervezaMedia.id,
-      name: 'XX',
-      nameKey: 'xx',
-      hasVariants: false,
-      basePrice: 30,
-      sortOrder: 1
-    }
-  });
-
-  await prisma.menuItem.create({
-    data: {
-      categoryId: catCervezaMedia.id,
-      name: 'Indio',
-      nameKey: 'indio',
-      hasVariants: false,
-      basePrice: 30,
-      sortOrder: 2
-    }
-  });
-
-  // Cerveza Premium
-  const bohemia = await prisma.menuItem.create({
-    data: {
-      categoryId: catCervezaPremium.id,
-      name: 'Bohemia',
-      nameKey: 'bohemia',
-      hasVariants: true,
-      sortOrder: 1
-    }
-  });
-
-  await prisma.menuVariant.createMany({
+  // Returnable sodas - inherits category base price ($25)
+  await prisma.product.createMany({
     data: [
       {
-        menuItemId: bohemia.id,
-        variantTypeId: typeType.id,
-        name: 'Pilsner',
-        nameKey: 'pilsner',
-        price: 45,
-        sortOrder: 1
+        categoryId: returnableSodasCategory.id,
+        name: 'Coca-Cola Retornable',
+        description: 'Coca-Cola en botella de vidrio retornable',
+        displayOrder: 1,
+        active: true,
       },
       {
-        menuItemId: bohemia.id,
-        variantTypeId: typeType.id,
-        name: 'Vienna',
-        nameKey: 'vienna',
-        price: 45,
-        sortOrder: 2
-      }
-    ]
+        categoryId: returnableSodasCategory.id,
+        name: 'Sprite Retornable',
+        description: 'Sprite en botella de vidrio retornable',
+        displayOrder: 2,
+        active: true,
+      },
+      {
+        categoryId: returnableSodasCategory.id,
+        name: 'Fanta Retornable',
+        description: 'Fanta en botella de vidrio retornable',
+        displayOrder: 3,
+        active: true,
+      },
+      {
+        categoryId: returnableSodasCategory.id,
+        name: 'Fresca Retornable',
+        description: 'Fresca en botella de vidrio retornable',
+        displayOrder: 4,
+        active: true,
+      },
+      {
+        categoryId: returnableSodasCategory.id,
+        name: 'Sidral Retornable',
+        description: 'Sidral en botella de vidrio retornable',
+        displayOrder: 5,
+        active: true,
+      },
+      {
+        categoryId: returnableSodasCategory.id,
+        name: 'Agua Mineral',
+        description: 'Agua mineral con gas',
+        displayOrder: 6,
+        active: true,
+      },
+    ],
   });
 
-  // Cerveza Lata
-  await prisma.menuItem.create({
-    data: {
-      categoryId: catCervezaLata.id,
-      name: 'Heineken 00',
-      nameKey: 'heineken_00',
-      hasVariants: false,
-      basePrice: 35,
-      sortOrder: 1
-    }
-  });
-
-  console.log('✅ Created beer items');
+  console.log('✅ Sodas created');
 
   // ============================================
-  // MENU ITEMS - BEBIDAS (AGUA)
+  // BEERS - inherits category base price ($30)
   // ============================================
 
-  // Agua simple
-  await prisma.menuItem.create({
-    data: {
-      categoryId: catAgua.id,
-      name: 'Natural',
-      nameKey: 'natural_water',
-      hasVariants: false,
-      basePrice: 15,
-      sortOrder: 1
-    }
+  await prisma.product.createMany({
+    data: [
+      {
+        categoryId: beerCategory.id,
+        name: 'Cerveza XX Media',
+        description: 'Cerveza XX botella media',
+        displayOrder: 1,
+        active: true,
+      },
+      {
+        categoryId: beerCategory.id,
+        name: 'Cerveza Indio Media',
+        description: 'Cerveza Indio botella media',
+        displayOrder: 2,
+        active: true,
+      },
+      {
+        categoryId: beerCategory.id,
+        name: 'Cerveza Bohemia Pilsner',
+        description: 'Cerveza premium Bohemia Pilsner',
+        displayOrder: 3,
+        active: true,
+      },
+      {
+        categoryId: beerCategory.id,
+        name: 'Cerveza Bohemia Vienna',
+        description: 'Cerveza premium Bohemia Vienna',
+        displayOrder: 4,
+        active: true,
+      },
+      {
+        categoryId: beerCategory.id,
+        name: 'Cerveza Heineken 00 Lata',
+        description: 'Cerveza sin alcohol Heineken 00 en lata',
+        displayOrder: 5,
+        active: true,
+      },
+    ],
   });
 
-  await prisma.menuItem.create({
-    data: {
-      categoryId: catAgua.id,
-      name: 'Mineral',
-      nameKey: 'mineral_water',
-      hasVariants: false,
-      basePrice: 20,
-      sortOrder: 2
-    }
-  });
+  console.log('✅ Beers created');
 
-  // Agua de sabor - Arbolito
-  const arbolito = await prisma.menuItem.create({
-    data: {
-      categoryId: catAguaSabor.id,
-      name: 'Arbolito',
-      nameKey: 'arbolito',
-      hasVariants: true,
-      sortOrder: 1
-    }
-  });
+  // ============================================
+  // DRINKS - WATER AND FRUITS FLAVOR
+  // ============================================
 
-  const arbolitoFlavors = [
-    { name: 'Lima', nameKey: 'lime', price: 25 },
-    { name: 'Horchata', nameKey: 'horchata', price: 25 },
-    { name: 'Coco', nameKey: 'coconut', price: 25 },
-    { name: 'Rompope', nameKey: 'rompope', price: 25 },
-    { name: 'Fresa', nameKey: 'strawberry', price: 25 },
-    { name: 'Café', nameKey: 'coffee', price: 25 },
-    { name: 'Chía', nameKey: 'chia', price: 25 },
-    { name: 'Tamarindo', nameKey: 'tamarind', price: 25 }
-  ];
-
-  for (const [idx, flavor] of arbolitoFlavors.entries()) {
-    await prisma.menuVariant.create({
-      data: {
-        menuItemId: arbolito.id,
-        variantTypeId: flavorType.id,
-        name: flavor.name,
-        nameKey: flavor.nameKey,
-        price: flavor.price,
-        sortOrder: idx + 1
+  await prisma.product.createMany({
+    data: [
+      {
+        categoryId: waterCategory.id,
+        name: 'Agua Natural',
+        description: 'Agua natural embotellada',
+        displayOrder: 1,
+        active: true,
       }
-    });
-  }
-
-  // Jugo Boing
-  const boing = await prisma.menuItem.create({
-    data: {
-      categoryId: catAguaJugo.id,
-      name: 'Boing',
-      nameKey: 'boing',
-      hasVariants: true,
-      sortOrder: 1
-    }
+    ],
   });
 
-  const boingFlavors = [
-    { name: 'Mango', nameKey: 'mango', price: 20 },
-    { name: 'Guayaba', nameKey: 'guava', price: 20 },
-    { name: 'Fresa', nameKey: 'strawberry', price: 20 },
-    { name: 'Uva', nameKey: 'grape', price: 20 }
-  ];
+  // Flavored water - Arbolito brand - inherits category base price ($25)
+  await prisma.product.createMany({
+    data: [
+      {
+        categoryId: waterCategory.id,
+        name: 'Agua Arbolito - Lima',
+        description: 'Agua de sabor lima marca Arbolito',
+        displayOrder: 2,
+        active: true,
+      },
+      {
+        categoryId: waterCategory.id,
+        name: 'Agua Arbolito - Horchata',
+        description: 'Agua de horchata marca Arbolito',
+        displayOrder: 3,
+        active: true,
+      },
+      {
+        categoryId: waterCategory.id,
+        name: 'Agua Arbolito - Coco',
+        description: 'Agua de coco marca Arbolito',
+        displayOrder: 4,
+        active: true,
+      },
+      {
+        categoryId: waterCategory.id,
+        name: 'Agua Arbolito - Rompope',
+        description: 'Agua de rompope marca Arbolito',
+        displayOrder: 5,
+        active: true,
+      },
+      {
+        categoryId: waterCategory.id,
+        name: 'Agua Arbolito - Fresa',
+        description: 'Agua de fresa marca Arbolito',
+        displayOrder: 6,
+        active: true,
+      },
+      {
+        categoryId: waterCategory.id,
+        name: 'Agua Arbolito - Café',
+        description: 'Agua de café marca Arbolito',
+        displayOrder: 7,
+        active: true,
+      },
+      {
+        categoryId: waterCategory.id,
+        name: 'Agua Arbolito - Chía',
+        description: 'Agua de chía marca Arbolito',
+        displayOrder: 8,
+        active: true,
+      },
+      {
+        categoryId: waterCategory.id,
+        name: 'Agua Arbolito - Tamarindo',
+        description: 'Agua de tamarindo marca Arbolito',
+        displayOrder: 9,
+        active: true,
+      },
+    ],
+  });
 
-  for (const [idx, flavor] of boingFlavors.entries()) {
-    await prisma.menuVariant.create({
-      data: {
-        menuItemId: boing.id,
-        variantTypeId: flavorType.id,
-        name: flavor.name,
-        nameKey: flavor.nameKey,
-        price: flavor.price,
-        sortOrder: idx + 1
-      }
-    });
-  }
+  // Juices - Boing brand
+  await prisma.product.createMany({
+    data: [
+      {
+        categoryId: juiceCategory.id,
+        name: 'Jugo Boing - Mango',
+        description: 'Jugo de mango marca Boing',
+        displayOrder: 1,
+        active: true,
+      },
+      {
+        categoryId: juiceCategory.id,
+        name: 'Jugo Boing - Guayaba',
+        description: 'Jugo de guayaba marca Boing',
+        displayOrder: 2,
+        active: true,
+      },
+      {
+        categoryId: juiceCategory.id,
+        name: 'Jugo Boing - Fresa',
+        description: 'Jugo de fresa marca Boing',
+        displayOrder: 3,
+        active: true,
+      },
+      {
+        categoryId: juiceCategory.id,
+        name: 'Jugo Boing - Uva',
+        description: 'Jugo de uva marca Boing',
+        displayOrder: 4,
+        active: true,
+      },
+    ],
+  });
 
-  console.log('✅ Created water items');
+  console.log('✅ Water and juices created');
 
   // ============================================
   // SUMMARY
   // ============================================
 
-  const totalCategories = await prisma.menuCategory.count();
-  const totalItems = await prisma.menuItem.count();
-  const totalVariants = await prisma.menuVariant.count();
-  const totalIngredients = await prisma.ingredient.count();
+  const categoryCount = await prisma.category.count();
+  const productCount = await prisma.product.count();
 
-  console.log(`
-  ╔════════════════════════════════════════╗
-  ║  ✅ SEED COMPLETED SUCCESSFULLY        ║
-  ╠════════════════════════════════════════╣
-  ║  📁 Categories: ${totalCategories.toString().padEnd(22)}  ║
-  ║  🍽️  Menu Items: ${totalItems.toString().padEnd(22)}  ║
-  ║  🔀 Variants: ${totalVariants.toString().padEnd(25)}  ║
-  ║  🦐 Ingredients: ${totalIngredients.toString().padEnd(21)}  ║
-  ╚════════════════════════════════════════╝
-  `);
+  console.log('\n╔════════════════════════════════════════╗');
+  console.log('║       🌱 SEED SUMMARY                  ║');
+  console.log('╠════════════════════════════════════════╣');
+  console.log(`║  Categories: ${categoryCount}                          ║`);
+  console.log(`║  Products: ${productCount}                           ║`);
+  console.log('╚════════════════════════════════════════╝');
+  console.log('\n✅ Seed completed successfully!');
 }
 
 main()
