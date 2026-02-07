@@ -37,22 +37,23 @@ Aplicación web para agilizar el cálculo de cuentas en una marisquería. Los us
 
 ### Frontend
 
-- **Framework:** Angular 17+ con TypeScript
-- **Estilos:** Tailwind CSS o Angular Material (según preferencia)
+- **Framework:** Angular 21.1.3 con TypeScript 5.9.3
+- **Estilos:** Tailwind CSS 4.1.18 + DaisyUI 5.5.18
 - **Estado:** Servicios de Angular (sin necesidad de NgRx para Fase 1)
 - **HTTP:** HttpClient de Angular
+- **Testing:** Vitest 4.0.18
 
 ### Backend
 
 - **Runtime:** Node.js 18+
-- **Framework:** Express.js con TypeScript
-- **Validación:** Zod o express-validator
-- **ORM:** Prisma (recomendado por simplicidad) o TypeORM
+- **Framework:** Express.js 5.2.1 con TypeScript 5.9.3
+- **Validación:** Zod 4.3.6
+- **ORM:** Prisma 7.3.0 (con @prisma/adapter-pg + pg 8.18.0)
 
 ### Base de Datos
 
 - **PostgreSQL 15+**
-- **Solo 2 tablas:** `products` y `product_variants`
+- **Solo 2 tablas:** `categories` y `products`
 
 ### DevOps (mínimo)
 

@@ -127,7 +127,7 @@ This project uses **Prisma ORM 7**, which introduces a new configuration archite
 
 **Key Files:**
 
-- `prisma.config.ts` (root): Centralized configuration file
+- `prisma/prisma.config.ts`: Centralized configuration file (uses `@prisma/config`)
 - `prisma/schema.prisma`: Data model definition (no URL connection)
 - Database URL is configured via environment variables and adapters
 
@@ -201,19 +201,21 @@ FRONTEND_URL=http://localhost:4200
 
 ### Frontend
 
-- Angular 21.1
-- TypeScript 5.9
-- Tailwind CSS v4.1
-- DaisyUI 5.5
+- Angular 21.1.3
+- TypeScript 5.9.3
+- Tailwind CSS 4.1.18
+- DaisyUI 5.5.18
+- Vitest 4.0.18
+- RxJS 7.8.2
 
 ### Backend
 
 - Node.js 18+
-- Express.js 5.2
-- TypeScript 5.9
-- Prisma ORM 7.2
-- Zod 4.3 (validation)
-- PostgreSQL driver (pg + @prisma/adapter-pg)
+- Express.js 5.2.1
+- TypeScript 5.9.3
+- Prisma ORM 7.3.0
+- Zod 4.3.6 (validation)
+- PostgreSQL driver (pg 8.18.0 + @prisma/adapter-pg)
 
 ### Database
 
