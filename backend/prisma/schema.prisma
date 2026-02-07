@@ -16,7 +16,7 @@ datasource db {
 
 model Category {
   id           Int       @id @default(autoincrement())
-  name         String    @db.VarChar(255)
+  name         String    @unique @db.VarChar(255)
   description  String?   @db.Text
   basePrice    Decimal?  @map("base_price") @db.Decimal(10, 2)
   image        String?   @db.VarChar(500)
@@ -36,7 +36,7 @@ model Category {
 model Product {
   id           Int      @id @default(autoincrement())
   categoryId   Int      @map("category_id")
-  name         String   @db.VarChar(255)
+  name         String   @unique @db.VarChar(255)
   description  String?  @db.Text
   price        Decimal? @db.Decimal(10, 2)
   image        String?  @db.VarChar(500)

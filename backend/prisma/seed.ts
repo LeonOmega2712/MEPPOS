@@ -15,11 +15,13 @@ async function main() {
   console.log('🌱 Starting seed based on menu.md...');
 
   // ============================================
-  // CATEGORIES
+  // CATEGORIES (upsert: skip if already exists)
   // ============================================
 
-  const foodCategory = await prisma.category.create({
-    data: {
+  const foodCategory = await prisma.category.upsert({
+    where: { name: 'Alimentos' },
+    update: {},
+    create: {
       name: 'Alimentos',
       description: 'Platillos de mariscos',
       displayOrder: 1,
@@ -27,8 +29,10 @@ async function main() {
     },
   });
 
-  const returnableSodasCategory = await prisma.category.create({
-    data: {
+  const returnableSodasCategory = await prisma.category.upsert({
+    where: { name: 'Refrescos Retornables' },
+    update: {},
+    create: {
       name: 'Refrescos Retornables',
       description: 'Refrescos en envase de vidrio retornable',
       basePrice: 25.0,
@@ -37,8 +41,10 @@ async function main() {
     },
   });
 
-  const cannedSodasCategory = await prisma.category.create({
-    data: {
+  const cannedSodasCategory = await prisma.category.upsert({
+    where: { name: 'Refrescos de Lata' },
+    update: {},
+    create: {
       name: 'Refrescos de Lata',
       description: 'Refrescos en presentación de lata',
       basePrice: 30.0,
@@ -47,8 +53,10 @@ async function main() {
     },
   });
 
-  const beerCategory = await prisma.category.create({
-    data: {
+  const beerCategory = await prisma.category.upsert({
+    where: { name: 'Cervezas' },
+    update: {},
+    create: {
       name: 'Cervezas',
       description: 'Presentación de vidrio y lata',
       basePrice: 30.0,
@@ -57,8 +65,10 @@ async function main() {
     },
   });
 
-  const waterCategory = await prisma.category.create({
-    data: {
+  const waterCategory = await prisma.category.upsert({
+    where: { name: 'Agua Natural y de Sabor' },
+    update: {},
+    create: {
       name: 'Agua Natural y de Sabor',
       description: 'Agua embotellada natural y de sabor',
       basePrice: 25.0,
@@ -67,8 +77,10 @@ async function main() {
     },
   });
 
-  const juiceCategory = await prisma.category.create({
-    data: {
+  const juiceCategory = await prisma.category.upsert({
+    where: { name: 'Jugos' },
+    update: {},
+    create: {
       name: 'Jugos',
       description: 'Jugos de sabores frutales',
       basePrice: 30.0,
@@ -77,8 +89,10 @@ async function main() {
     },
   });
 
-  const bottledSodasCategory = await prisma.category.create({
-    data: {
+  const bottledSodasCategory = await prisma.category.upsert({
+    where: { name: 'Refrescos de taparrosca' },
+    update: {},
+    create: {
       name: 'Refrescos de taparrosca',
       description: 'Refrescos en envase de plastico',
       basePrice: 25.0,
@@ -90,7 +104,7 @@ async function main() {
   console.log('✅ Categories created');
 
   // ============================================
-  // FOOD PRODUCTS
+  // FOOD PRODUCTS (skipDuplicates: skip if name already exists)
   // ============================================
 
   // Seafood cocktails
@@ -127,6 +141,7 @@ async function main() {
         active: true,
       },
     ],
+    skipDuplicates: true,
   });
 
   // Tostadas
@@ -152,6 +167,7 @@ async function main() {
         active: true,
       },
     ],
+    skipDuplicates: true,
   });
 
   // Seafood soup
@@ -178,6 +194,7 @@ async function main() {
         active: true,
       },
     ],
+    skipDuplicates: true,
   });
 
   console.log('✅ Food products created');
@@ -212,6 +229,7 @@ async function main() {
         active: true,
       },
     ],
+    skipDuplicates: true,
   });
 
   // Canned sodas - inherits category base price ($30)
@@ -232,6 +250,7 @@ async function main() {
         active: true,
       },
     ],
+    skipDuplicates: true,
   });
 
   // Returnable sodas - inherits category base price ($25)
@@ -280,6 +299,7 @@ async function main() {
         active: true,
       },
     ],
+    skipDuplicates: true,
   });
 
   console.log('✅ Sodas created');
@@ -326,6 +346,7 @@ async function main() {
         active: true,
       },
     ],
+    skipDuplicates: true,
   });
 
   console.log('✅ Beers created');
@@ -342,8 +363,9 @@ async function main() {
         description: 'Agua natural embotellada',
         displayOrder: 1,
         active: true,
-      }
+      },
     ],
+    skipDuplicates: true,
   });
 
   // Flavored water - Arbolito brand - inherits category base price ($25)
@@ -406,6 +428,7 @@ async function main() {
         active: true,
       },
     ],
+    skipDuplicates: true,
   });
 
   // Juices - Boing brand
@@ -440,6 +463,7 @@ async function main() {
         active: true,
       },
     ],
+    skipDuplicates: true,
   });
 
   console.log('✅ Water and juices created');

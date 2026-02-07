@@ -4,7 +4,7 @@
 erDiagram
     Category {
         int id PK
-        varchar name
+        varchar name UK "unique"
         text description
         decimal base_price "nullable - for inheritance"
         varchar image
@@ -15,7 +15,7 @@ erDiagram
     Product {
         int id PK
         int category_id FK
-        varchar name
+        varchar name UK "unique"
         text description
         decimal price "nullable - inherits from category"
         varchar image

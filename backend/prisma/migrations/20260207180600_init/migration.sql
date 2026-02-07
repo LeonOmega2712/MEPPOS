@@ -31,10 +31,16 @@ CREATE TABLE "products" (
 );
 
 -- CreateIndex
+CREATE UNIQUE INDEX "categories_name_key" ON "categories"("name");
+
+-- CreateIndex
 CREATE INDEX "categories_display_order_idx" ON "categories"("display_order");
 
 -- CreateIndex
 CREATE INDEX "categories_active_idx" ON "categories"("active");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "products_name_key" ON "products"("name");
 
 -- CreateIndex
 CREATE INDEX "products_category_id_idx" ON "products"("category_id");

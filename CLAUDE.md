@@ -41,8 +41,8 @@ Web app to speed up bill calculation in a seafood restaurant. Editable catalog +
 Full reference in `.claude/commands/menu.mermaid.md`
 
 ```
-Category (id, name, description, base_price?, image, display_order, active)
-Product  (id, category_id FK, name, description, price?, image, display_order, customizable, active)
+Category (id, name UK, description, base_price?, image, display_order, active)
+Product  (id, category_id FK, name UK, description, price?, image, display_order, customizable, active)
 ```
 
 - `Category` contains `Product` (1:N)
