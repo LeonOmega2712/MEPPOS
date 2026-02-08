@@ -1,0 +1,27 @@
+.scrollbar-auto-hide {
+  overflow-y: overlay;
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color 0.3s;
+}
+
+.scrollbar-auto-hide::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollbar-auto-hide::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-auto-hide::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 3px;
+}
+
+.scrollbar-auto-hide.scrolling {
+  scrollbar-color: auto;
+}
+
+.scrollbar-auto-hide.scrolling::-webkit-scrollbar-thumb {
+  background: oklch(0.5 0 0 / 0.4);
+}

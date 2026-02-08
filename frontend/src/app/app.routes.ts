@@ -1,6 +1,16 @@
 import { Routes } from '@angular/router';
-import { Home } from '../components/home/home';
 
 export const routes: Routes = [
-    { path: "", component: Home }
+  {
+    path: '',
+    loadComponent: () => import('../pages/menu/menu').then(m => m.MenuPage),
+  },
+  {
+    path: 'settings',
+    loadComponent: () => import('../pages/settings/settings').then(m => m.SettingsPage),
+  },
+  {
+    path: '**',
+    redirectTo: '',
+  },
 ];

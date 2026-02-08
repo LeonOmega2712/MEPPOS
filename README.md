@@ -9,7 +9,7 @@ MEPPOS/
 ├── frontend/          # Angular Application
 ├── backend/           # REST API with Node.js + Express
 ├── docker-compose.yml # Containerized PostgreSQL
-└── README.md          # This file
+└── .claude/commands/  # Technical specifications and reference docs
 ```
 
 ---
@@ -20,57 +20,32 @@ MEPPOS/
 
 - Node.js 18+
 - Docker and Docker Compose (for PostgreSQL)
-- npm or pnpm
+- npm
 
-### 1. Clone the repository
-
-```bash
-git clone <repo-url>
-cd MEPPOS
-```
-
-### 2. Setup and start the database
+### 1. Setup and start the database
 
 ```bash
-# Start PostgreSQL with Docker
 docker-compose up -d
-
-# Verify it's running
-docker-compose ps
 ```
 
-### 3. Setup Backend
+### 2. Setup Backend
 
 ```bash
 cd backend
-
-# Install dependencies (Prisma Client is auto-generated via postinstall)
 npm install
-
-# Copy environment variables
 cp .env.example .env
-
-# Run migrations
 npm run prisma:migrate
-
-# Seed database with sample data
 npm run prisma:seed
-
-# Start development server
 npm run dev
 ```
 
 Backend will be running at `http://localhost:3000`
 
-### 4. Setup Frontend
+### 3. Setup Frontend
 
 ```bash
 cd frontend
-
-# Install dependencies
 npm install
-
-# Start development server
 npm start
 ```
 
@@ -89,7 +64,7 @@ npm start                # Run compiled version
 npm run prisma:migrate   # Create/apply migrations
 npm run prisma:studio    # Open Prisma Studio (DB GUI)
 npm run prisma:seed      # Seed database with sample data
-npm run db:reset         # ⚠️ Reset database (deletes everything)
+npm run db:reset         # Reset database (deletes everything)
 ```
 
 ### Frontend (`/frontend`)
@@ -104,57 +79,23 @@ npm test             # Run tests
 
 ## 🗄️ Database
 
-### Management with Prisma
-
-```bash
-# View data in web interface
-cd backend
-npm run prisma:studio
-
-# Create new migration
-npm run prisma:migrate
-
-# Reset database (careful in production!)
-npm run db:reset
-```
-
 ### Prisma 7 Configuration
 
-This project uses **Prisma ORM 7**, which introduces a new configuration architecture:
+This project uses **Prisma ORM 7** with an adapter-based architecture:
 
-**Key Files:**
-
-- `prisma/prisma.config.ts`: Centralized configuration file (uses `@prisma/config`)
-- `prisma/schema.prisma`: Data model definition (no URL connection)
-- Database URL is configured via environment variables and adapters
-
-**Important Notes:**
-
-- Prisma 7 uses an **adapter-based architecture** with PostgreSQL driver (`pg` + `@prisma/adapter-pg`)
-- The `DATABASE_URL` is now managed in `prisma.config.ts` instead of `schema.prisma`
-- Run `npx prisma generate` manually after schema changes (auto-generation is disabled in Prisma 7)
+- `prisma/prisma.config.ts`: Centralized configuration (uses `@prisma/config`)
+- `prisma/schema.prisma`: Data model definition
+- `DATABASE_URL` is managed in `prisma.config.ts` (not in `schema.prisma`)
+- Uses PostgreSQL driver (`pg` + `@prisma/adapter-pg`)
+- Run `npx prisma generate` manually after schema changes
 
 ### Direct connection to PostgreSQL
 
 ```bash
-# Using psql
 docker exec -it meppos-db psql -U postgres -d meppos_db
-
-# Using any PostgreSQL client
-Host: localhost
-Port: 5432
-Database: meppos_db
-User: postgres
-Password: postgres
 ```
 
----
-
-## 🔧 Configuration
-
-### Environment Variables
-
-**Backend** (`backend/.env`):
+### Environment Variables (`backend/.env`)
 
 ```env
 DATABASE_URL="postgresql://postgres:postgres@localhost:5432/meppos_db"
@@ -218,11 +159,7 @@ FRONTEND_URL=http://localhost:4200
 - TypeScript 5.9.3
 - Prisma ORM 7.3.0
 - Zod 4.3.6 (validation)
-- PostgreSQL driver (pg 8.18.0 + @prisma/adapter-pg)
-
-### Database
-
-- PostgreSQL 15+
+- PostgreSQL 15+ (pg 8.18.0 + @prisma/adapter-pg)
 
 ### Data Model
 
@@ -235,35 +172,24 @@ The system uses 2 tables:
 
 ## 📖 Project Phases
 
-### ✅ Phase 1 (Completed) - Menu System
+### 🔧 Phase 1 (In Progress) - Bill Calculator
 
 - ✅ Product catalog with flat categories
 - ✅ Category-level base pricing with per-product overrides
 - ✅ Customizable products (seafood selection)
 - ✅ Complete REST API (CRUD for categories and products)
 - ✅ Seed with real menu data
+- ✅ Menu display (frontend)
+- ✅ Theme selector with DaisyUI themes (localStorage persistence)
+- ✅ Responsive navbar with app branding
+- 🔜 Bill calculator interface
+- 🔜 Catalog CRUD (frontend)
 
-### 🔜 Phase 2 - Calculator and Bill Persistence
+### Future Phases
 
-- Calculator interface (frontend)
-- Bills/sales storage
-- Daily sales history
-- Basic reports
-- Simple authentication
-
-### 🔜 Phase 3 - Multi-terminal and UX Improvements
-
-- Support for multiple terminals
-- Table assignment
-- Ticket printing
-- Excel/PDF exports
-
-### 🔜 Phase 4 - Integrations and Scaling
-
-- POS/payment methods integration
-- Advanced dashboard with analytics
-- API for online ordering
-- Automatic backup
+- Phase 2: Bill persistence, sales history, reports, authentication
+- Phase 3: Multi-terminal, table assignment, ticket printing
+- Phase 4: Payment integrations, analytics dashboard, online ordering
 
 ---
 
@@ -272,28 +198,18 @@ The system uses 2 tables:
 ### Database won't connect
 
 ```bash
-# Check if Docker is running
 docker-compose ps
-
-# View PostgreSQL logs
 docker-compose logs postgres
-
-# Restart container
 docker-compose restart postgres
 ```
 
 ### Backend won't start
 
 ```bash
-# Check environment variables
 cd backend
 cat .env
-
-# Reinstall dependencies
 rm -rf node_modules package-lock.json
 npm install
-
-# Regenerate Prisma Client
 npm run prisma:generate
 ```
 
@@ -306,11 +222,8 @@ npm run prisma:generate
 ### Migration errors
 
 ```bash
-# Reset database (deletes everything)
 cd backend
 npm run db:reset
-
-# Recreate and seed
 npm run prisma:migrate
 npm run prisma:seed
 ```
@@ -326,7 +239,7 @@ npm run prisma:seed
 - **UI/User messages**: Spanish
 - **Table names**: snake_case (e.g., `categories`, `products`)
 - **TypeScript properties**: camelCase (e.g., `menuItems`)
-- **Angular components**: PascalCase (e.g., `MenuList`)
+- **Angular components**: PascalCase (e.g., `MenuPage`)
 
 ### Design Principles
 
@@ -351,45 +264,10 @@ backend/src/
 
 ```bash
 frontend/src/
-├── app/              # Main configuration
-├── components/       # Angular components
+├── app/              # Root component, routes, config
 ├── core/
-│   ├── services/     # Angular services
-│   ├── guards/       # Route guards
-│   └── interceptors/ # HTTP interceptors
-├── shared/           # Shared components
-└── layout/           # Layout and themes
+│   ├── models/       # TypeScript interfaces
+│   └── services/     # Angular services
+├── environments/     # Environment configs (dev/prod)
+└── pages/            # Page components (menu, settings)
 ```
-
----
-
-## 🤝 Contributing
-
-This is an individual development project. For questions or suggestions, open an issue.
-
----
-
-## 📄 License
-
-Private project - All rights reserved
-
----
-
-## 📞 Useful Resources
-
-- [Prisma Docs](https://www.prisma.io/docs)
-- [Angular Docs](https://angular.dev)
-- [Express + TypeScript](https://github.com/microsoft/TypeScript-Node-Starter)
-- [Zod Validation](https://zod.dev)
-- [Tailwind CSS v4](https://tailwindcss.com/docs)
-- [DaisyUI](https://daisyui.com)
-
----
-
-## 🗂️ Important Files
-
-- [`Fase 1 - App Marisquería.md`](./Fase%201%20-%20App%20Marisquería.md) - Original technical specification
-- [`backend/prisma/schema.prisma`](./backend/prisma/schema.prisma) - Data model
-- [`backend/prisma/prisma.config.ts`](./backend/prisma/prisma.config.ts) - Prisma 7 configuration
-- [`backend/prisma/seed.ts`](./backend/prisma/seed.ts) - Sample data
-- [`docker-compose.yml`](./docker-compose.yml) - PostgreSQL configuration
