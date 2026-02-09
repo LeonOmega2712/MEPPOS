@@ -124,11 +124,12 @@ export class CategoryController {
 
   /**
    * DELETE /api/categories/:id
-   * Delete a category
+   * Soft delete (deactivate) a category, or hard delete with ?permanent=true
    */
   async deleteCategory(req: Request, res: Response) {
     try {
       const { id } = CategoryIdSchema.parse(req.params);
+      const permanent = req.query.permanent === 'true';
 
       const exists = await categoryService.categoryExists(id);
       if (!exists) {
@@ -138,12 +139,19 @@ export class CategoryController {
         });
       }
 
-      await categoryService.deleteCategory(id);
-
-      res.json({
-        success: true,
-        message: 'Category deleted successfully'
-      });
+      if (permanent) {
+        await categoryService.hardDeleteCategory(id);
+        res.json({
+          success: true,
+          message: 'Category permanently deleted'
+        });
+      } else {
+        await categoryService.deleteCategory(id);
+        res.json({
+          success: true,
+          message: 'Category deactivated successfully'
+        });
+      }
     } catch (error) {
       console.error('Error deleting category:', error);
       res.status(400).json({

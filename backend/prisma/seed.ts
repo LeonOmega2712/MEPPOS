@@ -18,13 +18,35 @@ async function main() {
   // CATEGORIES (upsert: skip if already exists)
   // ============================================
 
-  const foodCategory = await prisma.category.upsert({
-    where: { name: 'Alimentos' },
+  const soupCategory = await prisma.category.upsert({
+    where: { name: 'Sopas' },
     update: {},
     create: {
-      name: 'Alimentos',
-      description: 'Platillos de mariscos',
+      name: 'Sopas',
+      description: 'Sopas de mariscos',
       displayOrder: 1,
+      active: true,
+    },
+  });
+
+  const cocktailCategory = await prisma.category.upsert({
+    where: { name: 'Cócteles' },
+    update: {},
+    create: {
+      name: 'Cócteles',
+      description: 'Cócteles de mariscos',
+      displayOrder: 2,
+      active: true,
+    },
+  });
+
+  const tostadaCategory = await prisma.category.upsert({
+    where: { name: 'Tostadas' },
+    update: {},
+    create: {
+      name: 'Tostadas',
+      description: 'Tostadas de mariscos',
+      displayOrder: 3,
       active: true,
     },
   });
@@ -36,7 +58,7 @@ async function main() {
       name: 'Refrescos Retornables',
       description: 'Refrescos en envase de vidrio retornable',
       basePrice: 25.0,
-      displayOrder: 2,
+      displayOrder: 4,
       active: true,
     },
   });
@@ -48,7 +70,7 @@ async function main() {
       name: 'Refrescos de Lata',
       description: 'Refrescos en presentación de lata',
       basePrice: 30.0,
-      displayOrder: 3,
+      displayOrder: 5,
       active: true,
     },
   });
@@ -60,7 +82,7 @@ async function main() {
       name: 'Cervezas',
       description: 'Presentación de vidrio y lata',
       basePrice: 30.0,
-      displayOrder: 4,
+      displayOrder: 6,
       active: true,
     },
   });
@@ -72,7 +94,7 @@ async function main() {
       name: 'Agua Natural y de Sabor',
       description: 'Agua embotellada natural y de sabor',
       basePrice: 25.0,
-      displayOrder: 5,
+      displayOrder: 7,
       active: true,
     },
   });
@@ -84,7 +106,7 @@ async function main() {
       name: 'Jugos',
       description: 'Jugos de sabores frutales',
       basePrice: 30.0,
-      displayOrder: 6,
+      displayOrder: 8,
       active: true,
     },
   });
@@ -96,7 +118,7 @@ async function main() {
       name: 'Refrescos de taparrosca',
       description: 'Refrescos en envase de plastico',
       basePrice: 25.0,
-      displayOrder: 7,
+      displayOrder: 9,
       active: true,
     },
   });
@@ -104,24 +126,23 @@ async function main() {
   console.log('✅ Categories created');
 
   // ============================================
-  // FOOD PRODUCTS (skipDuplicates: skip if name already exists)
+  // COCKTAILS
   // ============================================
 
-  // Seafood cocktails
   await prisma.product.createMany({
     data: [
       {
-        categoryId: foodCategory.id,
-        name: 'Cóctel de Mariscos - Chico',
+        categoryId: cocktailCategory.id,
+        name: 'Cóctel de Mariscos - Grande',
         description:
-          'Cóctel chico de mariscos al gusto (Camarón, Calamar, Ostión, Abulón)',
-        price: 60.0,
+          'Cóctel grande de mariscos al gusto (Camarón, Calamar, Ostión, Abulón)',
+        price: 100.0,
         displayOrder: 1,
         customizable: true,
         active: true,
       },
       {
-        categoryId: foodCategory.id,
+        categoryId: cocktailCategory.id,
         name: 'Cóctel de Mariscos - Mediano',
         description:
           'Cóctel mediano de mariscos al gusto (Camarón, Calamar, Ostión, Abulón)',
@@ -131,11 +152,11 @@ async function main() {
         active: true,
       },
       {
-        categoryId: foodCategory.id,
-        name: 'Cóctel de Mariscos - Grande',
+        categoryId: cocktailCategory.id,
+        name: 'Cóctel de Mariscos - Chico',
         description:
-          'Cóctel grande de mariscos al gusto (Camarón, Calamar, Ostión, Abulón)',
-        price: 100.0,
+          'Cóctel chico de mariscos al gusto (Camarón, Calamar, Ostión, Abulón)',
+        price: 60.0,
         displayOrder: 3,
         customizable: true,
         active: true,
@@ -144,25 +165,30 @@ async function main() {
     skipDuplicates: true,
   });
 
-  // Tostadas
+  console.log('✅ Cocktails created');
+
+  // ============================================
+  // TOSTADAS
+  // ============================================
+
   await prisma.product.createMany({
     data: [
       {
-        categoryId: foodCategory.id,
+        categoryId: tostadaCategory.id,
         name: 'Tostada de Mariscos',
         description:
           'Tostada con mariscos al gusto (Camarón, Calamar, Ostión, Abulón)',
         price: 30.0,
-        displayOrder: 4,
+        displayOrder: 1,
         customizable: true,
         active: true,
       },
       {
-        categoryId: foodCategory.id,
+        categoryId: tostadaCategory.id,
         name: 'Tostada de Ceviche',
         description: 'Tostada de ceviche con mariscos al gusto',
         price: 15.0,
-        displayOrder: 5,
+        displayOrder: 2,
         customizable: true,
         active: true,
       },
@@ -170,26 +196,31 @@ async function main() {
     skipDuplicates: true,
   });
 
-  // Seafood soup
+  console.log('✅ Tostadas created');
+
+  // ============================================
+  // SOUPS
+  // ============================================
+
   await prisma.product.createMany({
     data: [
       {
-        categoryId: foodCategory.id,
-        name: 'Sopa de Mariscos - Chica',
-        description:
-          'Sopa chica con los 4 mariscos (Camarón, Calamar, Ostión, Abulón)',
-        price: 70.0,
-        displayOrder: 6,
-        customizable: false,
-        active: true,
-      },
-      {
-        categoryId: foodCategory.id,
+        categoryId: soupCategory.id,
         name: 'Sopa de Mariscos - Grande',
         description:
           'Sopa grande con los 4 mariscos (Camarón, Calamar, Ostión, Abulón)',
         price: 100.0,
-        displayOrder: 7,
+        displayOrder: 1,
+        customizable: false,
+        active: true,
+      },
+      {
+        categoryId: soupCategory.id,
+        name: 'Sopa de Mariscos - Chica',
+        description:
+          'Sopa chica con los 4 mariscos (Camarón, Calamar, Ostión, Abulón)',
+        price: 70.0,
+        displayOrder: 2,
         customizable: false,
         active: true,
       },
@@ -197,7 +228,7 @@ async function main() {
     skipDuplicates: true,
   });
 
-  console.log('✅ Food products created');
+  console.log('✅ Soups created');
 
   // ============================================
   // DRINKS - SODAS
@@ -258,35 +289,35 @@ async function main() {
     data: [
       {
         categoryId: returnableSodasCategory.id,
-        name: 'Coca-Cola Retornable',
+        name: 'Coca-Cola',
         description: 'Coca-Cola en botella de vidrio retornable',
         displayOrder: 1,
         active: true,
       },
       {
         categoryId: returnableSodasCategory.id,
-        name: 'Sprite Retornable',
+        name: 'Sprite',
         description: 'Sprite en botella de vidrio retornable',
         displayOrder: 2,
         active: true,
       },
       {
         categoryId: returnableSodasCategory.id,
-        name: 'Fanta Retornable',
+        name: 'Fanta',
         description: 'Fanta en botella de vidrio retornable',
         displayOrder: 3,
         active: true,
       },
       {
         categoryId: returnableSodasCategory.id,
-        name: 'Fresca Retornable',
+        name: 'Fresca',
         description: 'Fresca en botella de vidrio retornable',
         displayOrder: 4,
         active: true,
       },
       {
         categoryId: returnableSodasCategory.id,
-        name: 'Sidral Retornable',
+        name: 'Sidral',
         description: 'Sidral en botella de vidrio retornable',
         displayOrder: 5,
         active: true,
@@ -312,35 +343,35 @@ async function main() {
     data: [
       {
         categoryId: beerCategory.id,
-        name: 'Cerveza XX Media',
+        name: 'XX',
         description: 'Cerveza XX botella media',
         displayOrder: 1,
         active: true,
       },
       {
         categoryId: beerCategory.id,
-        name: 'Cerveza Indio Media',
+        name: 'Indio',
         description: 'Cerveza Indio botella media',
         displayOrder: 2,
         active: true,
       },
       {
         categoryId: beerCategory.id,
-        name: 'Cerveza Bohemia Pilsner',
+        name: 'Bohemia Pilsner',
         description: 'Cerveza premium Bohemia Pilsner',
         displayOrder: 3,
         active: true,
       },
       {
         categoryId: beerCategory.id,
-        name: 'Cerveza Bohemia Vienna',
+        name: 'Bohemia Vienna',
         description: 'Cerveza premium Bohemia Vienna',
         displayOrder: 4,
         active: true,
       },
       {
         categoryId: beerCategory.id,
-        name: 'Cerveza Heineken 00 Lata',
+        name: 'Heineken 00 Lata',
         description: 'Cerveza sin alcohol Heineken 00 en lata',
         displayOrder: 5,
         active: true,
@@ -373,56 +404,56 @@ async function main() {
     data: [
       {
         categoryId: waterCategory.id,
-        name: 'Agua Arbolito - Lima',
+        name: 'Arbolito de Lima',
         description: 'Agua de sabor lima marca Arbolito',
         displayOrder: 2,
         active: true,
       },
       {
         categoryId: waterCategory.id,
-        name: 'Agua Arbolito - Horchata',
+        name: 'Arbolito de Horchata',
         description: 'Agua de horchata marca Arbolito',
         displayOrder: 3,
         active: true,
       },
       {
         categoryId: waterCategory.id,
-        name: 'Agua Arbolito - Coco',
+        name: 'Arbolito de Coco',
         description: 'Agua de coco marca Arbolito',
         displayOrder: 4,
         active: true,
       },
       {
         categoryId: waterCategory.id,
-        name: 'Agua Arbolito - Rompope',
+        name: 'Arbolito de Rompope',
         description: 'Agua de rompope marca Arbolito',
         displayOrder: 5,
         active: true,
       },
       {
         categoryId: waterCategory.id,
-        name: 'Agua Arbolito - Fresa',
+        name: 'Arbolito de Fresa',
         description: 'Agua de fresa marca Arbolito',
         displayOrder: 6,
         active: true,
       },
       {
         categoryId: waterCategory.id,
-        name: 'Agua Arbolito - Café',
+        name: 'Arbolito de Café',
         description: 'Agua de café marca Arbolito',
         displayOrder: 7,
         active: true,
       },
       {
         categoryId: waterCategory.id,
-        name: 'Agua Arbolito - Chía',
+        name: 'Arbolito de Chía',
         description: 'Agua de chía marca Arbolito',
         displayOrder: 8,
         active: true,
       },
       {
         categoryId: waterCategory.id,
-        name: 'Agua Arbolito - Tamarindo',
+        name: 'Arbolito de Tamarindo',
         description: 'Agua de tamarindo marca Arbolito',
         displayOrder: 9,
         active: true,
@@ -436,28 +467,28 @@ async function main() {
     data: [
       {
         categoryId: juiceCategory.id,
-        name: 'Jugo Boing - Mango',
+        name: 'Boing de Mango',
         description: 'Jugo de mango marca Boing',
         displayOrder: 1,
         active: true,
       },
       {
         categoryId: juiceCategory.id,
-        name: 'Jugo Boing - Guayaba',
+        name: 'Boing de Guayaba',
         description: 'Jugo de guayaba marca Boing',
         displayOrder: 2,
         active: true,
       },
       {
         categoryId: juiceCategory.id,
-        name: 'Jugo Boing - Fresa',
+        name: 'Boing de Fresa',
         description: 'Jugo de fresa marca Boing',
         displayOrder: 3,
         active: true,
       },
       {
         categoryId: juiceCategory.id,
-        name: 'Jugo Boing - Uva',
+        name: 'Boing de Uva',
         description: 'Jugo de uva marca Boing',
         displayOrder: 4,
         active: true,

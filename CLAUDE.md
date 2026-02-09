@@ -11,6 +11,7 @@
 - SOLID and DRY principles must be strictly applied whenever code is generated.
 - Only the latest stable versions of libraries, frameworks, and dependencies must be used, unless there is a documented technical justification.
 - Code comments must be kept to a minimum and only included when they provide real value or clarify non-obvious decisions.
+- Component styles must always be placed in a separate `.css` file using `styleUrl`, never inline in the `.ts` file via `styles`.
 - If critical information is missing to proceed correctly, it must be requested before responding. Assumptions are not allowed.
 - Keep the README.md file updated when changes require it.
 
@@ -64,7 +65,7 @@ MEPPOS/
 - `GET    /api/categories/:id` - Get category with products
 - `POST   /api/categories` - Create category
 - `PUT    /api/categories/:id` - Update category
-- `DELETE /api/categories/:id` - Delete category (CASCADE)
+- `DELETE /api/categories/:id` - Soft delete (deactivate) category and products. Hard delete with `?permanent=true`
 - `GET    /api/products` - Get all products with resolved price (supports ?active=true)
 - `GET    /api/products/:id` - Get product by ID
 - `GET    /api/products/:id/price` - Get resolved price

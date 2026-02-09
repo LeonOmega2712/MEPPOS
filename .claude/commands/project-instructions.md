@@ -9,6 +9,7 @@
 - SOLID and DRY principles must be strictly applied whenever code is generated.
 - Only the latest stable versions of libraries, frameworks, and dependencies must be used, unless there is a documented technical justification.
 - Code comments must be kept to a minimum and only included when they provide real value or clarify non-obvious decisions.
+- Component styles must always be placed in a separate `.css` file using `styleUrl`, never inline in the `.ts` file via `styles`.
 - If critical information is missing to proceed correctly, it must be requested before responding. Assumptions are not allowed.
 - Keep updated the README.md file when making changes that requires it.
 

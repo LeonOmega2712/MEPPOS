@@ -1,0 +1,31 @@
+<dialog class="modal" [class.modal-open]="dialogService.visible()">
+  <div class="modal-box">
+    @if (dialogService.title()) {
+      <h3 class="font-bold text-lg">{{ dialogService.title() }}</h3>
+    }
+    <p class="py-4">{{ dialogService.message() }}</p>
+
+    @if (dialogService.requireInput()) {
+      <label class="input w-full mt-2">
+        <input type="text" [placeholder]="dialogService.requireInput()"
+          [ngModel]="dialogService.inputValue()"
+          (input)="dialogService.inputValue.set(inputRef.value)"
+          #inputRef />
+      </label>
+    }
+
+    <div class="modal-action">
+      <button class="btn" (click)="dialogService.cancel()">
+        {{ dialogService.cancelText() }}
+      </button>
+      <button class="btn btn-error"
+        [disabled]="dialogService.requireInput() && dialogService.inputValue() !== dialogService.requireInput()"
+        (click)="dialogService.accept()">
+        {{ dialogService.confirmText() }}
+      </button>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop">
+    <button (click)="dialogService.cancel()">close</button>
+  </form>
+</dialog>

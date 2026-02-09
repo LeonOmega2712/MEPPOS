@@ -120,7 +120,7 @@ FRONTEND_URL=http://localhost:4200
 - `GET /api/categories/:id` - Get a category with its products
 - `POST /api/categories` - Create category
 - `PUT /api/categories/:id` - Update category
-- `DELETE /api/categories/:id` - Delete category (CASCADE: deletes all products)
+- `DELETE /api/categories/:id` - Soft delete (deactivate) category and products. Hard delete with `?permanent=true`
 
 #### Products
 
@@ -182,8 +182,9 @@ The system uses 2 tables:
 - ✅ Menu display (frontend)
 - ✅ Theme selector with DaisyUI themes (localStorage persistence)
 - ✅ Responsive navbar with app branding
+- ✅ Category CRUD (frontend) with drag-and-drop reorder
 - 🔜 Bill calculator interface
-- 🔜 Catalog CRUD (frontend)
+- 🔜 Product CRUD (frontend)
 
 ### Future Phases
 
@@ -267,7 +268,9 @@ frontend/src/
 ├── app/              # Root component, routes, config
 ├── core/
 │   ├── models/       # TypeScript interfaces
-│   └── services/     # Angular services
+│   └── services/     # Angular services (HTTP, theme, toast, confirm dialog)
 ├── environments/     # Environment configs (dev/prod)
-└── pages/            # Page components (menu, settings)
+├── pages/            # Page components (menu, settings)
+│   └── settings/components/  # Settings sub-components (theme-selector, category-manager)
+└── shared/components/        # Reusable UI components (toast, confirm-dialog)
 ```

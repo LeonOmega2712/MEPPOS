@@ -1,5 +1,6 @@
 .scrollbar-auto-hide {
-  overflow-y: overlay;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
   scrollbar-width: thin;
   scrollbar-color: transparent transparent;
   transition: scrollbar-color 0.3s;

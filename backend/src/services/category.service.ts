@@ -49,13 +49,18 @@ export class CategoryService {
    * Create a new category
    */
   async createCategory(data: CreateCategoryDTO) {
+    const maxOrder = await prisma.category.aggregate({
+      _max: { displayOrder: true },
+    });
+    const nextOrder = (maxOrder._max.displayOrder ?? -1) + 1;
+
     return prisma.category.create({
       data: {
         name: data.name,
         description: data.description,
         basePrice: data.basePrice,
         image: data.image,
-        displayOrder: data.displayOrder,
+        displayOrder: data.displayOrder ?? nextOrder,
         active: data.active
       }
     });
@@ -72,11 +77,27 @@ export class CategoryService {
   }
 
   /**
-   * Delete a category
+   * Soft delete a category and its products (set active = false)
    */
   async deleteCategory(id: number) {
+    return prisma.$transaction([
+      prisma.product.updateMany({
+        where: { categoryId: id },
+        data: { active: false },
+      }),
+      prisma.category.update({
+        where: { id },
+        data: { active: false },
+      }),
+    ]);
+  }
+
+  /**
+   * Permanently delete a category (hard delete, cascades to products)
+   */
+  async hardDeleteCategory(id: number) {
     return prisma.category.delete({
-      where: { id }
+      where: { id },
     });
   }
 

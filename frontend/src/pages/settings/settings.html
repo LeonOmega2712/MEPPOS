@@ -1,42 +1,4 @@
 <div class="container mx-auto p-4">
-  <div class="card bg-base-200 shadow-sm mb-6">
-    <div class="card-body">
-      <h2 class="card-title text-lg mb-2">Tema</h2>
-      <div class="rounded-box grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7">
-        @for (theme of themes; track theme) {
-          <div
-            class="border-base-content/20 hover:border-base-content/40 overflow-hidden rounded border outline-2 outline-offset-1 outline-transparent"
-            [class.outline-base-content!]="theme === themeService.currentTheme()"
-            (click)="selectTheme(theme)"
-          >
-            <div class="bg-base-100 text-base-content w-full cursor-pointer" [attr.data-theme]="theme">
-              <div class="grid grid-cols-5 grid-rows-3">
-                <div class="bg-base-200 col-start-1 row-span-2 row-start-1"></div>
-                <div class="bg-base-300 col-start-1 row-start-3"></div>
-                <div class="bg-base-100 col-span-4 col-start-2 row-span-3 row-start-1 flex flex-col gap-0.5 p-1.5">
-                  <div class="text-xs font-bold truncate">{{ theme }}</div>
-                  <div class="flex gap-0.5">
-                    <div class="bg-primary flex size-4 items-center justify-center rounded-sm">
-                      <span class="text-primary-content text-[10px] font-bold">A</span>
-                    </div>
-                    <div class="bg-secondary flex size-4 items-center justify-center rounded-sm">
-                      <span class="text-secondary-content text-[10px] font-bold">A</span>
-                    </div>
-                    <div class="bg-accent flex size-4 items-center justify-center rounded-sm">
-                      <span class="text-accent-content text-[10px] font-bold">A</span>
-                    </div>
-                    <div class="bg-neutral flex size-4 items-center justify-center rounded-sm">
-                      <span class="text-neutral-content text-[10px] font-bold">A</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        }
-      </div>
-    </div>
-  </div>
-
-  <p class="text-base-content/60">Gestión de categorías y productos — próximamente</p>
+  <app-theme-selector />
+  <app-category-manager />
 </div>

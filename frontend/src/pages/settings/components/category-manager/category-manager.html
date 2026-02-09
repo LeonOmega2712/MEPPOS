@@ -1,0 +1,181 @@
+<h2 class="text-xl font-semibold mb-4">Categorías</h2>
+
+@if (loading()) {
+  <div class="flex justify-center py-12">
+    <span class="loading loading-spinner loading-lg"></span>
+  </div>
+} @else {
+  <!-- Active categories (drag-and-drop list) -->
+  <div cdkDropList [cdkDropListData]="activeCategories()" (cdkDropListDropped)="onDrop($event)">
+    @for (category of activeCategories(); track category.id) {
+      <div cdkDrag class="collapse collapse-arrow bg-base-200 shadow-sm mb-2" [cdkDragDisabled]="reordering()">
+        <div *cdkDragPlaceholder class="rounded-box border-2 border-dashed border-base-content/20 bg-base-300/30 shadow-sm mb-2" [style.height.px]="dragHeight()"></div>
+        <input type="checkbox" (click)="onCollapseToggle($event, category)" />
+        <div class="collapse-title font-medium flex items-center gap-2 pr-12">
+          <div cdkDragHandle class="relative z-10 cursor-grab active:cursor-grabbing touch-none p-1 -ml-1" (pointerdown)="onDragHandleDown($event)">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5 opacity-40">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+            </svg>
+          </div>
+          <span class="truncate">{{ category.name }}</span>
+          <span class="badge badge-sm badge-outline">
+            {{ category._count.products }} {{ category._count.products === 1 ? 'producto' : 'productos' }}
+          </span>
+        </div>
+        <div class="collapse-content">
+          <div class="flex flex-col gap-3">
+            <label class="input w-full">
+              <span class="label w-28 shrink-0">Nombre *</span>
+              <input type="text" [(ngModel)]="drafts[category.id].name" />
+            </label>
+
+            <label class="input w-full">
+              <span class="label w-28 shrink-0">Descripción</span>
+              <input type="text" [(ngModel)]="drafts[category.id].description" />
+            </label>
+
+            <label class="input w-full">
+              <span class="label w-28 shrink-0">Precio base</span>
+              <input type="number" min="0" step="0.01" [(ngModel)]="drafts[category.id].basePrice" />
+            </label>
+
+            <label class="input w-full">
+              <span class="label w-28 shrink-0">Imagen (URL)</span>
+              <input type="text" [(ngModel)]="drafts[category.id].image" />
+            </label>
+
+            <div class="divider my-1"></div>
+
+            <div class="flex gap-2">
+              <button
+                class="btn btn-primary"
+                [disabled]="!drafts[category.id]?.name?.trim() || !hasDraftChanges(category.id) || saving() === category.id"
+                (click)="saveCategory(category)"
+              >
+                @if (saving() === category.id) {
+                  <span class="loading loading-spinner loading-sm"></span>
+                }
+                Guardar
+              </button>
+
+              <button
+                class="btn btn-ghost"
+                [disabled]="!hasDraftChanges(category.id) || saving() === category.id"
+                (click)="resetDraft(category.id)"
+              >
+                Cancelar
+              </button>
+
+              <button
+                class="btn btn-outline btn-warning"
+                [disabled]="saving() === category.id"
+                (click)="deactivateCategory(category)"
+              >
+                Desactivar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+
+  @if (activeCategories().length === 0 && inactiveCategories().length === 0) {
+    <p class="text-base-content/60 text-center py-8">No hay categorías registradas.</p>
+  }
+
+  <!-- New category -->
+  <div class="collapse collapse-arrow bg-base-200 shadow-sm mb-2">
+    <input type="checkbox" />
+    <div class="collapse-title font-medium">
+      + Nueva categoría
+    </div>
+    <div class="collapse-content">
+      <div class="flex flex-col gap-3">
+        <label class="input w-full">
+          <span class="label w-28 shrink-0">Nombre *</span>
+          <input type="text" [(ngModel)]="newCategory.name" />
+        </label>
+
+        <label class="input w-full">
+          <span class="label w-28 shrink-0">Descripción</span>
+          <input type="text" [(ngModel)]="newCategory.description" />
+        </label>
+
+        <label class="input w-full">
+          <span class="label w-28 shrink-0">Precio base</span>
+          <input type="number" min="0" step="0.01" [(ngModel)]="newCategory.basePrice" />
+        </label>
+
+        <label class="input w-full">
+          <span class="label w-28 shrink-0">Imagen (URL)</span>
+          <input type="text" [(ngModel)]="newCategory.image" />
+        </label>
+
+        <div class="divider my-1"></div>
+
+        <div class="flex gap-2">
+          <button
+            class="btn btn-primary"
+            [disabled]="!newCategory.name.trim() || saving() === 'new'"
+            (click)="createCategory()"
+          >
+            @if (saving() === 'new') {
+              <span class="loading loading-spinner loading-sm"></span>
+            }
+            Crear
+          </button>
+
+          <button
+            class="btn btn-ghost"
+            [disabled]="!hasNewCategoryChanges() || saving() === 'new'"
+            (click)="resetNewCategory()"
+          >
+            Cancelar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Inactive categories (collapsible group, collapsed by default) -->
+  @if (inactiveCategories().length > 0) {
+    <div class="collapse collapse-arrow bg-base-200/50 opacity-60 mt-4">
+      <input type="checkbox" />
+      <div class="collapse-title text-sm font-medium">
+        Categorías desactivadas ({{ inactiveCategories().length }})
+      </div>
+      <div class="collapse-content">
+        @for (category of inactiveCategories(); track category.id) {
+          <div class="flex items-center justify-between py-2 text-sm">
+            <div class="flex items-center gap-2">
+              <span class="truncate">{{ category.name }}</span>
+              <span class="badge badge-xs badge-ghost">
+                {{ category._count.products }} {{ category._count.products === 1 ? 'producto' : 'productos' }}
+              </span>
+            </div>
+            <div class="flex gap-1">
+              <button
+                class="btn btn-xs btn-ghost btn-error"
+                [disabled]="saving() === category.id"
+                (click)="permanentDeleteCategory(category)"
+              >
+                Eliminar
+              </button>
+              <button
+                class="btn btn-xs btn-primary btn-outline"
+                [disabled]="saving() === category.id"
+                (click)="reactivateCategory(category)"
+              >
+                @if (saving() === category.id) {
+                  <span class="loading loading-spinner loading-xs"></span>
+                }
+                Reactivar
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  }
+}

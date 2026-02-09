@@ -1,20 +1,10 @@
-import { Component, inject } from '@angular/core';
-import {
-  ThemeService,
-  DAISY_THEMES,
-  type DaisyTheme,
-} from '../../core/services/theme.service';
+import { Component } from '@angular/core';
+import { ThemeSelectorComponent } from './components/theme-selector/theme-selector';
+import { CategoryManagerComponent } from './components/category-manager/category-manager';
 
 @Component({
   selector: 'app-settings-page',
-  imports: [],
+  imports: [ThemeSelectorComponent, CategoryManagerComponent],
   templateUrl: './settings.html',
 })
-export class SettingsPage {
-  protected readonly themeService = inject(ThemeService);
-  protected readonly themes: readonly DaisyTheme[] = DAISY_THEMES;
-
-  selectTheme(theme: DaisyTheme): void {
-    this.themeService.setTheme(theme);
-  }
-}
+export class SettingsPage {}

@@ -1,10 +1,12 @@
 import { Component, ElementRef, inject, viewChild } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { ThemeService } from '../core/services/theme.service';
+import { ToastComponent } from '../shared/components/toast/toast';
+import { ConfirmDialogComponent } from '../shared/components/confirm-dialog/confirm-dialog';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, ToastComponent, ConfirmDialogComponent],
   templateUrl: './app.html',
   styleUrl: './app.css'
 })
