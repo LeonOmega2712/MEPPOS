@@ -8,7 +8,6 @@ import {
   moveItemInArray,
   type CdkDragDrop,
 } from '@angular/cdk/drag-drop';
-import { forkJoin } from 'rxjs';
 import { CategoryService } from '../../../../core/services/category.service';
 import { ToastService } from '../../../../core/services/toast.service';
 import { ConfirmDialogService } from '../../../../core/services/confirm-dialog.service';
@@ -174,19 +173,15 @@ export class CategoryManagerComponent implements OnInit {
     const items = [...this.activeCategories()];
     moveItemInArray(items, event.previousIndex, event.currentIndex);
 
-    const updates = items
-      .map((cat, index) => ({ id: cat.id, displayOrder: index, previous: cat.displayOrder }))
-      .filter((u) => u.displayOrder !== u.previous);
-
-    if (updates.length === 0) return;
-
+    // Optimistically update UI
     const updatedItems = items.map((cat, index) => ({ ...cat, displayOrder: index }));
     this.categories.set([...updatedItems, ...this.inactiveCategories()]);
 
+    const categoryIds = items.map(c => c.id);
+
     this.reordering.set(true);
-    forkJoin(
-      updates.map((u) => this.categoryService.updateCategory(u.id, { displayOrder: u.displayOrder }))
-    ).subscribe({
+
+    this.categoryService.reorderCategories(categoryIds).subscribe({
       next: () => {
         this.reordering.set(false);
         this.toastService.success('Orden actualizado');

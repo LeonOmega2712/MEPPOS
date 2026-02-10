@@ -5,7 +5,8 @@ import {
   CreateProductSchema,
   UpdateProductSchema,
   ProductIdSchema,
-  ProductsByCategorySchema
+  ProductsByCategorySchema,
+  ReorderProductsSchema
 } from '../types/product.types';
 
 export class ProductController {
@@ -173,11 +174,13 @@ export class ProductController {
 
   /**
    * DELETE /api/products/:id
-   * Delete a product
+   * Soft delete (deactivate) a product by default
+   * Use ?permanent=true to permanently delete
    */
   async deleteProduct(req: Request, res: Response) {
     try {
       const { id } = ProductIdSchema.parse(req.params);
+      const permanent = req.query.permanent === 'true';
 
       const exists = await productService.productExists(id);
       if (!exists) {
@@ -187,15 +190,24 @@ export class ProductController {
         });
       }
 
-      await productService.deleteProduct(id);
-
-      res.json({
-        success: true,
-        message: 'Product deleted successfully'
-      });
+      if (permanent) {
+        // Hard delete - remove from database
+        await productService.deleteProduct(id);
+        res.json({
+          success: true,
+          message: 'Product permanently deleted'
+        });
+      } else {
+        // Soft delete - set active=false
+        await productService.updateProduct(id, { active: false });
+        res.json({
+          success: true,
+          message: 'Product deactivated'
+        });
+      }
     } catch (error) {
       console.error('Error deleting product:', error);
-      res.status(400).json({
+      res.status(500).json({
         success: false,
         error: 'Failed to delete product',
         details: error instanceof Error ? error.message : undefined
@@ -229,6 +241,48 @@ export class ProductController {
       res.status(500).json({
         success: false,
         error: 'Failed to get product price'
+      });
+    }
+  }
+
+  /**
+   * PATCH /api/products/reorder
+   * Batch reorder products within a category
+   */
+  async reorderProducts(req: Request, res: Response) {
+    try {
+      const { categoryId, productIds } = ReorderProductsSchema.parse(req.body);
+
+      // Verify category exists
+      const categoryExists = await categoryService.categoryExists(categoryId);
+      if (!categoryExists) {
+        return res.status(404).json({
+          success: false,
+          error: 'Category not found'
+        });
+      }
+
+      const updatedCount = await productService.reorderProducts(categoryId, productIds);
+
+      res.json({
+        success: true,
+        message: 'Products reordered successfully',
+        data: { updated: updatedCount }
+      });
+    } catch (error) {
+      console.error('Error reordering products:', error);
+
+      if (error instanceof Error && error.message.includes('Invalid product IDs')) {
+        return res.status(400).json({
+          success: false,
+          error: error.message
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        error: 'Failed to reorder products',
+        details: error instanceof Error ? error.message : undefined
       });
     }
   }

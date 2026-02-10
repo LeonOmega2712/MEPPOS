@@ -2,32 +2,37 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 import { environment } from '../../environments/environment';
-import type { ApiResponse, Category, CreateCategoryPayload, UpdateCategoryPayload } from '../models';
+import type {
+  ApiResponse,
+  Product,
+  CreateProductPayload,
+  UpdateProductPayload
+} from '../models';
 
 @Injectable({ providedIn: 'root' })
-export class CategoryService {
+export class ProductService {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = `${environment.apiUrl}/categories`;
+  private readonly baseUrl = `${environment.apiUrl}/products`;
 
-  getCategories(): Observable<Category[]> {
+  getProducts(): Observable<Product[]> {
     return this.http
-      .get<ApiResponse<Category[]>>(this.baseUrl)
+      .get<ApiResponse<Product[]>>(this.baseUrl)
       .pipe(map((response) => response.data));
   }
 
-  createCategory(data: CreateCategoryPayload): Observable<Category> {
+  createProduct(data: CreateProductPayload): Observable<Product> {
     return this.http
-      .post<ApiResponse<Category>>(this.baseUrl, data)
+      .post<ApiResponse<Product>>(this.baseUrl, data)
       .pipe(map((response) => response.data));
   }
 
-  updateCategory(id: number, data: UpdateCategoryPayload): Observable<Category> {
+  updateProduct(id: number, data: UpdateProductPayload): Observable<Product> {
     return this.http
-      .put<ApiResponse<Category>>(`${this.baseUrl}/${id}`, data)
+      .put<ApiResponse<Product>>(`${this.baseUrl}/${id}`, data)
       .pipe(map((response) => response.data));
   }
 
-  deleteCategory(id: number, permanent = false): Observable<void> {
+  deleteProduct(id: number, permanent = false): Observable<void> {
     const url = permanent
       ? `${this.baseUrl}/${id}?permanent=true`
       : `${this.baseUrl}/${id}`;
@@ -36,10 +41,11 @@ export class CategoryService {
       .pipe(map(() => undefined));
   }
 
-  reorderCategories(categoryIds: number[]): Observable<void> {
+  reorderProducts(categoryId: number, productIds: number[]): Observable<void> {
     return this.http
       .patch<ApiResponse<{ updated: number }>>(`${this.baseUrl}/reorder`, {
-        categoryIds
+        categoryId,
+        productIds
       })
       .pipe(map(() => undefined));
   }

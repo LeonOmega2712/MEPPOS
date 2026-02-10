@@ -66,12 +66,14 @@ MEPPOS/
 - `POST   /api/categories` - Create category
 - `PUT    /api/categories/:id` - Update category
 - `DELETE /api/categories/:id` - Soft delete (deactivate) category and products. Hard delete with `?permanent=true`
+- `PATCH  /api/categories/reorder` - Batch reorder categories (atomic transaction)
 - `GET    /api/products` - Get all products with resolved price (supports ?active=true)
 - `GET    /api/products/:id` - Get product by ID
 - `GET    /api/products/:id/price` - Get resolved price
 - `POST   /api/products` - Create product
 - `PUT    /api/products/:id` - Update product
-- `DELETE /api/products/:id` - Delete product
+- `DELETE /api/products/:id` - Soft delete (deactivate) product. Hard delete with `?permanent=true`
+- `PATCH  /api/products/reorder` - Batch reorder products within category (atomic transaction)
 - `GET    /api/categories/:categoryId/products` - Get products by category
 
 ### Reference Menu

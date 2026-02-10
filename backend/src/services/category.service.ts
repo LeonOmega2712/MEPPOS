@@ -110,6 +110,47 @@ export class CategoryService {
     });
     return count > 0;
   }
+
+  /**
+   * Reorder all categories atomically
+   * @param categoryIds - Ordered array of category IDs (index = displayOrder)
+   * @returns Number of categories updated
+   */
+  async reorderCategories(categoryIds: number[]): Promise<number> {
+    // Validate all categories exist
+    const categories = await prisma.category.findMany({
+      where: {
+        id: { in: categoryIds },
+        active: true
+      },
+      select: { id: true }
+    });
+
+    if (categories.length !== categoryIds.length) {
+      const foundIds = categories.map(c => c.id);
+      const missingIds = categoryIds.filter(id => !foundIds.includes(id));
+      throw new Error(`Invalid category IDs: ${missingIds.join(', ')}`);
+    }
+
+    // Check for duplicates
+    const uniqueIds = new Set(categoryIds);
+    if (uniqueIds.size !== categoryIds.length) {
+      throw new Error('Duplicate category IDs in reorder request');
+    }
+
+    // Build transaction: update each category with its new displayOrder
+    const updateOperations = categoryIds.map((categoryId, index) =>
+      prisma.category.update({
+        where: { id: categoryId },
+        data: { displayOrder: index }
+      })
+    );
+
+    // Execute all updates in a single atomic transaction
+    await prisma.$transaction(updateOperations);
+
+    return categoryIds.length;
+  }
 }
 
 export const categoryService = new CategoryService();

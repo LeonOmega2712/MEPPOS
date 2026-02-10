@@ -121,6 +121,7 @@ FRONTEND_URL=http://localhost:4200
 - `POST /api/categories` - Create category
 - `PUT /api/categories/:id` - Update category
 - `DELETE /api/categories/:id` - Soft delete (deactivate) category and products. Hard delete with `?permanent=true`
+- `PATCH /api/categories/reorder` - Batch reorder categories (atomic transaction)
 
 #### Products
 
@@ -129,7 +130,8 @@ FRONTEND_URL=http://localhost:4200
 - `GET /api/products/:id/price` - Get effective price (direct or inherited from category)
 - `POST /api/products` - Create product
 - `PUT /api/products/:id` - Update product
-- `DELETE /api/products/:id` - Delete product
+- `DELETE /api/products/:id` - Soft delete (deactivate) product. Hard delete with `?permanent=true`
+- `PATCH /api/products/reorder` - Batch reorder products within a category (atomic transaction)
 - `GET /api/categories/:categoryId/products` - List products by category
 
 #### Health Check
@@ -183,8 +185,9 @@ The system uses 2 tables:
 - ✅ Theme selector with DaisyUI themes (localStorage persistence)
 - ✅ Responsive navbar with app branding
 - ✅ Category CRUD (frontend) with drag-and-drop reorder
+- ✅ Product CRUD (frontend) with per-category drag-and-drop
+- ✅ Settings page with tab-based UI (Categories/Products)
 - 🔜 Bill calculator interface
-- 🔜 Product CRUD (frontend)
 
 ### Future Phases
 
@@ -271,6 +274,6 @@ frontend/src/
 │   └── services/     # Angular services (HTTP, theme, toast, confirm dialog)
 ├── environments/     # Environment configs (dev/prod)
 ├── pages/            # Page components (menu, settings)
-│   └── settings/components/  # Settings sub-components (theme-selector, category-manager)
+│   └── settings/components/  # Settings sub-components (theme-selector, category-manager, product-manager)
 └── shared/components/        # Reusable UI components (toast, confirm-dialog)
 ```

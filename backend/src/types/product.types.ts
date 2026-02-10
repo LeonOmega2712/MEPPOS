@@ -34,6 +34,11 @@ export const ProductsByCategorySchema = z.object({
   categoryId: z.coerce.number().int().positive()
 });
 
+export const ReorderProductsSchema = z.object({
+  categoryId: z.number().int().positive(),
+  productIds: z.array(z.number().int().positive()).min(1)
+});
+
 // ============================================
 // PRODUCT TYPES
 // ============================================
@@ -42,3 +47,4 @@ export type CreateProductDTO = z.infer<typeof CreateProductSchema>;
 export type UpdateProductDTO = z.infer<typeof UpdateProductSchema>;
 export type ProductIdDTO = z.infer<typeof ProductIdSchema>;
 export type ProductsByCategoryDTO = z.infer<typeof ProductsByCategorySchema>;
+export type ReorderProductsDTO = z.infer<typeof ReorderProductsSchema>;

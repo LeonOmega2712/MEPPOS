@@ -26,6 +26,10 @@ export const CategoryIdSchema = z.object({
   id: z.coerce.number().int().positive()
 });
 
+export const ReorderCategoriesSchema = z.object({
+  categoryIds: z.array(z.number().int().positive()).min(1)
+});
+
 // ============================================
 // CATEGORY TYPES
 // ============================================
@@ -33,3 +37,4 @@ export const CategoryIdSchema = z.object({
 export type CreateCategoryDTO = z.infer<typeof CreateCategorySchema>;
 export type UpdateCategoryDTO = z.infer<typeof UpdateCategorySchema>;
 export type CategoryIdDTO = z.infer<typeof CategoryIdSchema>;
+export type ReorderCategoriesDTO = z.infer<typeof ReorderCategoriesSchema>;

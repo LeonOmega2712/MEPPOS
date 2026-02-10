@@ -15,6 +15,7 @@ router.get('/menu', menuController.getFullMenu.bind(menuController));
 // CATEGORIES
 // ============================================
 
+router.patch('/categories/reorder', categoryController.reorderCategories.bind(categoryController));
 router.get('/categories', categoryController.getAllCategories.bind(categoryController));
 router.get('/categories/:id', categoryController.getCategoryById.bind(categoryController));
 router.post('/categories', categoryController.createCategory.bind(categoryController));
@@ -25,6 +26,7 @@ router.delete('/categories/:id', categoryController.deleteCategory.bind(category
 // PRODUCTS
 // ============================================
 
+router.patch('/products/reorder', productController.reorderProducts.bind(productController));
 router.get('/products', productController.getAllProducts.bind(productController));
 router.get('/products/:id', productController.getProductById.bind(productController));
 router.get('/products/:id/price', productController.getProductPrice.bind(productController));

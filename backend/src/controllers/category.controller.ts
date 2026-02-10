@@ -3,7 +3,8 @@ import { categoryService } from '../services/category.service';
 import {
   CreateCategorySchema,
   UpdateCategorySchema,
-  CategoryIdSchema
+  CategoryIdSchema,
+  ReorderCategoriesSchema
 } from '../types/category.types';
 
 export class CategoryController {
@@ -157,6 +158,39 @@ export class CategoryController {
       res.status(400).json({
         success: false,
         error: 'Failed to delete category',
+        details: error instanceof Error ? error.message : undefined
+      });
+    }
+  }
+
+  /**
+   * PATCH /api/categories/reorder
+   * Batch reorder all categories
+   */
+  async reorderCategories(req: Request, res: Response) {
+    try {
+      const { categoryIds } = ReorderCategoriesSchema.parse(req.body);
+
+      const updatedCount = await categoryService.reorderCategories(categoryIds);
+
+      res.json({
+        success: true,
+        message: 'Categories reordered successfully',
+        data: { updated: updatedCount }
+      });
+    } catch (error) {
+      console.error('Error reordering categories:', error);
+
+      if (error instanceof Error && error.message.includes('Invalid category IDs')) {
+        return res.status(400).json({
+          success: false,
+          error: error.message
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        error: 'Failed to reorder categories',
         details: error instanceof Error ? error.message : undefined
       });
     }
