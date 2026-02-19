@@ -15,10 +15,10 @@
     }
 
     <div class="modal-action">
-      <button class="btn" (click)="dialogService.cancel()">
+      <button class="btn btn-soft btn-error" (click)="dialogService.cancel()">
         {{ dialogService.cancelText() }}
       </button>
-      <button class="btn btn-error"
+      <button class="btn btn-soft btn-success"
         [disabled]="dialogService.requireInput() && dialogService.inputValue() !== dialogService.requireInput()"
         (click)="dialogService.accept()">
         {{ dialogService.confirmText() }}

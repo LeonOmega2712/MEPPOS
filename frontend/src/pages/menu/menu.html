@@ -13,7 +13,7 @@
         <div class="flex items-baseline gap-3 mb-3">
           <h2 class="text-xl font-semibold">{{ category.name }}</h2>
           @if (category.basePrice !== null) {
-            <span class="badge badge-primary badge-lg font-bold">${{ category.basePrice }}</span>
+            <span class="badge badge-primary badge-lg font-bold">${{ (+category.basePrice).toFixed(2) }}</span>
           }
         </div>
         @if (category.description) {
@@ -26,7 +26,7 @@
                 <div class="flex items-center justify-between">
                   <h3 class="card-title text-base">{{ product.name }}</h3>
                   @if (product.price !== null && product.price !== category.basePrice) {
-                    <span class="badge badge-accent badge-lg text-lg font-bold">${{ product.price }}</span>
+                    <span class="badge badge-secondary badge-lg text-lg font-bold">${{ (+product.price).toFixed(2) }}</span>
                   }
                 </div>
                 @if (product.description) {

@@ -1,0 +1,29 @@
+@keyframes slide-from-left {
+  from {
+    opacity: 0;
+    transform: translateX(-1.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slide-from-right {
+  from {
+    opacity: 0;
+    transform: translateX(1.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.slide-from-left {
+  animation: slide-from-left 200ms ease-out;
+}
+
+.slide-from-right {
+  animation: slide-from-right 200ms ease-out;
+}

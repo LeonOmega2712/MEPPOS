@@ -1,154 +1,168 @@
-<h2 class="text-xl font-semibold mb-4">Productos</h2>
-
 @if (loading()) {
   <div class="flex justify-center py-12">
     <span class="loading loading-spinner loading-lg"></span>
   </div>
 } @else {
-  <!-- Active products grouped by category -->
-  @for (category of activeCategories(); track category.id) {
-    <div class="mb-6">
-      <h3 class="text-lg font-semibold mb-2 flex items-center gap-2">
-        {{ category.name }}
-        @if (category.basePrice) {
-          <span class="badge badge-sm badge-ghost">Base: ${{ (+category.basePrice).toFixed(2) }}</span>
-        }
-        <span class="badge badge-sm badge-outline">{{ productsByCategory().get(category.id)?.length || 0 }}</span>
-      </h3>
-
-      <div
-        cdkDropList
-        [cdkDropListData]="productsByCategory().get(category.id) || []"
-        (cdkDropListDropped)="onDrop($event, category.id)"
-      >
-        @for (product of productsByCategory().get(category.id); track product.id) {
+  <!-- Active products grouped by category (accordion) -->
+  <div class="join join-vertical w-full">
+    @for (category of activeCategories(); track category.id) {
+      <div class="collapse collapse-arrow join-item border-base-300 border bg-base-100">
+        <input
+          type="radio"
+          name="category-accordion"
+          [checked]="expandedCategoryId() === category.id"
+          (click)="onCategoryToggle($event, category.id)"
+        />
+        <div class="collapse-title font-semibold flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 overflow-hidden">
+          <span class="truncate">{{ category.name }}</span>
+          <div class="flex items-center gap-2 shrink-0 whitespace-nowrap">
+            <span class="badge badge-sm badge-secondary">{{ productsByCategory().get(category.id)?.length || 0 }} {{ (productsByCategory().get(category.id)?.length || 0) === 1 ? 'producto' : 'productos' }}</span>
+            @if (category.basePrice) {
+              <span class="badge badge-sm badge-primary">Base: ${{ (+category.basePrice).toFixed(2) }}</span>
+            }
+          </div>
+        </div>
+        <div class="collapse-content">
           <div
-            cdkDrag
-            class="collapse collapse-arrow bg-base-200 shadow-sm mb-2"
-            [cdkDragDisabled]="reordering() === category.id"
+            cdkDropList
+            [cdkDropListData]="productsByCategory().get(category.id) || []"
+            (cdkDropListDropped)="onDrop($event, category.id)"
           >
-            <div
-              *cdkDragPlaceholder
-              class="rounded-box border-2 border-dashed border-base-content/20 bg-base-300/30 shadow-sm mb-2"
-              [style.height.px]="dragHeight()"
-            ></div>
+            @for (product of productsByCategory().get(category.id); track product.id) {
+              <div
+                cdkDrag
+                class="collapse collapse-arrow bg-base-200 shadow-sm mb-2"
+                [cdkDragDisabled]="reordering() === category.id"
+              >
+                <div
+                  *cdkDragPlaceholder
+                  class="rounded-box border-2 border-dashed border-base-content/20 bg-base-300/30 shadow-sm mb-2"
+                  [style.height.px]="dragHeight()"
+                ></div>
 
-            <input
-              type="checkbox"
-              class="peer"
-              (change)="onCollapseToggle($event, product)"
-            />
+                <input
+                  type="checkbox"
+                  class="peer"
+                  [checked]="expandedProductId() === product.id"
+                  (click)="onCollapseToggle($event, product.id)"
+                />
 
-            <div class="collapse-title font-medium flex items-center gap-2 pr-12">
-              <div cdkDragHandle class="relative z-10 cursor-grab active:cursor-grabbing touch-none p-1 -ml-1" (pointerdown)="onDragHandleDown($event)">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5 opacity-40">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-                </svg>
-              </div>
-              <span class="truncate">{{ product.name }}</span>
-              @if (product.customizable) {
-                <span class="badge badge-sm badge-primary">Personalizable</span>
-              }
-              @if (getEffectivePrice(product) !== null) {
-                <span class="badge badge-sm">${{ getEffectivePrice(product)!.toFixed(2) }}</span>
-              }
-              @if (hasDraftChanges(product.id)) {
-                <span class="badge badge-warning badge-sm">Sin guardar</span>
-              }
-            </div>
-
-            <div class="collapse-content">
-              <div class="flex flex-col gap-3">
-                <label class="select w-full">
-                  <span class="label w-28 shrink-0">Categoría *</span>
-                  <select [(ngModel)]="drafts[product.id].categoryId">
-                    @for (cat of activeCategories(); track cat.id) {
-                      <option [ngValue]="cat.id">{{ cat.name }}</option>
+                <div class="collapse-title font-medium flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 overflow-hidden">
+                  <div class="flex items-center gap-2 min-w-0">
+                    <div cdkDragHandle class="relative z-10 cursor-grab active:cursor-grabbing touch-none p-1 -ml-1" (pointerdown)="onDragHandleDown($event)">
+                      <app-icon name="drag-handle" sizeClass="size-5 opacity-40" />
+                    </div>
+                    <span class="truncate">{{ product.name }}</span>
+                  </div>
+                  <div class="flex items-center gap-2 shrink-0 whitespace-nowrap">
+                    @if (hasDraftChanges(product.id)) {
+                      <span class="badge badge-warning badge-sm">Sin guardar</span>
                     }
-                  </select>
-                </label>
-
-                <label class="input w-full">
-                  <span class="label w-28 shrink-0">Nombre *</span>
-                  <input type="text" [(ngModel)]="drafts[product.id].name" />
-                </label>
-
-                <label class="input w-full">
-                  <span class="label w-28 shrink-0">Descripción</span>
-                  <input type="text" [(ngModel)]="drafts[product.id].description" />
-                </label>
-
-                <label class="input w-full">
-                  <span class="label w-28 shrink-0">Precio</span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    [(ngModel)]="drafts[product.id].price"
-                    placeholder="Heredar de categoría"
-                  />
-                </label>
-                @if (getInheritedPriceLabel(product)) {
-                  <p class="text-sm text-base-content/60 pl-32">
-                    {{ getInheritedPriceLabel(product) }}
-                  </p>
-                }
-
-                <label class="input w-full">
-                  <span class="label w-28 shrink-0">Imagen (URL)</span>
-                  <input type="text" [(ngModel)]="drafts[product.id].image" />
-                </label>
-
-                <label class="flex items-center gap-2 pl-32">
-                  <input
-                    type="checkbox"
-                    class="checkbox checkbox-sm"
-                    [(ngModel)]="drafts[product.id].customizable"
-                  />
-                  <span>Producto personalizable</span>
-                </label>
-
-                <div class="divider my-1"></div>
-
-                <div class="flex gap-2">
-                  <button
-                    class="btn btn-primary"
-                    [disabled]="!drafts[product.id]?.name?.trim() || !hasDraftChanges(product.id) || saving() === product.id"
-                    (click)="saveProduct(product)"
-                  >
-                    @if (saving() === product.id) {
-                      <span class="loading loading-spinner loading-sm"></span>
+                    @if (product.customizable) {
+                      <span class="badge badge-sm badge-accent">Personalizable</span>
                     }
-                    Guardar
-                  </button>
+                    @if (getEffectivePrice(product) !== null) {
+                      <span class="badge badge-sm" [class.badge-primary]="product.price === null" [class.badge-secondary]="product.price !== null">{{ product.price === null ? 'Base: ' : '' }}${{ getEffectivePrice(product)!.toFixed(2) }}</span>
+                    }
+                  </div>
+                </div>
 
-                  <button
-                    class="btn btn-ghost"
-                    [disabled]="!hasDraftChanges(product.id) || saving() === product.id"
-                    (click)="resetDraft(product.id)"
-                  >
-                    Cancelar
-                  </button>
+                <div class="collapse-content">
+                  <div class="flex flex-col gap-3">
+                    <label class="select w-full">
+                      <span class="label w-28 shrink-0">Categoría *</span>
+                      <select [(ngModel)]="drafts[product.id].categoryId">
+                        @for (cat of activeCategories(); track cat.id) {
+                          <option [ngValue]="cat.id">{{ cat.name }}</option>
+                        }
+                      </select>
+                    </label>
 
-                  <button
-                    class="btn btn-outline btn-warning"
-                    [disabled]="saving() === product.id"
-                    (click)="deactivateProduct(product)"
-                  >
-                    Desactivar
-                  </button>
+                    <label class="input w-full">
+                      <span class="label w-28 shrink-0">Nombre *</span>
+                      <input type="text" [(ngModel)]="drafts[product.id].name" />
+                    </label>
+
+                    <label class="input w-full">
+                      <span class="label w-28 shrink-0">Descripción</span>
+                      <input type="text" [(ngModel)]="drafts[product.id].description" />
+                    </label>
+
+                    <label class="input w-full">
+                      <span class="label w-28 shrink-0">Precio</span>
+                      <span>$</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        [(ngModel)]="drafts[product.id].price"
+                        placeholder="0.00"
+                      />
+                    </label>
+                    <label class="input w-full">
+                      <span class="label w-28 shrink-0">Imagen (URL)</span>
+                      <input type="text" [(ngModel)]="drafts[product.id].image" />
+                    </label>
+
+                    <label class="label">
+                      <input
+                        type="checkbox"
+                        class="toggle"
+                        [(ngModel)]="drafts[product.id].customizable"
+                      />
+                      Personalizable
+                    </label>
+
+                    <div class="divider my-1"></div>
+
+                    <div class="flex gap-2">
+                      <button
+                        class="btn btn-soft btn-success"
+                        title="Guardar"
+                        aria-label="Guardar producto"
+                        [disabled]="!drafts[product.id]?.name?.trim() || !hasDraftChanges(product.id) || saving() === product.id"
+                        (click)="saveProduct(product)"
+                      >
+                        @if (saving() === product.id) {
+                          <span class="loading loading-spinner loading-sm"></span>
+                        } @else {
+                          <app-icon name="check-circle" />
+                        }
+                      </button>
+
+                      <button
+                        class="btn btn-soft btn-warning"
+                        title="Descartar cambios"
+                        aria-label="Descartar cambios"
+                        [disabled]="!hasDraftChanges(product.id) || saving() === product.id"
+                        (click)="resetDraft(product.id)"
+                      >
+                        <app-icon name="x-circle" />
+                      </button>
+
+                      <button
+                        class="btn btn-soft btn-error"
+                        title="Desactivar"
+                        aria-label="Desactivar producto"
+                        [disabled]="saving() === product.id"
+                        (click)="deactivateProduct(product)"
+                      >
+                        <app-icon name="archive-down" />
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
+            }
           </div>
-        }
-      </div>
 
-      @if (productsByCategory().get(category.id)?.length === 0) {
-        <p class="text-base-content/60 text-sm py-4 pl-4">No hay productos en esta categoría.</p>
-      }
-    </div>
-  }
+          @if (productsByCategory().get(category.id)?.length === 0) {
+            <p class="text-base-content/60 text-sm py-4 pl-4">No hay productos en esta categoría.</p>
+          }
+        </div>
+      </div>
+    }
+  </div>
 
   @if (activeCategories().length === 0) {
     <p class="text-base-content/60 text-center py-8">No hay categorías activas. Debe crear al menos una categoría para agregar productos.</p>
@@ -156,10 +170,13 @@
 
   <!-- New product form -->
   @if (activeCategories().length > 0) {
-    <div class="collapse collapse-arrow bg-base-200 shadow-sm mb-2">
-      <input type="checkbox" />
+    <div class="collapse collapse-arrow bg-base-100 shadow-sm mt-2 mb-2">
+      <input type="checkbox" [checked]="expandedProductId() === 'new'" (click)="onCollapseToggle($event, 'new')" />
       <div class="collapse-title font-medium">
-        + Nuevo producto
+        <span class="flex items-center gap-2">
+          <app-icon name="plus-circle" sizeClass="size-5 opacity-40" />
+          Nuevo producto
+        </span>
       </div>
       <div class="collapse-content">
         <div class="flex flex-col gap-3">
@@ -185,12 +202,13 @@
 
           <label class="input w-full">
             <span class="label w-28 shrink-0">Precio</span>
+            <span>$</span>
             <input
               type="number"
               step="0.01"
               min="0"
               [(ngModel)]="newProduct.price"
-              placeholder="Heredar de categoría"
+              placeholder="0.00"
             />
           </label>
 
@@ -199,35 +217,40 @@
             <input type="text" [(ngModel)]="newProduct.image" />
           </label>
 
-          <label class="flex items-center gap-2 pl-32">
+          <label class="label">
             <input
               type="checkbox"
-              class="checkbox checkbox-sm"
+              class="toggle"
               [(ngModel)]="newProduct.customizable"
             />
-            <span>Producto personalizable</span>
+            Personalizable
           </label>
 
           <div class="divider my-1"></div>
 
           <div class="flex gap-2">
             <button
-              class="btn btn-primary"
+              class="btn btn-soft btn-success"
+              title="Crear"
+              aria-label="Crear producto"
               [disabled]="!newProduct.name.trim() || !newProduct.categoryId || saving() === 'new'"
               (click)="createProduct()"
             >
               @if (saving() === 'new') {
                 <span class="loading loading-spinner loading-sm"></span>
+              } @else {
+                <app-icon name="plus-circle" />
               }
-              Crear
             </button>
 
             <button
-              class="btn btn-ghost"
+              class="btn btn-soft btn-warning"
+              title="Descartar cambios"
+              aria-label="Descartar cambios"
               [disabled]="!hasNewProductChanges() || saving() === 'new'"
               (click)="resetNewProduct()"
             >
-              Cancelar
+              <app-icon name="x-circle" />
             </button>
           </div>
         </div>
@@ -237,42 +260,55 @@
 
   <!-- Inactive products section -->
   @if (inactiveProducts().length > 0) {
-    <div class="collapse collapse-arrow bg-base-200/50 opacity-60 mt-4">
-      <input type="checkbox" />
-      <div class="collapse-title text-sm font-medium">
-        Productos desactivados ({{ inactiveProducts().length }})
+    <div class="collapse collapse-arrow bg-base-100 mt-4">
+      <input type="checkbox" (change)="expandedInactiveProductId.set(null)" />
+      <div class="collapse-title text-sm font-medium flex items-center justify-between">
+        Productos desactivados
+        <span class="badge badge-sm badge-primary">{{ inactiveProducts().length }}</span>
       </div>
       <div class="collapse-content">
-        @for (product of inactiveProducts(); track product.id) {
-          <div class="flex items-center justify-between py-2 text-sm">
-            <div class="flex items-center gap-2">
-              <span class="truncate">{{ product.name }}</span>
-              <span class="badge badge-xs badge-ghost">{{ product.category.name }}</span>
-              @if (getEffectivePrice(product) !== null) {
-                <span class="badge badge-xs">${{ getEffectivePrice(product)!.toFixed(2) }}</span>
-              }
+        <div class="join join-vertical w-full">
+          @for (product of inactiveProducts(); track product.id) {
+            <div class="collapse collapse-arrow join-item border-base-300 border bg-base-100">
+              <input type="checkbox" [checked]="expandedInactiveProductId() === product.id" (click)="expandedInactiveProductId.set(expandedInactiveProductId() === product.id ? null : product.id)" />
+              <div class="collapse-title font-semibold flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 overflow-hidden">
+                <span class="truncate">{{ product.name }}</span>
+                <div class="flex items-center gap-2 shrink-0 whitespace-nowrap">
+                  <span class="badge badge-sm badge-secondary">{{ product.category.name }}</span>
+                  @if (getEffectivePrice(product) !== null) {
+                    <span class="badge badge-sm" [class.badge-primary]="product.price === null" [class.badge-secondary]="product.price !== null">{{ product.price === null ? 'Base: ' : '' }}${{ getEffectivePrice(product)!.toFixed(2) }}</span>
+                  }
+                </div>
+              </div>
+              <div class="collapse-content">
+                <div class="flex gap-2">
+                  <button
+                    class="btn btn-soft btn-error"
+                    title="Eliminar permanentemente"
+                    aria-label="Eliminar producto permanentemente"
+                    [disabled]="saving() === product.id"
+                    (click)="permanentDeleteProduct(product)"
+                  >
+                    <app-icon name="trash" />
+                  </button>
+                  <button
+                    class="btn btn-soft btn-success"
+                    title="Reactivar"
+                    aria-label="Reactivar producto"
+                    [disabled]="saving() === product.id"
+                    (click)="reactivateProduct(product)"
+                  >
+                    @if (saving() === product.id) {
+                      <span class="loading loading-spinner loading-sm"></span>
+                    } @else {
+                      <app-icon name="upload" />
+                    }
+                  </button>
+                </div>
+              </div>
             </div>
-            <div class="flex gap-1">
-              <button
-                class="btn btn-xs btn-ghost btn-error"
-                [disabled]="saving() === product.id"
-                (click)="permanentDeleteProduct(product)"
-              >
-                Eliminar
-              </button>
-              <button
-                class="btn btn-xs btn-primary btn-outline"
-                [disabled]="saving() === product.id"
-                (click)="reactivateProduct(product)"
-              >
-                @if (saving() === product.id) {
-                  <span class="loading loading-spinner loading-xs"></span>
-                }
-                Reactivar
-              </button>
-            </div>
-          </div>
-        }
+          }
+        </div>
       </div>
     </div>
   }

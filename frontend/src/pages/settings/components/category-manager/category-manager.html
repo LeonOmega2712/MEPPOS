@@ -1,5 +1,3 @@
-<h2 class="text-xl font-semibold mb-4">Categorías</h2>
-
 @if (loading()) {
   <div class="flex justify-center py-12">
     <span class="loading loading-spinner loading-lg"></span>
@@ -8,19 +6,26 @@
   <!-- Active categories (drag-and-drop list) -->
   <div cdkDropList [cdkDropListData]="activeCategories()" (cdkDropListDropped)="onDrop($event)">
     @for (category of activeCategories(); track category.id) {
-      <div cdkDrag class="collapse collapse-arrow bg-base-200 shadow-sm mb-2" [cdkDragDisabled]="reordering()">
+      <div cdkDrag class="collapse collapse-arrow bg-base-100 shadow-sm mb-2" [cdkDragDisabled]="reordering()">
         <div *cdkDragPlaceholder class="rounded-box border-2 border-dashed border-base-content/20 bg-base-300/30 shadow-sm mb-2" [style.height.px]="dragHeight()"></div>
-        <input type="checkbox" (click)="onCollapseToggle($event, category)" />
-        <div class="collapse-title font-medium flex items-center gap-2 pr-12">
-          <div cdkDragHandle class="relative z-10 cursor-grab active:cursor-grabbing touch-none p-1 -ml-1" (pointerdown)="onDragHandleDown($event)">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5 opacity-40">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-            </svg>
+        <input type="checkbox" [checked]="expandedCategoryId() === category.id" (click)="onCollapseToggle($event, category.id)" />
+        <div class="collapse-title font-medium flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 overflow-hidden">
+          <div class="flex items-center gap-2 min-w-0">
+            <div cdkDragHandle class="relative z-10 cursor-grab active:cursor-grabbing touch-none p-1 -ml-1" (pointerdown)="onDragHandleDown($event)">
+              <app-icon name="drag-handle" sizeClass="size-5 opacity-40" />
+            </div>
+            <span class="truncate">{{ category.name }}</span>
           </div>
-          <span class="truncate">{{ category.name }}</span>
-          <span class="badge badge-sm badge-outline">
-            {{ category._count.products }} {{ category._count.products === 1 ? 'producto' : 'productos' }}
-          </span>
+          <div class="flex items-center gap-2 shrink-0 whitespace-nowrap">
+            <span class="badge badge-sm badge-secondary">
+              {{ category._count.products }} {{ category._count.products === 1 ? 'producto' : 'productos' }}
+            </span>
+            @if (category.basePrice) {
+              <span class="badge badge-sm badge-primary">
+                Base: ${{ (+category.basePrice).toFixed(2) }}
+              </span>
+            }
+          </div>
         </div>
         <div class="collapse-content">
           <div class="flex flex-col gap-3">
@@ -36,7 +41,8 @@
 
             <label class="input w-full">
               <span class="label w-28 shrink-0">Precio base</span>
-              <input type="number" min="0" step="0.01" [(ngModel)]="drafts[category.id].basePrice" />
+              <span>$</span>
+              <input type="number" min="0" step="0.01" placeholder="0.00" [(ngModel)]="drafts[category.id].basePrice" />
             </label>
 
             <label class="input w-full">
@@ -48,30 +54,37 @@
 
             <div class="flex gap-2">
               <button
-                class="btn btn-primary"
+                class="btn btn-soft btn-success"
+                title="Guardar"
+                aria-label="Guardar categoría"
                 [disabled]="!drafts[category.id]?.name?.trim() || !hasDraftChanges(category.id) || saving() === category.id"
                 (click)="saveCategory(category)"
               >
                 @if (saving() === category.id) {
                   <span class="loading loading-spinner loading-sm"></span>
+                } @else {
+                  <app-icon name="check-circle" />
                 }
-                Guardar
               </button>
 
               <button
-                class="btn btn-ghost"
+                class="btn btn-soft btn-warning"
+                title="Descartar cambios"
+                aria-label="Descartar cambios"
                 [disabled]="!hasDraftChanges(category.id) || saving() === category.id"
                 (click)="resetDraft(category.id)"
               >
-                Cancelar
+                <app-icon name="x-circle" />
               </button>
 
               <button
-                class="btn btn-outline btn-warning"
+                class="btn btn-soft btn-error"
+                title="Desactivar"
+                aria-label="Desactivar categoría"
                 [disabled]="saving() === category.id"
                 (click)="deactivateCategory(category)"
               >
-                Desactivar
+                <app-icon name="archive-down" />
               </button>
             </div>
           </div>
@@ -85,10 +98,13 @@
   }
 
   <!-- New category -->
-  <div class="collapse collapse-arrow bg-base-200 shadow-sm mb-2">
-    <input type="checkbox" />
+  <div class="collapse collapse-arrow bg-base-100 shadow-sm mb-2">
+    <input type="checkbox" [checked]="expandedCategoryId() === 'new'" (click)="onCollapseToggle($event, 'new')" />
     <div class="collapse-title font-medium">
-      + Nueva categoría
+      <span class="flex items-center gap-2">
+        <app-icon name="plus-circle" sizeClass="size-5 opacity-40" />
+        Nueva categoría
+      </span>
     </div>
     <div class="collapse-content">
       <div class="flex flex-col gap-3">
@@ -104,7 +120,8 @@
 
         <label class="input w-full">
           <span class="label w-28 shrink-0">Precio base</span>
-          <input type="number" min="0" step="0.01" [(ngModel)]="newCategory.basePrice" />
+          <span>$</span>
+          <input type="number" min="0" step="0.01" placeholder="0.00" [(ngModel)]="newCategory.basePrice" />
         </label>
 
         <label class="input w-full">
@@ -116,22 +133,27 @@
 
         <div class="flex gap-2">
           <button
-            class="btn btn-primary"
+            class="btn btn-soft btn-success"
+            title="Crear"
+            aria-label="Crear categoría"
             [disabled]="!newCategory.name.trim() || saving() === 'new'"
             (click)="createCategory()"
           >
             @if (saving() === 'new') {
               <span class="loading loading-spinner loading-sm"></span>
+            } @else {
+              <app-icon name="plus-circle" />
             }
-            Crear
           </button>
 
           <button
-            class="btn btn-ghost"
+            class="btn btn-soft btn-warning"
+            title="Descartar cambios"
+            aria-label="Descartar cambios"
             [disabled]="!hasNewCategoryChanges() || saving() === 'new'"
             (click)="resetNewCategory()"
           >
-            Cancelar
+            <app-icon name="x-circle" />
           </button>
         </div>
       </div>
@@ -140,41 +162,59 @@
 
   <!-- Inactive categories (collapsible group, collapsed by default) -->
   @if (inactiveCategories().length > 0) {
-    <div class="collapse collapse-arrow bg-base-200/50 opacity-60 mt-4">
-      <input type="checkbox" />
-      <div class="collapse-title text-sm font-medium">
-        Categorías desactivadas ({{ inactiveCategories().length }})
+    <div class="collapse collapse-arrow bg-base-100 mt-4">
+      <input type="checkbox" (change)="expandedInactiveId.set(null)" />
+      <div class="collapse-title text-sm font-medium flex items-center justify-between">
+        Categorías desactivadas
+        <span class="badge badge-sm badge-primary">{{ inactiveCategories().length }}</span>
       </div>
       <div class="collapse-content">
-        @for (category of inactiveCategories(); track category.id) {
-          <div class="flex items-center justify-between py-2 text-sm">
-            <div class="flex items-center gap-2">
-              <span class="truncate">{{ category.name }}</span>
-              <span class="badge badge-xs badge-ghost">
-                {{ category._count.products }} {{ category._count.products === 1 ? 'producto' : 'productos' }}
-              </span>
+        <div class="join join-vertical w-full">
+          @for (category of inactiveCategories(); track category.id) {
+            <div class="collapse collapse-arrow join-item border-base-300 border bg-base-100">
+              <input type="checkbox" [checked]="expandedInactiveId() === category.id" (click)="expandedInactiveId.set(expandedInactiveId() === category.id ? null : category.id)" />
+              <div class="collapse-title font-semibold flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 overflow-hidden">
+                <span class="truncate">{{ category.name }}</span>
+                <div class="flex items-center gap-2 shrink-0 whitespace-nowrap">
+                  <span class="badge badge-sm badge-secondary">
+                    {{ category._count.products }} {{ category._count.products === 1 ? 'producto' : 'productos' }}
+                  </span>
+                  @if (category.basePrice) {
+                    <span class="badge badge-sm badge-primary">
+                      Base: ${{ (+category.basePrice).toFixed(2) }}
+                    </span>
+                  }
+                </div>
+              </div>
+              <div class="collapse-content">
+                <div class="flex gap-2">
+                  <button
+                    class="btn btn-soft btn-error"
+                    title="Eliminar permanentemente"
+                    aria-label="Eliminar categoría permanentemente"
+                    [disabled]="saving() === category.id"
+                    (click)="permanentDeleteCategory(category)"
+                  >
+                    <app-icon name="trash" />
+                  </button>
+                  <button
+                    class="btn btn-soft btn-success"
+                    title="Reactivar"
+                    aria-label="Reactivar categoría"
+                    [disabled]="saving() === category.id"
+                    (click)="reactivateCategory(category)"
+                  >
+                    @if (saving() === category.id) {
+                      <span class="loading loading-spinner loading-sm"></span>
+                    } @else {
+                      <app-icon name="upload" />
+                    }
+                  </button>
+                </div>
+              </div>
             </div>
-            <div class="flex gap-1">
-              <button
-                class="btn btn-xs btn-ghost btn-error"
-                [disabled]="saving() === category.id"
-                (click)="permanentDeleteCategory(category)"
-              >
-                Eliminar
-              </button>
-              <button
-                class="btn btn-xs btn-primary btn-outline"
-                [disabled]="saving() === category.id"
-                (click)="reactivateCategory(category)"
-              >
-                @if (saving() === category.id) {
-                  <span class="loading loading-spinner loading-xs"></span>
-                }
-                Reactivar
-              </button>
-            </div>
-          </div>
-        }
+          }
+        </div>
       </div>
     </div>
   }

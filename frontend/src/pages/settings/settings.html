@@ -1,9 +1,4 @@
 <div class="container mx-auto p-4">
-  <!-- Theme selector remains at top -->
-  <app-theme-selector />
-
-  <div class="divider"></div>
-
   <!-- Tabs -->
   <div class="tabs tabs-box">
     <input
@@ -12,9 +7,13 @@
       class="tab"
       aria-label="Categorías"
       [checked]="activeTab() === 'categories'"
-      (change)="selectTab('categories')" />
-    <div class="tab-content bg-base-100 border-base-300 p-6">
-      <app-category-manager />
+      (click)="selectTab($event, 'categories')" />
+    <div class="tab-content bg-base-200 p-0">
+      @if (activeTab() === 'categories') {
+        <div [class.slide-from-left]="hasTabSwitched()">
+          <app-category-manager />
+        </div>
+      }
     </div>
 
     <input
@@ -23,9 +22,17 @@
       class="tab"
       aria-label="Productos"
       [checked]="activeTab() === 'products'"
-      (change)="selectTab('products')" />
-    <div class="tab-content bg-base-100 border-base-300 p-6">
-      <app-product-manager />
+      (click)="selectTab($event, 'products')" />
+    <div class="tab-content bg-base-200 p-0">
+      @if (activeTab() === 'products') {
+        <div [class.slide-from-right]="hasTabSwitched()">
+          <app-product-manager />
+        </div>
+      }
     </div>
   </div>
+
+  <div class="divider"></div>
+
+  <app-theme-selector />
 </div>

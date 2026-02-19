@@ -9,9 +9,9 @@ import {
   type CdkDragDrop,
 } from '@angular/cdk/drag-drop';
 import { ProductService } from '../../../../core/services/product.service';
-import { CategoryService } from '../../../../core/services/category.service';
 import { ToastService } from '../../../../core/services/toast.service';
 import { ConfirmDialogService } from '../../../../core/services/confirm-dialog.service';
+import { IconComponent } from '../../../../shared/components/icon';
 import type {
   Product,
   CreateProductPayload,
@@ -23,23 +23,24 @@ import type {
 @Component({
   selector: 'app-product-manager',
   standalone: true,
-  imports: [FormsModule, CdkDropList, CdkDrag, CdkDragHandle, CdkDragPlaceholder],
+  imports: [FormsModule, CdkDropList, CdkDrag, CdkDragHandle, CdkDragPlaceholder, IconComponent],
   templateUrl: './product-manager.html',
   styleUrl: './product-manager.css',
 })
 export class ProductManagerComponent implements OnInit {
   private readonly productService = inject(ProductService);
-  private readonly categoryService = inject(CategoryService);
   private readonly toastService = inject(ToastService);
   private readonly confirmDialogService = inject(ConfirmDialogService);
 
   products = signal<Product[]>([]);
   categories = signal<Category[]>([]);
   loading = signal(true);
-  loadingCategories = signal(false);
   saving = signal<number | 'new' | null>(null);
   reordering = signal<number | null>(null);
   dragHeight = signal(0);
+  expandedCategoryId = signal<number | null>(null);
+  expandedProductId = signal<number | 'new' | null>(null);
+  expandedInactiveProductId = signal<number | null>(null);
 
   activeCategories = computed(() =>
     this.categories()
@@ -68,7 +69,6 @@ export class ProductManagerComponent implements OnInit {
   newProduct: CreateProductPayload = this.emptyProduct();
 
   ngOnInit(): void {
-    this.loadCategories();
     this.loadProducts();
   }
 
@@ -77,28 +77,15 @@ export class ProductManagerComponent implements OnInit {
       this.loading.set(true);
     }
     this.productService.getProducts().subscribe({
-      next: (data) => {
-        this.products.set(data);
-        this.initDrafts(data);
+      next: ({ products, categories }) => {
+        this.products.set(products);
+        this.categories.set(categories);
+        this.initDrafts(products);
         this.loading.set(false);
       },
       error: () => {
         this.toastService.error('Error al cargar productos');
         this.loading.set(false);
-      },
-    });
-  }
-
-  loadCategories(): void {
-    this.loadingCategories.set(true);
-    this.categoryService.getCategories().subscribe({
-      next: (data) => {
-        this.categories.set(data.filter(c => c.active));
-        this.loadingCategories.set(false);
-      },
-      error: () => {
-        this.toastService.error('Error al cargar categorías');
-        this.loadingCategories.set(false);
       },
     });
   }
@@ -333,26 +320,6 @@ export class ProductManagerComponent implements OnInit {
     }
   }
 
-  resetDraft(productId: number): void {
-    const original = this.products().find((p) => p.id === productId);
-    if (original) {
-      this.drafts[productId] = this.toDraft(original);
-    }
-  }
-
-  hasDraftChanges(productId: number): boolean {
-    const original = this.products().find((p) => p.id === productId);
-    const draft = this.drafts[productId];
-    if (!original || !draft) return false;
-    return (
-      draft.categoryId !== original.categoryId ||
-      draft.name !== original.name ||
-      (draft.description ?? '') !== (original.description ?? '') ||
-      this.toNumberOrNull(draft.price) !== this.toNumberOrNull(original.price) ||
-      (draft.image ?? '') !== (original.image ?? '') ||
-      draft.customizable !== original.customizable
-    );
-  }
 
   hasNewProductChanges(): boolean {
     return (
@@ -373,36 +340,99 @@ export class ProductManagerComponent implements OnInit {
     return this.toNumber(price);
   }
 
-  getInheritedPriceLabel(product: Product): string {
-    if (product.price !== null) return '';
-    const basePrice = this.toNumber(product.category.basePrice);
-    return basePrice !== null
-      ? `Precio heredado: $${basePrice.toFixed(2)}`
-      : 'Sin precio definido';
-  }
-
   private toNumber(value: unknown): number | null {
     if (value == null) return null;
     const num = Number(value);
     return isNaN(num) ? null : num;
   }
 
-  async onCollapseToggle(event: Event, product: Product): Promise<void> {
-    const checkbox = event.target as HTMLInputElement;
-    if (checkbox.checked) return;
+  hasUnsavedChanges(): boolean {
+    const expandedId = this.expandedProductId();
+    if (expandedId === null) return false;
+    return this.hasDraftChanges(expandedId);
+  }
 
-    if (!this.hasDraftChanges(product.id)) {
-      this.resetDraft(product.id);
-      return;
+  discardChanges(): void {
+    const expandedId = this.expandedProductId();
+    if (expandedId !== null) {
+      this.resetDraft(expandedId);
+      this.expandedProductId.set(null);
+    }
+  }
+
+  async onCategoryToggle(event: Event, categoryId: number): Promise<void> {
+    event.preventDefault();
+
+    if (this.hasUnsavedChanges()) {
+      const confirmed = await this.confirmDialogService.confirm({
+        message: 'Hay cambios sin guardar. ¿Desea descartarlos?',
+      });
+      if (!confirmed) return;
+      this.discardChanges();
     }
 
-    event.preventDefault();
-    const confirmed = await this.confirmDialogService.confirm({
-      message: 'Hay cambios sin guardar. ¿Desea descartarlos?',
-    });
-    if (!confirmed) return;
+    const isCurrentlyExpanded = this.expandedCategoryId() === categoryId;
+    this.expandedProductId.set(null);
+    this.expandedCategoryId.set(isCurrentlyExpanded ? null : categoryId);
+  }
 
-    this.resetDraft(product.id);
-    checkbox.checked = false;
+  async onCollapseToggle(event: Event, productId: number | 'new'): Promise<void> {
+    event.preventDefault();
+
+    const currentExpandedId = this.expandedProductId();
+    const isCurrentlyExpanded = currentExpandedId === productId;
+
+    if (isCurrentlyExpanded) {
+      // Closing the current collapse
+      if (productId !== 'new' && this.hasDraftChanges(productId)) {
+        const confirmed = await this.confirmDialogService.confirm({
+          message: 'Hay cambios sin guardar. ¿Desea descartarlos?',
+        });
+        if (!confirmed) return;
+        this.resetDraft(productId);
+      }
+      this.expandedProductId.set(null);
+    } else {
+      // Opening a new collapse
+      if (currentExpandedId !== null) {
+        // Check if current expanded has unsaved changes
+        if (this.hasDraftChanges(currentExpandedId)) {
+          const confirmed = await this.confirmDialogService.confirm({
+            message: 'Hay cambios sin guardar en otro producto. ¿Desea descartarlos?',
+          });
+          if (!confirmed) return;
+          this.resetDraft(currentExpandedId);
+        }
+      }
+      this.expandedProductId.set(productId);
+    }
+  }
+
+  hasDraftChanges(productId: number | 'new'): boolean {
+    if (productId === 'new') {
+      return this.hasNewProductChanges();
+    }
+    const original = this.products().find((p) => p.id === productId);
+    const draft = this.drafts[productId];
+    if (!original || !draft) return false;
+    return (
+      draft.categoryId !== original.categoryId ||
+      draft.name !== original.name ||
+      (draft.description ?? '') !== (original.description ?? '') ||
+      this.toNumberOrNull(draft.price) !== this.toNumberOrNull(original.price) ||
+      (draft.image ?? '') !== (original.image ?? '') ||
+      draft.customizable !== original.customizable
+    );
+  }
+
+  resetDraft(productId: number | 'new'): void {
+    if (productId === 'new') {
+      this.resetNewProduct();
+      return;
+    }
+    const original = this.products().find((p) => p.id === productId);
+    if (original) {
+      this.drafts[productId] = this.toDraft(original);
+    }
   }
 }

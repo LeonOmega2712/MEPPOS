@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(npx ng build:*)",
+      "Bash(npx tsc:*)"
+    ]
+  }
+}

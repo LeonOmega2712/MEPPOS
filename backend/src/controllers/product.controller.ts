@@ -18,13 +18,17 @@ export class ProductController {
     try {
       const activeOnly = req.query.active === 'true';
 
-      const products = activeOnly
-        ? await productService.getActiveProducts()
-        : await productService.getAllProducts();
+      const [products, categories] = await Promise.all([
+        activeOnly
+          ? productService.getActiveProducts()
+          : productService.getAllProducts(),
+        categoryService.getActiveCategories()
+      ]);
 
       res.json({
         success: true,
         data: products,
+        categories,
         count: products.length
       });
     } catch (error) {

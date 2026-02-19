@@ -125,7 +125,7 @@ FRONTEND_URL=http://localhost:4200
 
 #### Products
 
-- `GET /api/products` - List all products with resolved `price` (supports `?active=true`)
+- `GET /api/products` - List all products with raw `price` + `categories` array (supports `?active=true`)
 - `GET /api/products/:id` - Get a product by ID
 - `GET /api/products/:id/price` - Get effective price (direct or inherited from category)
 - `POST /api/products` - Create product
@@ -139,7 +139,7 @@ FRONTEND_URL=http://localhost:4200
 - `GET /health` - Check server status
 - `GET /api` - Endpoint documentation
 
-> **Note:** `price` in GET responses is always resolved: `product.price ?? category.base_price`. If a product has no price of its own, it inherits its category's base price.
+> **Note:** In `GET /api/menu`, `price` is resolved: `product.price ?? category.base_price`. In `GET /api/products`, `price` is the raw product value (may be `null`) and the response includes a `categories` array so the client can resolve inherited prices.
 
 ---
 
@@ -187,6 +187,8 @@ The system uses 2 tables:
 - ✅ Category CRUD (frontend) with drag-and-drop reorder
 - ✅ Product CRUD (frontend) with per-category drag-and-drop
 - ✅ Settings page with tab-based UI (Categories/Products)
+- ✅ Bill page (stub)
+- ✅ Shared icon component
 - 🔜 Bill calculator interface
 
 ### Future Phases
@@ -271,9 +273,9 @@ frontend/src/
 ├── app/              # Root component, routes, config
 ├── core/
 │   ├── models/       # TypeScript interfaces
-│   └── services/     # Angular services (HTTP, theme, toast, confirm dialog)
+│   └── services/     # Angular services (HTTP, theme, toast, confirm dialog, category, product)
 ├── environments/     # Environment configs (dev/prod)
-├── pages/            # Page components (menu, settings)
+├── pages/            # Page components (menu, bill, settings)
 │   └── settings/components/  # Settings sub-components (theme-selector, category-manager, product-manager)
-└── shared/components/        # Reusable UI components (toast, confirm-dialog)
+└── shared/components/        # Reusable UI components (toast, confirm-dialog, icon)
 ```

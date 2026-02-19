@@ -11,6 +11,7 @@ import {
 import { CategoryService } from '../../../../core/services/category.service';
 import { ToastService } from '../../../../core/services/toast.service';
 import { ConfirmDialogService } from '../../../../core/services/confirm-dialog.service';
+import { IconComponent } from '../../../../shared/components/icon';
 import type { Category, CreateCategoryPayload, UpdateCategoryPayload } from '../../../../core/models';
 
 interface CategoryDraft {
@@ -22,7 +23,7 @@ interface CategoryDraft {
 
 @Component({
   selector: 'app-category-manager',
-  imports: [FormsModule, CdkDropList, CdkDrag, CdkDragHandle, CdkDragPlaceholder],
+  imports: [FormsModule, CdkDropList, CdkDrag, CdkDragHandle, CdkDragPlaceholder, IconComponent],
   templateUrl: './category-manager.html',
   styleUrl: './category-manager.css',
 })
@@ -36,6 +37,8 @@ export class CategoryManagerComponent implements OnInit {
   saving = signal<number | 'new' | null>(null);
   reordering = signal(false);
   dragHeight = signal(0);
+  expandedCategoryId = signal<number | 'new' | null>(null);
+  expandedInactiveId = signal<number | null>(null);
 
   activeCategories = computed(() =>
     this.categories()
@@ -143,23 +146,76 @@ export class CategoryManagerComponent implements OnInit {
     });
   }
 
-  async onCollapseToggle(event: Event, category: Category): Promise<void> {
-    const checkbox = event.target as HTMLInputElement;
-    if (checkbox.checked) return;
+  hasUnsavedChanges(): boolean {
+    const expandedId = this.expandedCategoryId();
+    if (expandedId === null) return false;
+    return this.hasDraftChanges(expandedId);
+  }
 
-    if (!this.hasDraftChanges(category.id)) {
-      this.resetDraft(category.id);
+  discardChanges(): void {
+    const expandedId = this.expandedCategoryId();
+    if (expandedId !== null) {
+      this.resetDraft(expandedId);
+      this.expandedCategoryId.set(null);
+    }
+  }
+
+  async onCollapseToggle(event: Event, categoryId: number | 'new'): Promise<void> {
+    event.preventDefault();
+
+    const currentExpandedId = this.expandedCategoryId();
+    const isCurrentlyExpanded = currentExpandedId === categoryId;
+
+    if (isCurrentlyExpanded) {
+      // Closing the current collapse
+      if (categoryId !== 'new' && this.hasDraftChanges(categoryId)) {
+        const confirmed = await this.confirmDialogService.confirm({
+          message: 'Hay cambios sin guardar. ¿Desea descartarlos?',
+        });
+        if (!confirmed) return;
+        this.resetDraft(categoryId);
+      }
+      this.expandedCategoryId.set(null);
+    } else {
+      // Opening a new collapse
+      if (currentExpandedId !== null) {
+        // Check if current expanded has unsaved changes
+        if (this.hasDraftChanges(currentExpandedId)) {
+          const confirmed = await this.confirmDialogService.confirm({
+            message: 'Hay cambios sin guardar en otra categoría. ¿Desea descartarlos?',
+          });
+          if (!confirmed) return;
+          this.resetDraft(currentExpandedId);
+        }
+      }
+      this.expandedCategoryId.set(categoryId);
+    }
+  }
+
+  hasDraftChanges(categoryId: number | 'new'): boolean {
+    if (categoryId === 'new') {
+      return this.hasNewCategoryChanges();
+    }
+    const original = this.categories().find((c) => c.id === categoryId);
+    const draft = this.drafts[categoryId];
+    if (!original || !draft) return false;
+    return (
+      draft.name !== original.name ||
+      (draft.description ?? '') !== (original.description ?? '') ||
+      this.toNumberOrNull(draft.basePrice) !== this.toNumberOrNull(original.basePrice) ||
+      (draft.image ?? '') !== (original.image ?? '')
+    );
+  }
+
+  resetDraft(categoryId: number | 'new'): void {
+    if (categoryId === 'new') {
+      this.resetNewCategory();
       return;
     }
-
-    event.preventDefault();
-    const confirmed = await this.confirmDialogService.confirm({
-      message: 'Hay cambios sin guardar. ¿Desea descartarlos?',
-    });
-    if (!confirmed) return;
-
-    this.resetDraft(category.id);
-    checkbox.checked = false;
+    const original = this.categories().find((c) => c.id === categoryId);
+    if (original) {
+      this.drafts[categoryId] = this.toDraft(original);
+    }
   }
 
   onDragHandleDown(event: PointerEvent): void {
@@ -268,24 +324,6 @@ export class CategoryManagerComponent implements OnInit {
     };
   }
 
-  resetDraft(categoryId: number): void {
-    const original = this.categories().find((c) => c.id === categoryId);
-    if (original) {
-      this.drafts[categoryId] = this.toDraft(original);
-    }
-  }
-
-  hasDraftChanges(categoryId: number): boolean {
-    const original = this.categories().find((c) => c.id === categoryId);
-    const draft = this.drafts[categoryId];
-    if (!original || !draft) return false;
-    return (
-      draft.name !== original.name ||
-      (draft.description ?? '') !== (original.description ?? '') ||
-      this.toNumberOrNull(draft.basePrice) !== this.toNumberOrNull(original.basePrice) ||
-      (draft.image ?? '') !== (original.image ?? '')
-    );
-  }
 
   hasNewCategoryChanges(): boolean {
     return (

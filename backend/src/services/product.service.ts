@@ -7,12 +7,8 @@ interface ProductWithCategory {
   category: { id: number; name: string; basePrice: Prisma.Decimal | null };
 }
 
-function withResolvedPrice<T extends ProductWithCategory>(product: T): T & { price: number | null } {
-  const price = product.price !== null
-    ? Number(product.price)
-    : product.category.basePrice !== null
-      ? Number(product.category.basePrice)
-      : null;
+function withNumericPrice<T extends ProductWithCategory>(product: T): T & { price: number | null } {
+  const price = product.price !== null ? Number(product.price) : null;
   return { ...product, price };
 }
 
@@ -27,7 +23,7 @@ export class ProductService {
       orderBy: { displayOrder: 'asc' },
       include: { category: { select: categorySelect } }
     });
-    return products.map(withResolvedPrice);
+    return products.map(withNumericPrice);
   }
 
   /**
@@ -39,7 +35,7 @@ export class ProductService {
       orderBy: { displayOrder: 'asc' },
       include: { category: { select: categorySelect } }
     });
-    return products.map(withResolvedPrice);
+    return products.map(withNumericPrice);
   }
 
   /**
@@ -63,7 +59,7 @@ export class ProductService {
       orderBy: { displayOrder: 'asc' },
       include: { category: { select: categorySelect } }
     });
-    return products.map(withResolvedPrice);
+    return products.map(withNumericPrice);
   }
 
   /**
@@ -75,7 +71,7 @@ export class ProductService {
       orderBy: { displayOrder: 'asc' },
       include: { category: { select: categorySelect } }
     });
-    return products.map(withResolvedPrice);
+    return products.map(withNumericPrice);
   }
 
   /**
@@ -91,15 +87,36 @@ export class ProductService {
   }
 
   /**
-   * Update a product
+   * Update a product.
+   * When reactivating a product (active: true), also reactivates the parent
+   * category if it is currently inactive — uses a single interactive
+   * transaction to avoid race conditions.
    */
   async updateProduct(id: number, data: UpdateProductDTO) {
+    if (data.active === true) {
+      return prisma.$transaction(async (tx) => {
+        const product = await tx.product.update({
+          where: { id },
+          data,
+          include: { category: true }
+        });
+
+        if (!product.category.active) {
+          await tx.category.update({
+            where: { id: product.categoryId },
+            data: { active: true }
+          });
+          product.category.active = true;
+        }
+
+        return product;
+      });
+    }
+
     return prisma.product.update({
       where: { id },
       data,
-      include: {
-        category: true
-      }
+      include: { category: true }
     });
   }
 

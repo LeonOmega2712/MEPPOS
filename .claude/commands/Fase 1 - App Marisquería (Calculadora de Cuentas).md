@@ -163,7 +163,7 @@ CREATE TABLE products (
 
 ## 5. API REST (Endpoints Fase 1)
 
-Todas las respuestas siguen el formato: `{ success: boolean, data: T, count?: number, message?: string }`
+Todas las respuestas siguen el formato: `{ success: boolean, data: T, count?: number, message?: string }`. Excepción: `GET /api/products` incluye además `categories: Category[]` en la raíz de la respuesta.
 
 ### Menú completo (para calculadora)
 
@@ -246,13 +246,17 @@ Actualiza una categoría existente.
 
 #### `DELETE /api/categories/:id`
 
-Elimina una categoría (CASCADE: elimina todos sus productos).
+Desactiva (soft delete) la categoría y sus productos. Eliminación permanente con `?permanent=true`.
+
+#### `PATCH /api/categories/reorder`
+
+Reordena categorías en lote (transacción atómica). Body: `{ orders: [{ id, displayOrder }] }`
 
 ### Productos
 
 #### `GET /api/products`
 
-Obtiene todos los productos con `price` resuelto (propio o heredado de categoría). Soporta `?active=true`.
+Obtiene todos los productos con `price` sin resolver (valor directo del producto, puede ser `null`) junto con un array `categories` para que el cliente resuelva precios heredados. Soporta `?active=true`.
 
 #### `GET /api/products/:id`
 
@@ -290,7 +294,11 @@ Actualiza un producto existente (todos los campos opcionales).
 
 #### `DELETE /api/products/:id`
 
-Elimina un producto.
+Desactiva (soft delete) el producto. Eliminación permanente con `?permanent=true`.
+
+#### `PATCH /api/products/reorder`
+
+Reordena productos dentro de una categoría en lote (transacción atómica). Body: `{ orders: [{ id, displayOrder }] }`
 
 ---
 
@@ -369,19 +377,19 @@ total: number = 0;
 
 ### Frontend
 
-- [ ] Crear servicio `MenuService` para llamadas HTTP
-- [ ] Crear modelos/interfaces TypeScript para categorías y productos
+- [x] Crear servicio `MenuService` para llamadas HTTP
+- [x] Crear modelos/interfaces TypeScript para categorías y productos
 - [ ] Pantalla: Calculadora
   - [ ] Componente lista de productos organizados por categoría
   - [ ] Componente cuenta actual (sidebar)
   - [ ] Lógica de agregar/editar/quitar items
   - [ ] Cálculo automático de total
-- [ ] Pantalla: Admin CRUD
-  - [ ] Listar categorías y productos
-  - [ ] Formulario crear/editar categoría y producto
-  - [ ] Confirmación de eliminación
-- [ ] Navegación básica entre pantallas
-- [ ] Estilos con Tailwind CSS + DaisyUI
+- [x] Pantalla: Admin CRUD
+  - [x] Listar categorías y productos
+  - [x] Formulario crear/editar categoría y producto
+  - [x] Confirmación de eliminación
+- [x] Navegación básica entre pantallas
+- [x] Estilos con Tailwind CSS + DaisyUI
 
 ### Testing (opcional para Fase 1, pero recomendado)
 

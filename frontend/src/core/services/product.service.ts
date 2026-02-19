@@ -3,21 +3,31 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 import { environment } from '../../environments/environment';
 import type {
+  ProductsApiResponse,
   ApiResponse,
   Product,
+  Category,
   CreateProductPayload,
   UpdateProductPayload
 } from '../models';
+
+export interface ProductsWithCategories {
+  products: Product[];
+  categories: Category[];
+}
 
 @Injectable({ providedIn: 'root' })
 export class ProductService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = `${environment.apiUrl}/products`;
 
-  getProducts(): Observable<Product[]> {
+  getProducts(): Observable<ProductsWithCategories> {
     return this.http
-      .get<ApiResponse<Product[]>>(this.baseUrl)
-      .pipe(map((response) => response.data));
+      .get<ProductsApiResponse<Product[]>>(this.baseUrl)
+      .pipe(map((response) => ({
+        products: response.data,
+        categories: response.categories
+      })));
   }
 
   createProduct(data: CreateProductPayload): Observable<Product> {
