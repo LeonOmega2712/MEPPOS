@@ -147,12 +147,12 @@ FRONTEND_URL=http://localhost:4200
 
 ### Frontend
 
-- Angular 21.1.3
-- TypeScript 5.9.3
-- Tailwind CSS 4.1.18
-- DaisyUI 5.5.18
-- Vitest 4.0.18
-- RxJS 7.8.2
+- Angular ^21.0.0
+- TypeScript ~5.9.2
+- Tailwind CSS ^4.1.12
+- DaisyUI ^5.5.14
+- Vitest ^4.0.8
+- RxJS ~7.8.0
 
 ### Backend
 
@@ -260,6 +260,7 @@ npm run prisma:seed
 ```bash
 backend/src/
 ├── controllers/       # HTTP handlers
+├── lib/              # Shared utilities (Prisma client, display-order helpers)
 ├── services/         # Business logic
 ├── types/            # TypeScript types
 ├── routes/           # Route configuration

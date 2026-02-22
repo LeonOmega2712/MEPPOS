@@ -1,4 +1,5 @@
 import { Prisma } from '@prisma/client';
+import { closeDisplayOrderGaps } from '../lib/display-order';
 import { prisma } from '../lib/prisma';
 import { CreateProductDTO, UpdateProductDTO } from '../types/product.types';
 
@@ -78,8 +79,17 @@ export class ProductService {
    * Create a new product
    */
   async createProduct(data: CreateProductDTO) {
+    const maxOrder = await prisma.product.aggregate({
+      where: { categoryId: data.categoryId, active: true },
+      _max: { displayOrder: true },
+    });
+    const nextOrder = (maxOrder._max.displayOrder ?? -1) + 1;
+
     return prisma.product.create({
-      data,
+      data: {
+        ...data,
+        displayOrder: data.displayOrder ?? nextOrder,
+      },
       include: {
         category: true
       }
@@ -93,24 +103,96 @@ export class ProductService {
    * transaction to avoid race conditions.
    */
   async updateProduct(id: number, data: UpdateProductDTO) {
+    // Branch priority: active changes are handled first, then category moves.
+    // If both active and categoryId are sent, only the active branch runs.
     if (data.active === true) {
-      return prisma.$transaction(async (tx) => {
-        const product = await tx.product.update({
-          where: { id },
-          data,
-          include: { category: true }
-        });
-
-        if (!product.category.active) {
-          await tx.category.update({
-            where: { id: product.categoryId },
-            data: { active: true }
-          });
-          product.category.active = true;
-        }
-
-        return product;
+      const current = await prisma.product.findUnique({
+        where: { id },
+        select: { active: true, displayOrder: true, categoryId: true },
       });
+
+      if (current && !current.active) {
+        return prisma.$transaction(async (tx) => {
+          // Shift active products at or after the reactivated position within the same category
+          await tx.product.updateMany({
+            where: {
+              categoryId: current.categoryId,
+              active: true,
+              displayOrder: { gte: current.displayOrder },
+            },
+            data: { displayOrder: { increment: 1 } },
+          });
+
+          const product = await tx.product.update({
+            where: { id },
+            data,
+            include: { category: true }
+          });
+
+          if (!product.category.active) {
+            await tx.category.update({
+              where: { id: product.categoryId },
+              data: { active: true }
+            });
+            product.category.active = true;
+          }
+
+          return product;
+        });
+      }
+    }
+
+    if (data.active === false) {
+      const current = await prisma.product.findUnique({
+        where: { id },
+        select: { active: true, categoryId: true },
+      });
+
+      if (current && current.active) {
+        return prisma.$transaction(async (tx) => {
+          await tx.product.update({
+            where: { id },
+            data,
+          });
+
+          await closeDisplayOrderGaps(tx, 'product', { categoryId: current.categoryId });
+
+          // Return the updated product with category
+          return tx.product.findUnique({
+            where: { id },
+            include: { category: true },
+          });
+        });
+      }
+    }
+
+    // Check if product is moving to a different category
+    if (data.categoryId !== undefined) {
+      const current = await prisma.product.findUnique({
+        where: { id },
+        select: { categoryId: true, active: true },
+      });
+
+      if (current && current.active && data.categoryId !== current.categoryId) {
+        return prisma.$transaction(async (tx) => {
+          // Calculate displayOrder at the end of the new category
+          const maxOrder = await tx.product.aggregate({
+            where: { categoryId: data.categoryId, active: true },
+            _max: { displayOrder: true },
+          });
+          const nextOrder = (maxOrder._max.displayOrder ?? -1) + 1;
+
+          const product = await tx.product.update({
+            where: { id },
+            data: { ...data, displayOrder: nextOrder },
+            include: { category: true },
+          });
+
+          await closeDisplayOrderGaps(tx, 'product', { categoryId: current.categoryId });
+
+          return product;
+        });
+      }
     }
 
     return prisma.product.update({

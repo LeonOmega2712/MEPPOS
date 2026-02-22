@@ -32,7 +32,7 @@ Web app to speed up bill calculation in a seafood restaurant. Editable catalog +
 
 ### Tech Stack
 
-- **Frontend:** Angular 21.1.3, TypeScript 5.9.3, Tailwind CSS 4.1.18, DaisyUI 5.5.18, Vitest 4.0.18
+- **Frontend:** Angular ^21.0.0, TypeScript ~5.9.2, Tailwind CSS ^4.1.12, DaisyUI ^5.5.14, Vitest ^4.0.8
 - **Backend:** Node.js 18+, Express.js 5.2.1, TypeScript 5.9.3, Prisma ORM 7.3.0, Zod 4.3.6
 - **Database:** PostgreSQL 15+ (tables: `categories`, `products`)
 - **Deploy:** Docker + docker-compose (dev), Railway/Render (backend), Netlify/Vercel (frontend)

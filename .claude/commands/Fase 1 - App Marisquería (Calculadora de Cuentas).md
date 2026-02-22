@@ -37,11 +37,11 @@ Aplicación web para agilizar el cálculo de cuentas en una marisquería. Los us
 
 ### Frontend
 
-- **Framework:** Angular 21.1.3 con TypeScript 5.9.3
-- **Estilos:** Tailwind CSS 4.1.18 + DaisyUI 5.5.18
+- **Framework:** Angular ^21.0.0 con TypeScript ~5.9.2
+- **Estilos:** Tailwind CSS ^4.1.12 + DaisyUI ^5.5.14
 - **Estado:** Servicios de Angular (sin necesidad de NgRx para Fase 1)
 - **HTTP:** HttpClient de Angular
-- **Testing:** Vitest 4.0.18
+- **Testing:** Vitest ^4.0.8
 
 ### Backend
 
@@ -378,18 +378,25 @@ total: number = 0;
 ### Frontend
 
 - [x] Crear servicio `MenuService` para llamadas HTTP
+- [x] Crear servicios `CategoryService`, `ProductService`, `ThemeService`, `ToastService`, `ConfirmDialogService`
 - [x] Crear modelos/interfaces TypeScript para categorías y productos
 - [ ] Pantalla: Calculadora
   - [ ] Componente lista de productos organizados por categoría
   - [ ] Componente cuenta actual (sidebar)
   - [ ] Lógica de agregar/editar/quitar items
   - [ ] Cálculo automático de total
-- [x] Pantalla: Admin CRUD
+- [x] Pantalla: Admin CRUD (Settings)
+  - [x] Tab-based UI (Categories/Products)
   - [x] Listar categorías y productos
   - [x] Formulario crear/editar categoría y producto
-  - [x] Confirmación de eliminación
-- [x] Navegación básica entre pantallas
+  - [x] Confirmación de eliminación (con typed confirmation for destructive actions)
+  - [x] Drag-and-drop reorder for categories and products
+  - [x] Product reactivation with parent category auto-reactivation
+- [x] Pantalla: Bill page (stub)
+- [x] Navegación básica entre pantallas (responsive navbar with app branding)
 - [x] Estilos con Tailwind CSS + DaisyUI
+- [x] Theme selector with DaisyUI themes (localStorage persistence)
+- [x] Shared components: toast, confirm-dialog, icon
 
 ### Testing (opcional para Fase 1, pero recomendado)
 

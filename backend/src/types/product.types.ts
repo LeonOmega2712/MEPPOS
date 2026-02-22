@@ -10,7 +10,7 @@ export const CreateProductSchema = z.object({
   description: z.string().optional(),
   price: z.number().positive().optional(),
   image: z.string().max(500).optional(),
-  displayOrder: z.number().int().default(0),
+  displayOrder: z.number().int().optional(),
   customizable: z.boolean().default(false),
   active: z.boolean().default(true)
 });

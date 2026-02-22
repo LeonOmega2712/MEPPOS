@@ -1,3 +1,4 @@
+import { closeDisplayOrderGaps } from '../lib/display-order';
 import { prisma } from '../lib/prisma';
 import { CreateCategoryDTO, UpdateCategoryDTO } from '../types/category.types';
 
@@ -50,6 +51,7 @@ export class CategoryService {
    */
   async createCategory(data: CreateCategoryDTO) {
     const maxOrder = await prisma.category.aggregate({
+      where: { active: true },
       _max: { displayOrder: true },
     });
     const nextOrder = (maxOrder._max.displayOrder ?? -1) + 1;
@@ -70,6 +72,32 @@ export class CategoryService {
    * Update a category
    */
   async updateCategory(id: number, data: UpdateCategoryDTO) {
+    if (data.active === true) {
+      // Check if this is a reactivation (currently inactive)
+      const current = await prisma.category.findUnique({
+        where: { id },
+        select: { active: true, displayOrder: true },
+      });
+
+      if (current && !current.active) {
+        return prisma.$transaction(async (tx) => {
+          // Shift active categories at or after the reactivated position
+          await tx.category.updateMany({
+            where: {
+              active: true,
+              displayOrder: { gte: current.displayOrder },
+            },
+            data: { displayOrder: { increment: 1 } },
+          });
+
+          return tx.category.update({
+            where: { id },
+            data,
+          });
+        });
+      }
+    }
+
     return prisma.category.update({
       where: { id },
       data
@@ -80,16 +108,19 @@ export class CategoryService {
    * Soft delete a category and its products (set active = false)
    */
   async deleteCategory(id: number) {
-    return prisma.$transaction([
-      prisma.product.updateMany({
+    return prisma.$transaction(async (tx) => {
+      await tx.product.updateMany({
         where: { categoryId: id },
         data: { active: false },
-      }),
-      prisma.category.update({
+      });
+
+      await tx.category.update({
         where: { id },
         data: { active: false },
-      }),
-    ]);
+      });
+
+      await closeDisplayOrderGaps(tx, 'category');
+    });
   }
 
   /**
