@@ -3,6 +3,7 @@ import { ThemeSelectorComponent } from './components/theme-selector/theme-select
 import { CategoryManagerComponent } from './components/category-manager/category-manager';
 import { ProductManagerComponent } from './components/product-manager/product-manager';
 import { ConfirmDialogService } from '../../core/services/confirm-dialog.service';
+import { HasUnsavedChanges } from '../../core/guards/unsaved-changes.guard';
 
 @Component({
   selector: 'app-settings-page',
@@ -10,7 +11,7 @@ import { ConfirmDialogService } from '../../core/services/confirm-dialog.service
   templateUrl: './settings.html',
   styleUrl: './settings.css',
 })
-export class SettingsPage {
+export class SettingsPage implements HasUnsavedChanges {
   private readonly confirmDialogService = inject(ConfirmDialogService);
 
   categoryManager = viewChild(CategoryManagerComponent);
@@ -18,6 +19,17 @@ export class SettingsPage {
 
   activeTab = signal<'categories' | 'products'>('categories');
   hasTabSwitched = signal(false);
+
+  hasUnsavedChanges(): boolean {
+    const categoryMgr = this.categoryManager();
+    const productMgr = this.productManager();
+    return !!(categoryMgr?.hasUnsavedChanges() || productMgr?.hasUnsavedChanges());
+  }
+
+  discardChanges(): void {
+    this.categoryManager()?.discardChanges();
+    this.productManager()?.discardChanges();
+  }
 
   async selectTab(event: Event, tab: 'categories' | 'products'): Promise<void> {
     if (tab === this.activeTab()) return;

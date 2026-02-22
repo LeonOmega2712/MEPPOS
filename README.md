@@ -273,6 +273,7 @@ backend/src/
 frontend/src/
 ├── app/              # Root component, routes, config
 ├── core/
+│   ├── guards/       # Route guards (unsaved changes)
 │   ├── models/       # TypeScript interfaces
 │   └── services/     # Angular services (HTTP, theme, toast, confirm dialog, category, product)
 ├── environments/     # Environment configs (dev/prod)

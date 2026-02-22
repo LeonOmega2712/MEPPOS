@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { unsavedChangesGuard } from '../core/guards/unsaved-changes.guard';
 
 export const routes: Routes = [
   {
@@ -12,6 +13,7 @@ export const routes: Routes = [
   {
     path: 'settings',
     loadComponent: () => import('../pages/settings/settings').then(m => m.SettingsPage),
+    canDeactivate: [unsavedChangesGuard],
   },
   {
     path: '**',
