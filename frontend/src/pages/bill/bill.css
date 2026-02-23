@@ -53,37 +53,6 @@
   outline-color: var(--color-primary);
 }
 
-.quantity-controls-wrapper {
-  display: grid;
-  grid-template-rows: 1fr;
-  padding-top: 0.5rem;
-  opacity: 1;
-  transition:
-    grid-template-rows 250ms ease-out,
-    padding-top 250ms ease-out,
-    opacity 200ms ease-out;
-}
-
-@starting-style {
-  .quantity-controls-wrapper {
-    grid-template-rows: 0fr;
-    padding-top: 0;
-    opacity: 0;
-  }
-}
-
-.quantity-controls-wrapper--hidden {
-  grid-template-rows: 0fr;
-  padding-top: 0;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.quantity-controls-inner {
-  overflow: hidden;
-  min-height: 0;
-}
-
 .quantity-input::-webkit-outer-spin-button,
 .quantity-input::-webkit-inner-spin-button {
   -webkit-appearance: none;

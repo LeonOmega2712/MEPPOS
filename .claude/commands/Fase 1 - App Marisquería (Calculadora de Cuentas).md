@@ -312,11 +312,13 @@ Reordena productos dentro de una categoría en lote (transacción atómica). Bod
 
 - Grid de productos organizados por categoría (2–5 columnas según breakpoint)
 - Al hacer clic en una card → agrega el producto con cantidad 1; clic adicional es ignorado si ya está en la cuenta
-- Controles de cantidad dentro de la card (DaisyUI join):
-  - Botón izquierdo: ícono trash + color error cuando qty=1; ícono minus-circle + color warning cuando qty>1
-  - Input numérico central (sin stepper nativo, sin valores negativos)
-  - Botón derecho: ícono plus-circle + color success
-  - Controles se animan al aparecer (expand + fade-in) y al desaparecer (collapse + fade-out) usando `@starting-style` y `grid-template-rows`
+- Productos como DaisyUI collapse cards (checkbox-based, programmatically controlled):
+  - Click abre el collapse y agrega producto; collapse solo cierra al remover el producto (qty → 0)
+  - Controles de cantidad en collapse-content (DaisyUI join):
+    - Botón izquierdo: ícono trash + color error cuando qty=1; ícono minus-circle + color warning cuando qty>1
+    - Input numérico central (sin stepper nativo, sin valores negativos)
+    - Botón derecho: ícono plus-circle + color success
+  - Animación de apertura/cierre nativa de DaisyUI collapse (grid-template-rows transition)
 - Card seleccionada resaltada con outline de color primary (sin afectar layout)
 - Footer sticky con dos zonas:
   - **Panel expandible** (toggle): tabla de items con nombre, subtotal (qty × precio) y total por fila
@@ -381,7 +383,7 @@ billItems: Map<number, BillItem>;  // keyed by productId
 - [x] Crear modelos/interfaces TypeScript para categorías y productos
 - [x] Pantalla: Calculadora (bill page)
   - [x] Grid de productos organizados por categoría
-  - [x] Controles de cantidad dentro de la card (DaisyUI join) con animaciones de entrada/salida
+  - [x] DaisyUI collapse cards with quantity controls and native collapse animation
   - [x] Lógica de agregar/editar/quitar items
   - [x] Footer sticky expandible con detalle de items y total automático
 - [x] Pantalla: Admin CRUD (Settings)

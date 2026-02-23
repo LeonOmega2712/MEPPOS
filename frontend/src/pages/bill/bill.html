@@ -19,46 +19,42 @@
     </div>
     <div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
       @for (product of category.products; track product.id) {
-      <div class="card max-sm:card-sm bg-base-200 product-card shadow-sm"
-        [class.card-selected]="getQuantity(product.id) > 0 && !isRemoving(product.id)"
+      @let qty = getQuantity(product.id);
+      <div class="collapse bg-base-200 product-card shadow-sm rounded-box"
+        [class.card-selected]="qty > 0"
         (click)="addProduct(product, category)">
-        <div class="card-body gap-0">
-          <div class="flex-1 flex flex-col gap-2">
-            <h3 class="card-title text-base">{{ product.name }}</h3>
-            @if (product.price !== null && product.price !== category.basePrice) {
-            <span class="badge badge-secondary badge-md font-bold">${{ (+product.price).toFixed(2) }}</span>
-            }
-          </div>
-          @if (getQuantity(product.id) > 0 || isRemoving(product.id)) {
-          <div class="quantity-controls-wrapper" [class.quantity-controls-wrapper--hidden]="isRemoving(product.id)" (click)="$event.stopPropagation()">
-            <div class="quantity-controls-inner">
-              <div class="join w-full">
-                <button
-                  class="join-item btn btn-soft btn-sm border border-current"
-                  [class.btn-error]="getQuantity(product.id) === 1"
-                  [class.btn-warning]="getQuantity(product.id) !== 1"
-                  (click)="decrementProduct(product.id)">
-                  @if (getQuantity(product.id) === 1) {
-                    <app-icon name="trash" sizeClass="size-4" />
-                  } @else {
-                    <app-icon name="minus-circle" sizeClass="size-4" />
-                  }
-                </button>
-                <input
-                  type="number"
-                  class="join-item input input-sm quantity-input grow min-w-0 text-center"
-                  [value]="getQuantity(product.id)"
-                  min="1"
-                  (keydown)="preventNegativeInput($event)"
-                  (change)="onQuantityChange(product.id, $event)"
-                />
-                <button class="join-item btn btn-soft btn-sm btn-success border border-current" (click)="incrementProduct(product.id)">
-                  <app-icon name="plus-circle" sizeClass="size-4" />
-                </button>
-              </div>
-            </div>
-          </div>
+        <input type="checkbox" [checked]="qty > 0" (click)="$event.preventDefault()" />
+        <div class="collapse-title min-h-0 max-sm:px-3 max-sm:py-2">
+          <h3 class="text-base font-semibold">{{ product.name }}</h3>
+          @if (product.price !== null && product.price !== category.basePrice) {
+          <span class="badge badge-secondary badge-md font-bold mt-1">${{ (+product.price).toFixed(2) }}</span>
           }
+        </div>
+        <div class="collapse-content max-sm:px-3" (click)="$event.stopPropagation()">
+          <div class="join w-full">
+            <button
+              class="join-item btn btn-soft btn-sm border border-current"
+              [class.btn-error]="qty === 1"
+              [class.btn-warning]="qty !== 1"
+              (click)="decrementProduct(product.id)">
+              @if (qty === 1) {
+                <app-icon name="trash" sizeClass="size-4" />
+              } @else {
+                <app-icon name="minus-circle" sizeClass="size-4" />
+              }
+            </button>
+            <input
+              type="number"
+              class="join-item input input-sm quantity-input grow min-w-0 text-center"
+              [value]="qty"
+              min="1"
+              (keydown)="preventNegativeInput($event)"
+              (change)="onQuantityChange(product.id, $event)"
+            />
+            <button class="join-item btn btn-soft btn-sm btn-success border border-current" (click)="incrementProduct(product.id)">
+              <app-icon name="plus-circle" sizeClass="size-4" />
+            </button>
+          </div>
         </div>
       </div>
       }
