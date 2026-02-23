@@ -1,16 +1,120 @@
 <!-- Bill content -->
 <div class="flex-1 container mx-auto p-4">
+  @if (loading()) {
+  <div class="flex justify-center py-12">
+    <span class="loading loading-spinner loading-lg"></span>
+  </div>
+  } @else if (error()) {
+  <div class="alert alert-error">
+    <span>{{ error() }}</span>
+  </div>
+  } @else {
+  @for (category of categories(); track category.id) {
+  <div class="mb-6">
+    <div class="flex items-baseline gap-3 mb-3">
+      <h2 class="text-xl font-semibold">{{ category.name }}</h2>
+      @if (category.basePrice !== null) {
+      <span class="badge badge-primary badge-md font-bold">${{ (+category.basePrice).toFixed(2) }}</span>
+      }
+    </div>
+    <div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
+      @for (product of category.products; track product.id) {
+      <div class="card max-sm:card-sm bg-base-200 product-card shadow-sm"
+        [class.card-selected]="getQuantity(product.id) > 0 && !isRemoving(product.id)"
+        (click)="addProduct(product, category)">
+        <div class="card-body gap-0">
+          <div class="flex-1 flex flex-col gap-2">
+            <h3 class="card-title text-base">{{ product.name }}</h3>
+            @if (product.price !== null && product.price !== category.basePrice) {
+            <span class="badge badge-secondary badge-md font-bold">${{ (+product.price).toFixed(2) }}</span>
+            }
+          </div>
+          @if (getQuantity(product.id) > 0 || isRemoving(product.id)) {
+          <div class="quantity-controls-wrapper" [class.quantity-controls-wrapper--hidden]="isRemoving(product.id)" (click)="$event.stopPropagation()">
+            <div class="quantity-controls-inner">
+              <div class="join w-full">
+                <button
+                  class="join-item btn btn-soft btn-sm border border-current"
+                  [class.btn-error]="getQuantity(product.id) === 1"
+                  [class.btn-warning]="getQuantity(product.id) !== 1"
+                  (click)="decrementProduct(product.id)">
+                  @if (getQuantity(product.id) === 1) {
+                    <app-icon name="trash" sizeClass="size-4" />
+                  } @else {
+                    <app-icon name="minus-circle" sizeClass="size-4" />
+                  }
+                </button>
+                <input
+                  type="number"
+                  class="join-item input input-sm quantity-input grow min-w-0 text-center"
+                  [value]="getQuantity(product.id)"
+                  min="1"
+                  (keydown)="preventNegativeInput($event)"
+                  (change)="onQuantityChange(product.id, $event)"
+                />
+                <button class="join-item btn btn-soft btn-sm btn-success border border-current" (click)="incrementProduct(product.id)">
+                  <app-icon name="plus-circle" sizeClass="size-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+          }
+        </div>
+      </div>
+      }
+    </div>
+  </div>
+  }
+  }
 </div>
 
 <!-- Persistent footer -->
-<footer class="sticky bottom-0 border-t border-base-300 bg-base-100 p-3 sm:p-4 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
-  <div class="container mx-auto flex items-center justify-between">
-    <div class="flex items-center gap-2">
-      <span class="badge badge-lg badge-primary font-bold">0 productos</span>
+<footer class="sticky bottom-0 bg-base-100 footer-shadow">
+  <!-- Expandable detail panel -->
+  <div class="detail-panel" [class.detail-panel-open]="footerExpanded()">
+    <div class="container mx-auto p-3 sm:p-4">
+      <div class="flex items-center text-sm font-bold text-base-content pb-2 border-b border-base-300">
+        <span class="flex-1">Producto</span>
+        <span class="whitespace-nowrap ml-4">Subtotal</span>
+        <span class="whitespace-nowrap ml-4 min-w-20 text-right">Total</span>
+      </div>
+      <div class="divide-y divide-base-300">
+        @for (item of billItemsList(); track item.productId) {
+        <div class="flex items-center text-sm py-2">
+          <span class="font-medium truncate flex-1">{{ item.productName }}</span>
+          <span class="text-base-content/70 whitespace-nowrap ml-4">
+            {{ item.quantity }} &times; ${{ item.unitPrice.toFixed(2) }}
+          </span>
+          <span class="font-bold whitespace-nowrap ml-4 min-w-20 text-right">
+            ${{ (item.quantity * item.unitPrice).toFixed(2) }}
+          </span>
+        </div>
+        }
+      </div>
     </div>
-    <div class="flex items-center gap-2">
-      <span class="text-xl sm:text-2xl font-bold">Total:</span>
-      <span class="badge badge-lg badge-success font-bold">$0.00</span>
+  </div>
+
+  <!-- Totals bar (always visible) -->
+  <div class="container mx-auto flex items-center p-3 sm:p-4">
+    <div class="flex items-center flex-1">
+      <span class="badge badge-lg badge-primary font-bold">
+        <app-icon name="queue-list" sizeClass="size-4" />
+        {{ totalItems() }}
+      </span>
+    </div>
+    <div class="flex items-center justify-center">
+      @if (totalItems() > 0) {
+      <button class="collapse-arrow-toggle"
+        [class.expanded]="footerExpanded()"
+        (click)="toggleFooter()">
+      </button>
+      }
+    </div>
+    <div class="flex items-center justify-end flex-1">
+      <span class="badge badge-lg badge-success font-bold">
+        <app-icon name="currency-dollar" sizeClass="size-4" />
+        {{ totalPrice().toFixed(2) }}
+      </span>
     </div>
   </div>
 </footer>

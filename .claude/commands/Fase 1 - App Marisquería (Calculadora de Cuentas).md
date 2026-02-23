@@ -310,30 +310,29 @@ Reordena productos dentro de una categoría en lote (transacción atómica). Bod
 
 **Componentes:**
 
-- Lista/grid de productos organizados por categoría (con búsqueda rápida)
-- Al hacer click en producto → agrega directo a cuenta (cada tamaño es un producto independiente)
-- Cuenta actual (sidebar o sección):
-  - Lista de items agregados con cantidad
-  - Botones +/- para ajustar cantidad
-  - Botón X para quitar item
-  - **Total:** calculado automáticamente
-- Botones:
-  - "Limpiar Cuenta" (resetea todo)
-  - "Admin" (ir a pantalla de administración)
+- Grid de productos organizados por categoría (2–5 columnas según breakpoint)
+- Al hacer clic en una card → agrega el producto con cantidad 1; clic adicional es ignorado si ya está en la cuenta
+- Controles de cantidad dentro de la card (DaisyUI join):
+  - Botón izquierdo: ícono trash + color error cuando qty=1; ícono minus-circle + color warning cuando qty>1
+  - Input numérico central (sin stepper nativo, sin valores negativos)
+  - Botón derecho: ícono plus-circle + color success
+  - Controles se animan al aparecer (expand + fade-in) y al desaparecer (collapse + fade-out) usando `@starting-style` y `grid-template-rows`
+- Card seleccionada resaltada con outline de color primary (sin afectar layout)
+- Footer sticky con dos zonas:
+  - **Panel expandible** (toggle): tabla de items con nombre, subtotal (qty × precio) y total por fila
+  - **Barra de totales** (siempre visible): contador de items, botón de expand/collapse, total general
 
 **Estado local (en memoria):**
 
 ```typescript
-interface OrderItem {
+interface BillItem {
   productId: number;
   productName: string;
-  categoryName: string;
-  effectivePrice: number;
+  unitPrice: number;
   quantity: number;
 }
 
-currentOrder: OrderItem[] = [];
-total: number = 0;
+billItems: Map<number, BillItem>;  // keyed by productId
 ```
 
 ### 6.2 Pantalla: Admin CRUD
@@ -380,11 +379,11 @@ total: number = 0;
 - [x] Crear servicio `MenuService` para llamadas HTTP
 - [x] Crear servicios `CategoryService`, `ProductService`, `ThemeService`, `ToastService`, `ConfirmDialogService`
 - [x] Crear modelos/interfaces TypeScript para categorías y productos
-- [ ] Pantalla: Calculadora
-  - [ ] Componente lista de productos organizados por categoría
-  - [ ] Componente cuenta actual (sidebar)
-  - [ ] Lógica de agregar/editar/quitar items
-  - [ ] Cálculo automático de total
+- [x] Pantalla: Calculadora (bill page)
+  - [x] Grid de productos organizados por categoría
+  - [x] Controles de cantidad dentro de la card (DaisyUI join) con animaciones de entrada/salida
+  - [x] Lógica de agregar/editar/quitar items
+  - [x] Footer sticky expandible con detalle de items y total automático
 - [x] Pantalla: Admin CRUD (Settings)
   - [x] Tab-based UI (Categories/Products)
   - [x] Listar categorías y productos
@@ -392,7 +391,6 @@ total: number = 0;
   - [x] Confirmación de eliminación (con typed confirmation for destructive actions)
   - [x] Drag-and-drop reorder for categories and products
   - [x] Product reactivation with parent category auto-reactivation
-- [x] Pantalla: Bill page (stub)
 - [x] Navegación básica entre pantallas (responsive navbar with app branding)
 - [x] Estilos con Tailwind CSS + DaisyUI
 - [x] Theme selector with DaisyUI themes (localStorage persistence)
