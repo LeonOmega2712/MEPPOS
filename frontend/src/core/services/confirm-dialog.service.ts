@@ -21,7 +21,7 @@ export class ConfirmDialogService {
   private resolver: ((value: boolean) => void) | null = null;
 
   confirm(options: ConfirmDialogOptions): Promise<boolean> {
-    this.title.set(options.title ?? '');
+    this.title.set(options.title ?? 'Atención');
     this.message.set(options.message);
     this.confirmText.set(options.confirmText ?? 'Confirmar');
     this.cancelText.set(options.cancelText ?? 'Cancelar');

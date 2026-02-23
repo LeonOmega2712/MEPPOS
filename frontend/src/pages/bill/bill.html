@@ -65,7 +65,32 @@
 </div>
 
 <!-- Persistent footer -->
-<footer class="sticky bottom-0 bg-base-100 footer-shadow">
+<footer class="sticky bottom-0 bg-base-200 footer-shadow">
+  <!-- Totals bar (always visible) -->
+  <div class="container mx-auto flex items-center p-3 sm:p-4"
+    [class.cursor-pointer]="totalItems() > 0"
+    (click)="totalItems() > 0 && toggleFooter()">
+    <div class="flex items-center flex-1">
+      <span class="badge badge-lg badge-primary font-bold">
+        <app-icon name="queue-list" />
+        {{ totalItems() }}
+      </span>
+    </div>
+    <div class="flex items-center justify-center">
+      @if (totalItems() > 0) {
+      <span class="collapse-arrow-toggle"
+        [class.expanded]="footerExpanded()">
+      </span>
+      }
+    </div>
+    <div class="flex items-center justify-end flex-1">
+      <span class="badge badge-lg badge-success font-bold">
+        <app-icon name="currency-dollar" />
+        {{ totalPrice().toFixed(2) }}
+      </span>
+    </div>
+  </div>
+
   <!-- Expandable detail panel -->
   <div class="detail-panel" [class.detail-panel-open]="footerExpanded()">
     <div class="container mx-auto p-3 sm:p-4">
@@ -87,30 +112,11 @@
         </div>
         }
       </div>
-    </div>
-  </div>
-
-  <!-- Totals bar (always visible) -->
-  <div class="container mx-auto flex items-center p-3 sm:p-4">
-    <div class="flex items-center flex-1">
-      <span class="badge badge-lg badge-primary font-bold">
-        <app-icon name="queue-list" sizeClass="size-4" />
-        {{ totalItems() }}
-      </span>
-    </div>
-    <div class="flex items-center justify-center">
-      @if (totalItems() > 0) {
-      <button class="collapse-arrow-toggle"
-        [class.expanded]="footerExpanded()"
-        (click)="toggleFooter()">
-      </button>
-      }
-    </div>
-    <div class="flex items-center justify-end flex-1">
-      <span class="badge badge-lg badge-success font-bold">
-        <app-icon name="currency-dollar" sizeClass="size-4" />
-        {{ totalPrice().toFixed(2) }}
-      </span>
+      <div class="pt-3 flex justify-end border-t border-base-300 mt-2">
+        <button class="btn btn-soft btn-error" aria-label="Limpiar cuenta" (click)="clearBill()">
+          <app-icon name="trash" />
+        </button>
+      </div>
     </div>
   </div>
 </footer>

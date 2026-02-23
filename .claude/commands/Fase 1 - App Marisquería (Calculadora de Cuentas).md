@@ -250,7 +250,7 @@ Desactiva (soft delete) la categoría y sus productos. Eliminación permanente c
 
 #### `PATCH /api/categories/reorder`
 
-Reordena categorías en lote (transacción atómica). Body: `{ orders: [{ id, displayOrder }] }`
+Reordena categorías en lote (transacción atómica). Body: `{ categoryIds: number[] }` (ordered array, index determines displayOrder)
 
 ### Productos
 
@@ -298,7 +298,7 @@ Desactiva (soft delete) el producto. Eliminación permanente con `?permanent=tru
 
 #### `PATCH /api/products/reorder`
 
-Reordena productos dentro de una categoría en lote (transacción atómica). Body: `{ orders: [{ id, displayOrder }] }`
+Reordena productos dentro de una categoría en lote (transacción atómica). Body: `{ categoryId: number, productIds: number[] }` (ordered array, index determines displayOrder)
 
 ---
 
@@ -344,8 +344,10 @@ billItems: Map<number, BillItem>;  // keyed by productId
 **Funciones:**
 
 - Listar todas las categorías con sus productos
-- Crear/editar/eliminar categorías (con precio base opcional)
-- Crear/editar/eliminar productos (con precio propio o heredado de categoría)
+- Crear/editar categorías (con precio base opcional)
+- Crear/editar productos (con precio propio o heredado de categoría)
+- Soft delete (deactivate) as primary action; hard delete with typed confirmation for destructive actions
+- Reactivation of inactive items when creating with matching name; product reactivation auto-reactivates parent category if inactive
 - Formularios con validaciones
 
 ---
@@ -386,6 +388,8 @@ billItems: Map<number, BillItem>;  // keyed by productId
   - [x] DaisyUI collapse cards with quantity controls and native collapse animation
   - [x] Lógica de agregar/editar/quitar items
   - [x] Footer sticky expandible con detalle de items y total automático
+  - [x] Clear bill action with confirmation dialog
+  - [x] canDeactivate guard (warns when leaving with active bill items)
 - [x] Pantalla: Admin CRUD (Settings)
   - [x] Tab-based UI (Categories/Products)
   - [x] Listar categorías y productos

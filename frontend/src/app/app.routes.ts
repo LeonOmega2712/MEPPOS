@@ -9,6 +9,7 @@ export const routes: Routes = [
   {
     path: 'bill',
     loadComponent: () => import('../pages/bill/bill').then(m => m.BillPage),
+    canDeactivate: [unsavedChangesGuard],
   },
   {
     path: 'settings',

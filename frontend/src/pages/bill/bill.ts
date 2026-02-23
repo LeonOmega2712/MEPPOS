@@ -1,5 +1,7 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { MenuService } from '../../core/services/menu.service';
+import { ConfirmDialogService } from '../../core/services/confirm-dialog.service';
+import type { HasUnsavedChanges } from '../../core/guards/unsaved-changes.guard';
 import type { MenuCategory, MenuProduct } from '../../core/models';
 import { IconComponent } from '../../shared/components/icon';
 
@@ -16,8 +18,9 @@ interface BillItem {
   templateUrl: './bill.html',
   styleUrl: './bill.css',
 })
-export class BillPage implements OnInit {
+export class BillPage implements OnInit, HasUnsavedChanges {
   private readonly menuService = inject(MenuService);
+  private readonly confirmDialogService = inject(ConfirmDialogService);
 
   categories = signal<MenuCategory[]>([]);
   loading = signal(true);
@@ -106,7 +109,30 @@ export class BillPage implements OnInit {
     }
   }
 
+  hasUnsavedChanges(): boolean {
+    return this.billItems().size > 0;
+  }
+
+  deactivateMessage(): string {
+    return 'Hay una cuenta activa con productos. ¿Desea abandonarla?';
+  }
+
+  discardChanges(): void {
+    this.billItems.set(new Map());
+    this.footerExpanded.set(false);
+  }
+
   toggleFooter(): void {
     this.footerExpanded.update((v) => !v);
+  }
+
+  async clearBill(): Promise<void> {
+    const confirmed = await this.confirmDialogService.confirm({
+      message: '¿Desea limpiar todos los productos de la cuenta actual?',
+      confirmText: 'Limpiar',
+    });
+    if (!confirmed) return;
+    this.billItems.set(new Map());
+    this.footerExpanded.set(false);
   }
 }
