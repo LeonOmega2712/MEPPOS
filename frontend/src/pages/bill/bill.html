@@ -10,6 +10,7 @@
   </div>
   } @else {
   @for (category of categories(); track category.id) {
+  @if (category.products.length > 0) {
   <div class="mb-6">
     <div class="flex items-baseline gap-3 mb-3">
       <h2 class="text-xl font-semibold">{{ category.name }}</h2>
@@ -20,7 +21,8 @@
     <div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
       @for (product of category.products; track product.id) {
       @let qty = getQuantity(product.id);
-      <div class="collapse bg-base-200 product-card shadow-sm rounded-box"
+      <div #productCard class="collapse bg-base-200 product-card shadow-sm rounded-box scroll-mt-12"
+        [id]="'product-' + product.id"
         [class.card-selected]="qty > 0"
         (click)="addProduct(product, category)">
         <input type="checkbox" [checked]="qty > 0" (click)="$event.preventDefault()" />
@@ -48,7 +50,8 @@
               class="join-item input input-sm quantity-input grow min-w-0 text-center"
               [value]="qty"
               min="1"
-              (keydown)="preventNegativeInput($event)"
+              step="1"
+              (keydown)="preventNonIntegerInput($event)"
               (change)="onQuantityChange(product.id, $event)"
             />
             <button class="join-item btn btn-soft btn-sm btn-success border border-current" (click)="incrementProduct(product.id)">
@@ -60,6 +63,7 @@
       }
     </div>
   </div>
+  }
   }
   }
 </div>
@@ -93,29 +97,36 @@
 
   <!-- Expandable detail panel -->
   <div class="detail-panel" [class.detail-panel-open]="footerExpanded()">
-    <div class="container mx-auto p-3 sm:p-4">
-      <div class="flex items-center text-sm font-bold text-base-content pb-2 border-b border-base-300">
-        <span class="flex-1">Producto</span>
-        <span class="whitespace-nowrap ml-4">Subtotal</span>
-        <span class="whitespace-nowrap ml-4 min-w-20 text-right">Total</span>
-      </div>
-      <div class="divide-y divide-base-300">
-        @for (item of billItemsList(); track item.productId) {
-        <div class="flex items-center text-sm py-2">
-          <span class="font-medium truncate flex-1">{{ item.productName }}</span>
-          <span class="text-base-content/70 whitespace-nowrap ml-4">
-            {{ item.quantity }} &times; ${{ item.unitPrice.toFixed(2) }}
-          </span>
-          <span class="font-bold whitespace-nowrap ml-4 min-w-20 text-right">
-            ${{ (item.quantity * item.unitPrice).toFixed(2) }}
-          </span>
+    <div class="container mx-auto flex flex-col min-h-0 flex-1">
+      <!-- Persistent header -->
+      <div class="shrink-0 pt-3 sm:pt-4">
+        <div class="flex items-center text-sm font-bold text-base-content pb-2 border-b border-base-300 px-3 sm:px-4">
+          <span class="w-8 shrink-0 flex justify-center"><app-icon name="hashtag" sizeClass="size-4" /></span>
+          <span class="flex-1 ml-2">Producto</span>
+          <span class="whitespace-nowrap ml-4 min-w-20 text-right">Total</span>
         </div>
-        }
       </div>
-      <div class="pt-3 flex justify-end border-t border-base-300 mt-2">
-        <button class="btn btn-soft btn-error" aria-label="Limpiar cuenta" (click)="clearBill()">
-          <app-icon name="trash" />
-        </button>
+      <!-- Isolated scrollable items list -->
+      <div class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-3 sm:px-4">
+        <div class="divide-y divide-base-300">
+          @for (item of billItemsList(); track item.productId) {
+          <div class="flex items-center text-sm py-2 cursor-pointer active:bg-base-300 transition-colors" (click)="scrollToProduct(item.productId)">
+            <span class="badge badge-primary badge-sm font-bold w-8 shrink-0 justify-center">{{ item.quantity }}</span>
+            <span class="font-medium truncate flex-1 ml-2">{{ item.productName }}</span>
+            <span class="badge badge-success badge-sm font-bold ml-4 justify-end">
+              ${{ (item.quantity * item.unitPrice).toFixed(2) }}
+            </span>
+          </div>
+          }
+        </div>
+      </div>
+      <!-- Persistent trash button -->
+      <div class="shrink-0 pb-1">
+        <div class="pt-1 flex justify-end border-t border-base-300 px-3 sm:px-4">
+          <button class="btn btn-soft btn-error" aria-label="Limpiar cuenta" (click)="clearBill()">
+            <app-icon name="trash" />
+          </button>
+        </div>
       </div>
     </div>
   </div>

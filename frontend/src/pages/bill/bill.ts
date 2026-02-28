@@ -1,4 +1,4 @@
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, ElementRef, inject, OnInit, signal, viewChildren } from '@angular/core';
 import { MenuService } from '../../core/services/menu.service';
 import { ConfirmDialogService } from '../../core/services/confirm-dialog.service';
 import type { HasUnsavedChanges } from '../../core/guards/unsaved-changes.guard';
@@ -21,6 +21,8 @@ interface BillItem {
 export class BillPage implements OnInit, HasUnsavedChanges {
   private readonly menuService = inject(MenuService);
   private readonly confirmDialogService = inject(ConfirmDialogService);
+
+  private readonly productCards = viewChildren<ElementRef>('productCard');
 
   categories = signal<MenuCategory[]>([]);
   loading = signal(true);
@@ -87,9 +89,10 @@ export class BillPage implements OnInit, HasUnsavedChanges {
   setQuantity(productId: number, quantity: number): void {
     const current = this.billItems().get(productId);
     if (!current) return;
+    const sanitized = Math.floor(quantity);
     const updated = new Map(this.billItems());
-    if (quantity > 0) {
-      updated.set(productId, { ...current, quantity });
+    if (sanitized > 0) {
+      updated.set(productId, { ...current, quantity: sanitized });
     } else {
       updated.delete(productId);
       if (updated.size === 0) this.footerExpanded.set(false);
@@ -103,8 +106,8 @@ export class BillPage implements OnInit, HasUnsavedChanges {
     this.setQuantity(productId, isNaN(value) ? 0 : value);
   }
 
-  preventNegativeInput(event: KeyboardEvent): void {
-    if (['-', '+', 'e', 'E'].includes(event.key)) {
+  preventNonIntegerInput(event: KeyboardEvent): void {
+    if (['-', '+', 'e', 'E', '.', ','].includes(event.key)) {
       event.preventDefault();
     }
   }
@@ -124,6 +127,18 @@ export class BillPage implements OnInit, HasUnsavedChanges {
 
   toggleFooter(): void {
     this.footerExpanded.update((v) => !v);
+  }
+
+  scrollToProduct(productId: number): void {
+    const el = this.productCards().find(
+      (ref) => ref.nativeElement.id === `product-${productId}`
+    )?.nativeElement as HTMLElement | undefined;
+    el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (el) {
+      el.classList.remove('product-highlight');
+      void el.offsetWidth; // Forces reflow to restart the CSS animation
+      el.classList.add('product-highlight');
+    }
   }
 
   async clearBill(): Promise<void> {

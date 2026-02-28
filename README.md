@@ -189,7 +189,7 @@ The system uses 2 tables:
 - ✅ Product CRUD (frontend) with per-category drag-and-drop
 - ✅ Settings page with tab-based UI (Categories/Products)
 - ✅ Shared icon component
-- ✅ Bill calculator interface (product grid by category, DaisyUI collapse cards with quantity controls, expandable footer with item detail and real-time total)
+- ✅ Bill calculator interface (product grid by category — categories without products are hidden; DaisyUI collapse cards with integer-only quantity controls; expandable footer with scrollable item detail, sticky header/trash button, and real-time total; clicking a detail row scrolls to and highlights the product card)
 
 ### Future Phases
 

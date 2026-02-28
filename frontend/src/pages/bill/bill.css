@@ -41,7 +41,9 @@
 
 .detail-panel-open {
   max-height: 50vh;
-  overflow-y: auto;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .product-card {
@@ -56,6 +58,25 @@
 
 .card-selected {
   outline-color: var(--color-primary);
+}
+
+@keyframes product-highlight {
+  0% {
+    background-color: var(--color-base-200);
+    animation-timing-function: ease;
+  }
+  25% {
+    background-color: oklch(from var(--color-primary) l c h / 0.1);
+  }
+  75% {
+    background-color: oklch(from var(--color-primary) l c h / 0.1);
+    animation-timing-function: ease;
+  }
+  100% { background-color: var(--color-base-200); }
+}
+
+.product-highlight {
+  animation: product-highlight 2s;
 }
 
 .quantity-input::-webkit-outer-spin-button,

@@ -316,12 +316,12 @@ Reordena productos dentro de una categoría en lote (transacción atómica). Bod
   - Click abre el collapse y agrega producto; collapse solo cierra al remover el producto (qty → 0)
   - Controles de cantidad en collapse-content (DaisyUI join):
     - Botón izquierdo: ícono trash + color error cuando qty=1; ícono minus-circle + color warning cuando qty>1
-    - Input numérico central (sin stepper nativo, sin valores negativos)
+    - Input numérico central (sin stepper nativo, solo enteros: step=1, teclas decimales bloqueadas, sanitización con Math.floor)
     - Botón derecho: ícono plus-circle + color success
   - Animación de apertura/cierre nativa de DaisyUI collapse (grid-template-rows transition)
 - Card seleccionada resaltada con outline de color primary (sin afectar layout)
 - Footer sticky con dos zonas:
-  - **Panel expandible** (toggle): tabla de items con nombre, subtotal (qty × precio) y total por fila
+  - **Panel expandible** (toggle): lista scrollable de items con header sticky (ícono hashtag | Producto | Total) y botón trash sticky; sin columna de precio unitario; clic en una fila hace scroll suave hasta la card del producto y activa una animación de resaltado temporal
   - **Barra de totales** (siempre visible): contador de items, botón de expand/collapse, total general
 
 **Estado local (en memoria):**

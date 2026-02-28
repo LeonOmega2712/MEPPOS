@@ -50,7 +50,7 @@ app.use('/api', apiRoutes);
 app.get('/api', (_req: Request, res: Response) => {
   res.json({
     name: 'MEPPOS API - Simplified Menu System',
-    version: '3.0.0',
+    version: '1.0.0',
     description: 'Simplified menu management system for restaurant POS',
     endpoints: {
       menu: {
@@ -105,13 +105,13 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 
 app.listen(PORT, () => {
   console.log(`
-  ╔════════════════════════════════════════╗
-  ║  🚀 MEPPOS API Server v3.0             ║
-  ║  🍽️  Simplified Menu System             ║
-  ║  📡 Port: ${PORT}                         ║
-  ║  🌍 Environment: ${process.env.NODE_ENV || 'development'}           ║
-  ║  🔗 http://localhost:${PORT}             ║
-  ║  📚 API Docs: http://localhost:${PORT}/api  ║
-  ╚════════════════════════════════════════╝
+  ╔═════════════════════════════════════════╗
+  ║  🚀 MEPPOS API Server v1.0.0            ║
+  ║  🍽️  Simplified Menu System              ║
+  ║  📡 Port: ${PORT}                          ║
+  ║  🌍 Environment: ${process.env.NODE_ENV || 'development'}            ║
+  ║  🔗 http://localhost:${PORT}               ║
+  ║  📚 API Docs: http://localhost:${PORT}/api ║
+  ╚═════════════════════════════════════════╝
   `);
 });
