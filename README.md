@@ -98,7 +98,12 @@ docker exec -it meppos-db psql -U postgres -d meppos_db
 ### Environment Variables (`backend/.env`)
 
 ```env
+# Transaction pooler URL (port 6543) — used by the app at runtime
 DATABASE_URL="postgresql://postgres:postgres@localhost:5432/meppos_db"
+
+# Direct connection URL (port 5432) — used by Prisma migrations only
+DIRECT_URL="postgresql://postgres:postgres@localhost:5432/meppos_db"
+
 PORT=3000
 NODE_ENV=development
 FRONTEND_URL=http://localhost:4200

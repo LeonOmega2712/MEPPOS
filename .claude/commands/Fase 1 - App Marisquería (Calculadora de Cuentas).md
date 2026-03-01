@@ -58,7 +58,7 @@ Aplicación web para agilizar el cálculo de cuentas en una marisquería. Los us
 ### DevOps (mínimo)
 
 - **Containerización:** Docker + docker-compose (opcional, para dev local)
-- **Deploy:** Railway, Render o Fly.io (backend) + Netlify/Vercel (frontend)
+- **Deploy:** Koyeb (backend) + Netlify/Vercel (frontend)
 - **Control de versiones:** Git + GitHub
 
 ---
@@ -410,7 +410,7 @@ billItems: Map<number, BillItem>;  // keyed by productId
 ### Deploy
 
 - [ ] Script de build para producción
-- [ ] Deploy backend a Railway/Render
+- [ ] Deploy backend a Koyeb
 - [ ] Deploy frontend a Netlify/Vercel
 - [ ] Configurar variables de entorno (DATABASE_URL, etc.)
 - [ ] Documentar URL de producción
@@ -546,8 +546,7 @@ billItems: Map<number, BillItem>;  // keyed by productId
 - **Prisma Docs:** <https://www.prisma.io/docs>
 - **Angular Docs:** <https://angular.dev>
 - **Express + TypeScript:** <https://github.com/microsoft/TypeScript-Node-Starter>
-- **Railway Deploy:** <https://railway.app>
-- **Render Deploy:** <https://render.com>
+- **Koyeb Deploy:** <https://koyeb.com>
 
 ---
 
