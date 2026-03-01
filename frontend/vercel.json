@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://REEMPLAZAR_CON_URL_DE_KOYEB/api/:path*"
+      "destination": "https://rgbyte-meppos.koyeb.app/api/:path*"
     },
     {
       "source": "/(.*)",
