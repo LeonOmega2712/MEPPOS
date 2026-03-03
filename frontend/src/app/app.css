@@ -1,3 +1,11 @@
+/* Safari iOS uses the large viewport (URL bar hidden) for 100vh, which causes
+   the layout to exceed the visible area when the URL bar is shown. dvh tracks
+   the actual visible viewport dynamically, with vh as a fallback. */
+.app-height {
+  height: 100vh;
+  height: 100dvh;
+}
+
 .scrollbar-auto-hide {
   overflow-y: auto;
   scrollbar-gutter: stable;
