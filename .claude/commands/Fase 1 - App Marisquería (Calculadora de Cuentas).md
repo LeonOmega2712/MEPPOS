@@ -401,6 +401,7 @@ billItems: Map<number, BillItem>;  // keyed by productId
 - [x] Estilos con Tailwind CSS + DaisyUI
 - [x] Theme selector with DaisyUI themes (localStorage persistence)
 - [x] Shared components: toast, confirm-dialog, icon
+- [x] PWA compatibility (manifest.webmanifest, service worker via @angular/service-worker, dynamic theme-color meta tag sync)
 
 ### Testing (opcional para Fase 1, pero recomendado)
 

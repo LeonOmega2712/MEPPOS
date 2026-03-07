@@ -67,5 +67,22 @@ export class ThemeService {
 
   private applyTheme(theme: string): void {
     document.documentElement.setAttribute('data-theme', theme);
+    this.syncThemeColor();
+  }
+
+  private syncThemeColor(): void {
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (!meta || !document.body) return;
+
+    const probe = document.createElement('span');
+    probe.style.backgroundColor = 'var(--color-base-100)';
+    probe.style.display = 'none';
+    document.body.appendChild(probe);
+    const color = getComputedStyle(probe).backgroundColor;
+    document.body.removeChild(probe);
+
+    if (color && color !== 'rgba(0, 0, 0, 0)' && color !== 'transparent') {
+      meta.setAttribute('content', color);
+    }
   }
 }
