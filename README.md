@@ -157,6 +157,7 @@ FRONTEND_URL=http://localhost:4200
 - Tailwind CSS ^4.1.12
 - DaisyUI ^5.5.14
 - Angular CDK ^21.1.3
+- Angular Service Worker ^21.1.3
 - Vitest ^4.0.8
 - RxJS ~7.8.0
 
@@ -195,6 +196,7 @@ The system uses 2 tables:
 - ✅ Settings page with tab-based UI (Categories/Products)
 - ✅ Shared icon component
 - ✅ Bill calculator interface (product grid by category — categories without products are hidden; DaisyUI collapse cards with integer-only quantity controls; expandable footer with scrollable item detail, sticky header/trash button, and real-time total; clicking a detail row scrolls to and highlights the product card)
+- ✅ PWA compatibility (installable, service worker with asset caching, web app manifest, dynamic theme-color sync)
 
 ### Future Phases
 
