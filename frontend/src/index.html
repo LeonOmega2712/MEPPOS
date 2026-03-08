@@ -14,8 +14,81 @@
   <link rel="icon" type="image/png" href="assets/dolphin64.png">
   <link rel="apple-touch-icon" href="assets/dolphin256.png">
   <link rel="manifest" href="manifest.webmanifest">
+  <script>
+    (function() {
+      var t = localStorage.getItem('meppos-theme') || 'light';
+      document.documentElement.setAttribute('data-theme', t);
+      var darkThemes = ['dark','synthwave','halloween','forest','black','luxury','dracula',
+                        'business','night','coffee','dim','abyss','sunset'];
+      var meta = document.querySelector('meta[name="theme-color"]');
+      if (meta && darkThemes.indexOf(t) !== -1) {
+        meta.setAttribute('content', '#1f2937');
+      }
+    })();
+  </script>
+  <style>
+    #splash-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: var(--color-base-100, #ffffff);
+      color: var(--color-base-content, #1f2937);
+      transition: opacity 0.4s ease-out;
+    }
+    #splash-screen.splash-exit {
+      opacity: 0;
+      pointer-events: none;
+    }
+    .splash-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+    }
+    .splash-logo {
+      width: 8rem;
+      height: 8rem;
+      object-fit: contain;
+      animation: splash-logo-entry 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    }
+    .splash-title {
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 1.75rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      opacity: 0;
+      animation: splash-text-entry 0.4s ease-out 0.35s forwards;
+    }
+    @keyframes splash-logo-entry {
+      from { opacity: 0; transform: scale(0.6) translateY(0.5rem); }
+      to   { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    @keyframes splash-text-entry {
+      from { opacity: 0; transform: translateY(0.5rem); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .splash-logo, .splash-title {
+        animation: none;
+        opacity: 1;
+        transform: none;
+      }
+      #splash-screen {
+        transition-duration: 0.1s;
+      }
+    }
+  </style>
 </head>
 <body>
+  <div id="splash-screen">
+    <div class="splash-content">
+      <img src="assets/dolphin256.png" alt="" class="splash-logo" />
+      <span class="splash-title">MEPPOS</span>
+    </div>
+  </div>
   <app-root></app-root>
 </body>
 </html>

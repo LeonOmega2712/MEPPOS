@@ -1,8 +1,9 @@
-import { Component, inject, signal, viewChild } from '@angular/core';
+import { Component, inject, OnInit, signal, viewChild } from '@angular/core';
 import { ThemeSelectorComponent } from './components/theme-selector/theme-selector';
 import { CategoryManagerComponent } from './components/category-manager/category-manager';
 import { ProductManagerComponent } from './components/product-manager/product-manager';
 import { ConfirmDialogService } from '../../core/services/confirm-dialog.service';
+import { SplashService } from '../../core/services/splash.service';
 import { HasUnsavedChanges } from '../../core/guards/unsaved-changes.guard';
 
 @Component({
@@ -11,14 +12,19 @@ import { HasUnsavedChanges } from '../../core/guards/unsaved-changes.guard';
   templateUrl: './settings.html',
   styleUrl: './settings.css',
 })
-export class SettingsPage implements HasUnsavedChanges {
+export class SettingsPage implements HasUnsavedChanges, OnInit {
   private readonly confirmDialogService = inject(ConfirmDialogService);
+  private readonly splashService = inject(SplashService);
 
   categoryManager = viewChild(CategoryManagerComponent);
   productManager = viewChild(ProductManagerComponent);
 
   activeTab = signal<'categories' | 'products'>('categories');
   hasTabSwitched = signal(false);
+
+  ngOnInit(): void {
+    this.splashService.contentReady();
+  }
 
   hasUnsavedChanges(): boolean {
     const categoryMgr = this.categoryManager();

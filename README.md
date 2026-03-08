@@ -197,6 +197,7 @@ The system uses 2 tables:
 - ✅ Shared icon component
 - ✅ Bill calculator interface (product grid by category — categories without products are hidden; DaisyUI collapse cards with integer-only quantity controls; expandable footer with scrollable item detail, sticky header/trash button, and real-time total; clicking a detail row scrolls to and highlights the product card)
 - ✅ PWA compatibility (installable, service worker with asset caching, web app manifest, dynamic theme-color sync)
+- ✅ Animated splash screen with branded entry animation and content-aware dismissal
 
 ### Future Phases
 
@@ -282,7 +283,7 @@ frontend/src/
 ├── core/
 │   ├── guards/       # Route guards (unsaved changes)
 │   ├── models/       # TypeScript interfaces
-│   └── services/     # Angular services (HTTP, theme, toast, confirm dialog, category, product)
+│   └── services/     # Angular services (HTTP, theme, toast, confirm dialog, category, product, splash)
 ├── environments/     # Environment configs (dev/prod)
 ├── pages/            # Page components (menu, bill, settings)
 │   └── settings/components/  # Settings sub-components (theme-selector, category-manager, product-manager)
