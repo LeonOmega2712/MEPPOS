@@ -1,5 +1,6 @@
 import { Component, computed, ElementRef, inject, OnInit, signal, viewChildren } from '@angular/core';
 import { MenuService } from '../../core/services/menu.service';
+import { SplashService } from '../../core/services/splash.service';
 import { ConfirmDialogService } from '../../core/services/confirm-dialog.service';
 import type { HasUnsavedChanges } from '../../core/guards/unsaved-changes.guard';
 import type { MenuCategory, MenuProduct } from '../../core/models';
@@ -20,6 +21,7 @@ interface BillItem {
 })
 export class BillPage implements OnInit, HasUnsavedChanges {
   private readonly menuService = inject(MenuService);
+  private readonly splashService = inject(SplashService);
   private readonly confirmDialogService = inject(ConfirmDialogService);
 
   private readonly productCards = viewChildren<ElementRef>('productCard');
@@ -53,10 +55,12 @@ export class BillPage implements OnInit, HasUnsavedChanges {
       next: (data) => {
         this.categories.set(data);
         this.loading.set(false);
+        this.splashService.contentReady();
       },
       error: () => {
         this.error.set('Error al cargar el menú');
         this.loading.set(false);
+        this.splashService.contentReady();
       },
     });
   }

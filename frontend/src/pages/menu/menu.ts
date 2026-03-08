@@ -1,5 +1,6 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { MenuService } from '../../core/services/menu.service';
+import { SplashService } from '../../core/services/splash.service';
 import type { MenuCategory } from '../../core/models';
 
 @Component({
@@ -9,6 +10,7 @@ import type { MenuCategory } from '../../core/models';
 })
 export class MenuPage implements OnInit {
   private readonly menuService = inject(MenuService);
+  private readonly splashService = inject(SplashService);
 
   categories = signal<MenuCategory[]>([]);
   loading = signal(true);
@@ -19,10 +21,12 @@ export class MenuPage implements OnInit {
       next: (data) => {
         this.categories.set(data);
         this.loading.set(false);
+        this.splashService.contentReady();
       },
       error: () => {
         this.error.set('Error al cargar el menú');
         this.loading.set(false);
+        this.splashService.contentReady();
       },
     });
   }

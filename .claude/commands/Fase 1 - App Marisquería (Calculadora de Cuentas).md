@@ -402,6 +402,7 @@ billItems: Map<number, BillItem>;  // keyed by productId
 - [x] Theme selector with DaisyUI themes (localStorage persistence)
 - [x] Shared components: toast, confirm-dialog, icon
 - [x] PWA compatibility (manifest.webmanifest, service worker via @angular/service-worker, dynamic theme-color meta tag sync)
+- [x] Animated splash screen (themed, content-aware dismissal with minimum display time)
 
 ### Testing (opcional para Fase 1, pero recomendado)
 

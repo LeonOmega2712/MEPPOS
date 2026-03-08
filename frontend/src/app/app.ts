@@ -1,6 +1,7 @@
 import { Component, ElementRef, inject, viewChild } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { ThemeService } from '../core/services/theme.service';
+import { SplashService } from '../core/services/splash.service';
 import { ToastComponent } from '../shared/components/toast/toast';
 import { ConfirmDialogComponent } from '../shared/components/confirm-dialog/confirm-dialog';
 
@@ -17,6 +18,7 @@ export class App {
 
   constructor() {
     inject(ThemeService).init();
+    inject(SplashService);
   }
 
   onScroll(): void {
