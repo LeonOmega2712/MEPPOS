@@ -12,7 +12,8 @@ export type IconName =
   | 'chevron-up'
   | 'queue-list'
   | 'currency-dollar'
-  | 'hashtag';
+  | 'hashtag'
+  | 'logout';
 
 @Component({
   selector: 'app-icon',
@@ -62,6 +63,9 @@ export type IconName =
         }
         @case ('hashtag') {
           <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 8.25h15m-16.5 7.5h15m-1.8-13.5-3.9 19.5m-2.1-19.5-3.9 19.5" />
+        }
+        @case ('logout') {
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
         }
       }
     </svg>

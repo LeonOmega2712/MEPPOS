@@ -1,0 +1,52 @@
+<div class="login-container">
+  <div class="card bg-base-200 shadow-xl w-full max-w-sm">
+    <div class="card-body">
+      <img src="assets/dolphin128.png" alt="MEPPOS" class="size-16 mx-auto" />
+      <h2 class="card-title justify-center text-2xl mb-2">MEPPOS</h2>
+      <p class="text-center text-base-content/60 mb-4">Iniciar sesión</p>
+
+      @if (error()) {
+        <div role="alert" class="alert alert-error alert-soft mb-2">
+          <span>{{ error() }}</span>
+        </div>
+      }
+
+      <form (ngSubmit)="onSubmit()">
+        <label class="input w-full mb-4">
+          <span class="label w-24 shrink-0">Usuario</span>
+          <input
+            type="text"
+            [(ngModel)]="username"
+            name="username"
+            autocomplete="username"
+            [disabled]="loading()"
+            required
+          />
+        </label>
+
+        <label class="input w-full mb-6">
+          <span class="label w-24 shrink-0">Contraseña</span>
+          <input
+            type="password"
+            [(ngModel)]="password"
+            name="password"
+            autocomplete="current-password"
+            [disabled]="loading()"
+            required
+          />
+        </label>
+
+        <button
+          type="submit"
+          class="btn btn-primary w-full"
+          [disabled]="loading() || !username || !password"
+        >
+          @if (loading()) {
+            <span class="loading loading-spinner loading-sm"></span>
+          }
+          Entrar
+        </button>
+      </form>
+    </div>
+  </div>
+</div>

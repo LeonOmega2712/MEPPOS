@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
+import bcrypt from 'bcryptjs';
 
 const pool = new Pool({
   connectionString:
@@ -13,6 +14,27 @@ const prisma = new PrismaClient({ adapter });
 
 async function main() {
   console.log('🌱 Starting seed based on menu.md...');
+
+  // ============================================
+  // DEFAULT ADMIN USER
+  // ============================================
+
+  const adminPassword = process.env.ADMIN_DEFAULT_PASSWORD || 'admin123';
+  const hashedPassword = await bcrypt.hash(adminPassword, 12);
+
+  await prisma.user.upsert({
+    where: { username: 'admin' },
+    update: {},
+    create: {
+      username: 'admin',
+      password: hashedPassword,
+      displayName: 'Administrador',
+      role: 'ADMIN',
+      active: true,
+    },
+  });
+
+  console.log('✅ Default admin user created');
 
   // ============================================
   // CATEGORIES (upsert: skip if already exists)
@@ -503,12 +525,14 @@ async function main() {
   // SUMMARY
   // ============================================
 
+  const userCount = await prisma.user.count();
   const categoryCount = await prisma.category.count();
   const productCount = await prisma.product.count();
 
   console.log('\n╔════════════════════════════════════════╗');
   console.log('║       🌱 SEED SUMMARY                  ║');
   console.log('╠════════════════════════════════════════╣');
+  console.log(`║  Users: ${userCount}                              ║`);
   console.log(`║  Categories: ${categoryCount}                          ║`);
   console.log(`║  Products: ${productCount}                           ║`);
   console.log('╚════════════════════════════════════════╝');

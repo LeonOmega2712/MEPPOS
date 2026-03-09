@@ -28,22 +28,27 @@ Web app to speed up bill calculation in a seafood restaurant. Editable catalog +
 
 **Included in Phase 1:** Product catalog CRUD, products with size/price variants, bill calculator (add/edit/remove items), automatic total, simultaneous multi-user use (in-memory sessions), REST API, database only for catalog.
 
-**Excluded from Phase 1:** Sales history, offline support, multi-terminal sync, reports, ticket printing, authentication.
+**Excluded from Phase 1:** Sales history, offline support, multi-terminal sync, reports, ticket printing.
+
+## Project: Phase 2 - Persistence & Reports (in progress)
+
+Bill persistence, sales history, basic reports, and role-based authentication. Current progress: JWT authentication with roles (ADMIN/WAITER), login page, protected routes, public menu for QR access, user CRUD, and security hardening are complete. Pending: bill saving, sales history, reports.
 
 ### Tech Stack
 
 - **Frontend:** Angular ^21.0.0, TypeScript ~5.9.2, Tailwind CSS ^4.1.12, DaisyUI ^5.5.14, Angular CDK ^21.1.3, Vitest ^4.0.8
-- **Backend:** Node.js 18+, Express.js 5.2.1, TypeScript 5.9.3, Prisma ORM 7.3.0, Zod 4.3.6
-- **Database:** PostgreSQL 15+ (tables: `categories`, `products`)
+- **Backend:** Node.js 18+, Express.js 5.2.1, TypeScript 5.9.3, Prisma ORM 7.3.0, Zod 4.3.6, bcryptjs, jsonwebtoken, helmet, express-rate-limit, cookie-parser
+- **Database:** PostgreSQL 15+ (tables: `categories`, `products`, `users`)
 - **Deploy:** Docker + docker-compose (dev), Koyeb (backend), Netlify/Vercel (frontend)
 
 ### Data Model
 
-Full reference in `.claude/commands/menu.mermaid.md`
+Full menu reference in `.claude/commands/menu.mermaid.md`
 
 ```
 Category (id, name UK, description, base_price?, image, display_order, active)
 Product  (id, category_id FK, name UK, description, price?, image, display_order, customizable, active)
+User     (id, username UK, password, display_name, role [ADMIN|WAITER], active)
 ```
 
 - `Category` contains `Product` (1:N)
@@ -60,21 +65,38 @@ MEPPOS/
 
 ### REST API
 
+**Public routes (no authentication):**
+
 - `GET    /api/menu` - Get full menu (categories with products, price resolved)
+- `POST   /api/auth/login` - Login (returns access token + refresh cookie)
+- `POST   /api/auth/refresh` - Refresh access token (via httpOnly cookie)
+- `POST   /api/auth/logout` - Logout (clears refresh cookie)
+
+**Authenticated routes (any role):**
+
+- `GET    /api/auth/me` - Get current user info
 - `GET    /api/categories` - Get all categories (supports ?active=true)
 - `GET    /api/categories/:id` - Get category with products
+- `GET    /api/categories/:categoryId/products` - Get products by category
+- `GET    /api/products` - Get all products with raw price + categories array (supports ?active=true)
+- `GET    /api/products/:id` - Get product by ID
+- `GET    /api/products/:id/price` - Get resolved price
+
+**Admin-only routes:**
+
 - `POST   /api/categories` - Create category
 - `PUT    /api/categories/:id` - Update category
 - `DELETE /api/categories/:id` - Soft delete (deactivate) category and products. Hard delete with `?permanent=true`
 - `PATCH  /api/categories/reorder` - Batch reorder categories (atomic transaction)
-- `GET    /api/products` - Get all products with raw price + categories array (supports ?active=true)
-- `GET    /api/products/:id` - Get product by ID
-- `GET    /api/products/:id/price` - Get resolved price
 - `POST   /api/products` - Create product
 - `PUT    /api/products/:id` - Update product
 - `DELETE /api/products/:id` - Soft delete (deactivate) product. Hard delete with `?permanent=true`
 - `PATCH  /api/products/reorder` - Batch reorder products within category (atomic transaction)
-- `GET    /api/categories/:categoryId/products` - Get products by category
+- `GET    /api/users` - Get all users
+- `GET    /api/users/:id` - Get user by ID
+- `POST   /api/users` - Create user
+- `PUT    /api/users/:id` - Update user
+- `DELETE /api/users/:id` - Soft delete (deactivate) user
 
 ### Reference Menu
 
