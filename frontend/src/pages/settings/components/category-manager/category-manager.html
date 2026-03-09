@@ -17,6 +17,9 @@
             <span class="truncate">{{ category.name }}</span>
           </div>
           <div class="flex items-center gap-2 shrink-0 whitespace-nowrap">
+            @if (hasDraftChanges(category.id)) {
+              <span class="badge badge-warning badge-sm">Sin guardar</span>
+            }
             <span class="badge badge-sm badge-secondary">
               {{ category._count.products }} {{ category._count.products === 1 ? 'producto' : 'productos' }}
             </span>

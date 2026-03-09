@@ -10,6 +10,29 @@ datasource db {
 }
 
 // ============================================
+// AUTHENTICATION
+// ============================================
+
+enum Role {
+  ADMIN
+  WAITER
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  username     String   @unique @db.VarChar(50)
+  password     String   @db.VarChar(255)
+  displayName  String   @map("display_name") @db.VarChar(100)
+  role         Role     @default(WAITER)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@index([active])
+  @@map("users")
+}
+
+// ============================================
 // SIMPLIFIED MENU SYSTEM
 // Based on menu.mermaid.md diagram
 // ============================================

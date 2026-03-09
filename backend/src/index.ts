@@ -1,5 +1,8 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import { apiRoutes } from './routes';
 
@@ -19,8 +22,23 @@ app.use(cors({
   credentials: true
 }));
 
-// Parse JSON bodies
-app.use(express.json());
+// Security headers
+app.use(helmet());
+
+// Rate limiting - 200 requests per 15 minutes per IP
+app.use(rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 200,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later' }
+}));
+
+// Parse JSON bodies with size limit
+app.use(express.json({ limit: '1mb' }));
+
+// Parse cookies (for refresh token)
+app.use(cookieParser());
 
 // Request logging in development
 if (process.env.NODE_ENV === 'development') {
@@ -53,24 +71,35 @@ app.get('/api', (_req: Request, res: Response) => {
     version: '1.0.0',
     description: 'Simplified menu management system for restaurant POS',
     endpoints: {
-      menu: {
-        'GET /api/menu': 'Get full menu (categories with products, price resolved from product or category)'
+      public: {
+        'GET /api/menu': 'Get full menu (categories with products, price resolved)',
+        'POST /api/auth/login': 'Login (returns access token + refresh cookie)',
+        'POST /api/auth/refresh': 'Refresh access token (via httpOnly cookie)',
+        'POST /api/auth/logout': 'Logout (clears refresh cookie)',
       },
-      categories: {
+      authenticated: {
+        'GET /api/auth/me': 'Get current user info',
         'GET /api/categories': 'Get all categories (add ?active=true for active only)',
         'GET /api/categories/:id': 'Get category by ID with products',
-        'POST /api/categories': 'Create category',
-        'PUT /api/categories/:id': 'Update category',
-        'DELETE /api/categories/:id': 'Delete category (CASCADE)',
-        'GET /api/categories/:categoryId/products': 'Get products by category'
-      },
-      products: {
+        'GET /api/categories/:categoryId/products': 'Get products by category',
         'GET /api/products': 'Get all products with resolved price (add ?active=true for active only)',
         'GET /api/products/:id': 'Get product by ID',
         'GET /api/products/:id/price': 'Get effective price of product',
+      },
+      adminOnly: {
+        'POST /api/categories': 'Create category',
+        'PUT /api/categories/:id': 'Update category',
+        'DELETE /api/categories/:id': 'Soft delete category (?permanent=true for hard delete)',
+        'PATCH /api/categories/reorder': 'Batch reorder categories',
         'POST /api/products': 'Create product',
         'PUT /api/products/:id': 'Update product',
-        'DELETE /api/products/:id': 'Delete product'
+        'DELETE /api/products/:id': 'Soft delete product (?permanent=true for hard delete)',
+        'PATCH /api/products/reorder': 'Batch reorder products within category',
+        'GET /api/users': 'Get all users',
+        'GET /api/users/:id': 'Get user by ID',
+        'POST /api/users': 'Create user',
+        'PUT /api/users/:id': 'Update user',
+        'DELETE /api/users/:id': 'Soft delete user (?permanent=true for hard delete)',
       }
     },
     documentation: 'https://github.com/your-repo/MEPPOS#api-documentation'

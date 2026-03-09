@@ -107,37 +107,49 @@ DIRECT_URL="postgresql://postgres:postgres@localhost:5432/meppos_db"
 PORT=3000
 NODE_ENV=development
 FRONTEND_URL=http://localhost:4200
+
+# Authentication (Phase 2)
+JWT_ACCESS_SECRET=your-access-secret
+JWT_REFRESH_SECRET=your-refresh-secret
+ADMIN_DEFAULT_PASSWORD=admin123
 ```
 
 ---
 
 ## 📚 API Documentation
 
-### Main Endpoints
-
-#### Menu (for calculator)
+### Public Endpoints (no authentication required)
 
 - `GET /api/menu` - Full menu: active categories with active products and resolved `price`
+- `POST /api/auth/login` - Login (returns access token + httpOnly refresh cookie)
+- `POST /api/auth/refresh` - Refresh access token (via httpOnly cookie)
+- `POST /api/auth/logout` - Logout (clears refresh cookie)
 
-#### Categories
+### Authenticated Endpoints (any role)
 
+- `GET /api/auth/me` - Get current user info
 - `GET /api/categories` - List all categories (supports `?active=true`)
 - `GET /api/categories/:id` - Get a category with its products
+- `GET /api/categories/:categoryId/products` - List products by category
+- `GET /api/products` - List all products with raw `price` + `categories` array (supports `?active=true`)
+- `GET /api/products/:id` - Get a product by ID
+- `GET /api/products/:id/price` - Get effective price (direct or inherited from category)
+
+### Admin-only Endpoints
+
 - `POST /api/categories` - Create category
 - `PUT /api/categories/:id` - Update category
 - `DELETE /api/categories/:id` - Soft delete (deactivate) category and products. Hard delete with `?permanent=true`
 - `PATCH /api/categories/reorder` - Batch reorder categories (atomic transaction)
-
-#### Products
-
-- `GET /api/products` - List all products with raw `price` + `categories` array (supports `?active=true`)
-- `GET /api/products/:id` - Get a product by ID
-- `GET /api/products/:id/price` - Get effective price (direct or inherited from category)
 - `POST /api/products` - Create product
 - `PUT /api/products/:id` - Update product
 - `DELETE /api/products/:id` - Soft delete (deactivate) product. Hard delete with `?permanent=true`
 - `PATCH /api/products/reorder` - Batch reorder products within a category (atomic transaction)
-- `GET /api/categories/:categoryId/products` - List products by category
+- `GET /api/users` - List all users
+- `GET /api/users/:id` - Get user by ID
+- `POST /api/users` - Create user
+- `PUT /api/users/:id` - Update user
+- `DELETE /api/users/:id` - Soft delete (deactivate) user
 
 #### Health Check
 
@@ -169,19 +181,25 @@ FRONTEND_URL=http://localhost:4200
 - Prisma ORM 7.3.0
 - Zod 4.3.6 (validation)
 - PostgreSQL 15+ (pg 8.18.0 + @prisma/adapter-pg)
+- bcryptjs (password hashing)
+- jsonwebtoken (JWT authentication)
+- helmet (security headers)
+- express-rate-limit (API rate limiting)
+- cookie-parser (refresh token cookies)
 
 ### Data Model
 
-The system uses 2 tables:
+The system uses 3 tables:
 
 1. **categories** - Product categories with optional base price
 2. **products** - Individual products that can inherit price from their category or define their own
+3. **users** - Staff accounts with roles (ADMIN, WAITER) for authentication
 
 ---
 
 ## 📖 Project Phases
 
-### 🔧 Phase 1 (In Progress) - Bill Calculator
+### ✅ Phase 1 (Complete) - Bill Calculator
 
 - ✅ Product catalog with flat categories
 - ✅ Category-level base pricing with per-product overrides
@@ -199,9 +217,26 @@ The system uses 2 tables:
 - ✅ PWA compatibility (installable, service worker with asset caching, web app manifest, dynamic theme-color sync)
 - ✅ Animated splash screen with branded entry animation and content-aware dismissal
 
+### 🔧 Phase 2 (In Progress) - Persistence & Reports
+
+- ✅ Security hardening (helmet, rate limiting, body size limit)
+- ✅ User model with roles (ADMIN/WAITER) and Prisma migration
+- ✅ JWT authentication (access token 15min + refresh token 7d httpOnly cookie)
+- ✅ Auth middleware (authenticate + role-based authorize)
+- ✅ Auth endpoints (login, refresh, logout, me)
+- ✅ User CRUD (admin-only)
+- ✅ Route protection (public / authenticated / admin-only)
+- ✅ Frontend auth service, interceptor, guards
+- ✅ Login page
+- ✅ Conditional navbar (shown only when authenticated)
+- ✅ Public menu route for digital/QR access
+- ⬜ Bill persistence (save bills to database)
+- ⬜ Sales history
+- ⬜ Basic reports (daily total, best-selling products)
+- ✅ Logout/user info in settings
+
 ### Future Phases
 
-- Phase 2: Bill persistence, sales history, reports, authentication
 - Phase 3: Multi-terminal, table assignment, ticket printing
 - Phase 4: Payment integrations, analytics dashboard, online ordering
 
@@ -267,11 +302,12 @@ npm run prisma:seed
 
 ```bash
 backend/src/
-├── controllers/       # HTTP handlers
-├── lib/              # Shared utilities (Prisma client, display-order helpers)
+├── controllers/       # HTTP handlers (auth, user, category, product, menu)
+├── lib/              # Shared utilities (Prisma client, display-order helpers, JWT)
+├── middleware/        # Express middleware (auth, authorize)
 ├── services/         # Business logic
-├── types/            # TypeScript types
-├── routes/           # Route configuration
+├── types/            # Zod schemas and TypeScript types
+├── routes/           # Route configuration (public, authenticated, admin)
 └── index.ts          # Main server
 ```
 
@@ -281,11 +317,12 @@ backend/src/
 frontend/src/
 ├── app/              # Root component, routes, config
 ├── core/
-│   ├── guards/       # Route guards (unsaved changes)
+│   ├── guards/       # Route guards (auth, role, unsaved changes)
+│   ├── interceptors/ # HTTP interceptors (auth token + 401 refresh)
 │   ├── models/       # TypeScript interfaces
-│   └── services/     # Angular services (HTTP, theme, toast, confirm dialog, category, product, splash)
+│   └── services/     # Angular services (auth, user, category, product, menu, theme, toast, confirm dialog, splash)
 ├── environments/     # Environment configs (dev/prod)
-├── pages/            # Page components (menu, bill, settings)
-│   └── settings/components/  # Settings sub-components (theme-selector, category-manager, product-manager)
+├── pages/            # Page components (login, menu, bill, settings)
+│   └── settings/components/  # Settings sub-components (theme-selector, category-manager, product-manager, user-manager)
 └── shared/components/        # Reusable UI components (toast, confirm-dialog, icon)
 ```

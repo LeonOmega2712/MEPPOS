@@ -1,0 +1,207 @@
+@if (loading()) {
+  <div class="flex justify-center py-12">
+    <span class="loading loading-spinner loading-lg"></span>
+  </div>
+} @else {
+  <!-- Active users -->
+  @for (user of activeUsers(); track user.id) {
+    <div class="collapse collapse-arrow bg-base-100 shadow-sm mb-2">
+      <input type="checkbox" [checked]="expandedUserId() === user.id" (click)="onCollapseToggle($event, user.id)" />
+      <div class="collapse-title font-medium flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 overflow-hidden">
+        <span class="truncate">{{ user.displayName }}</span>
+        <div class="flex items-center gap-2 shrink-0 whitespace-nowrap">
+          @if (hasDraftChanges(user.id)) {
+            <span class="badge badge-warning badge-sm">Sin guardar</span>
+          }
+          <span class="badge badge-sm" [class.badge-primary]="user.role === 'ADMIN'" [class.badge-secondary]="user.role === 'WAITER'">{{ roleLabels[user.role] }}</span>
+          @if (isCurrentUser(user.id)) {
+            <span class="badge badge-sm badge-accent">Tú</span>
+          }
+        </div>
+      </div>
+      <div class="collapse-content">
+        <div class="flex flex-col gap-3">
+          <label class="input w-full">
+            <span class="label w-36 shrink-0">Usuario *</span>
+            <input type="text" [(ngModel)]="drafts[user.id].username" />
+          </label>
+
+          <label class="input w-full">
+            <span class="label w-36 shrink-0">Nombre *</span>
+            <input type="text" [(ngModel)]="drafts[user.id].displayName" />
+          </label>
+
+          <label class="select w-full">
+            <span class="label w-36 shrink-0">Rol</span>
+            <select [(ngModel)]="drafts[user.id].role">
+              <option value="ADMIN">Administrador</option>
+              <option value="WAITER">Mesero</option>
+            </select>
+          </label>
+
+          <label class="input w-full">
+            <span class="label w-36 shrink-0">Contraseña</span>
+            <input type="password" placeholder="Sin cambios" [(ngModel)]="drafts[user.id].password" autocomplete="new-password" />
+          </label>
+
+          <div class="divider my-1"></div>
+
+          <div class="flex gap-2">
+            <button
+              class="btn btn-soft btn-success"
+              title="Guardar"
+              aria-label="Guardar usuario"
+              [disabled]="!drafts[user.id]?.username?.trim() || !drafts[user.id]?.displayName?.trim() || !hasDraftChanges(user.id) || saving() === user.id"
+              (click)="saveUser(user)"
+            >
+              @if (saving() === user.id) {
+                <span class="loading loading-spinner loading-sm"></span>
+              } @else {
+                <app-icon name="check-circle" />
+              }
+            </button>
+
+            <button
+              class="btn btn-soft btn-warning"
+              title="Descartar cambios"
+              aria-label="Descartar cambios"
+              [disabled]="!hasDraftChanges(user.id) || saving() === user.id"
+              (click)="resetDraft(user.id)"
+            >
+              <app-icon name="x-circle" />
+            </button>
+
+            <button
+              class="btn btn-soft btn-error"
+              title="Desactivar"
+              aria-label="Desactivar usuario"
+              [disabled]="saving() === user.id || isCurrentUser(user.id)"
+              (click)="deactivateUser(user)"
+            >
+              <app-icon name="archive-down" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (activeUsers().length === 0 && inactiveUsers().length === 0) {
+    <p class="text-base-content/60 text-center py-8">No hay usuarios registrados.</p>
+  }
+
+  <!-- New user -->
+  <div class="collapse collapse-arrow bg-base-100 shadow-sm mb-2">
+    <input type="checkbox" [checked]="expandedUserId() === 'new'" (click)="onCollapseToggle($event, 'new')" />
+    <div class="collapse-title font-medium">
+      <span class="flex items-center gap-2">
+        <app-icon name="plus-circle" sizeClass="size-5 opacity-40" />
+        Nuevo usuario
+      </span>
+    </div>
+    <div class="collapse-content">
+      <div class="flex flex-col gap-3">
+        <label class="input w-full">
+          <span class="label w-36 shrink-0">Usuario *</span>
+          <input type="text" [(ngModel)]="newUser.username" autocomplete="off" />
+        </label>
+
+        <label class="input w-full">
+          <span class="label w-36 shrink-0">Nombre *</span>
+          <input type="text" [(ngModel)]="newUser.displayName" autocomplete="off" />
+        </label>
+
+        <label class="select w-full">
+          <span class="label w-36 shrink-0">Rol</span>
+          <select [(ngModel)]="newUser.role">
+            <option value="ADMIN">Administrador</option>
+            <option value="WAITER">Mesero</option>
+          </select>
+        </label>
+
+        <label class="input w-full">
+          <span class="label w-36 shrink-0">Contraseña *</span>
+          <input type="password" [(ngModel)]="newUser.password" autocomplete="new-password" />
+        </label>
+
+        <div class="divider my-1"></div>
+
+        <div class="flex gap-2">
+          <button
+            class="btn btn-soft btn-success"
+            title="Crear"
+            aria-label="Crear usuario"
+            [disabled]="!newUser.username.trim() || !newUser.password.trim() || !newUser.displayName.trim() || saving() === 'new'"
+            (click)="createUser()"
+          >
+            @if (saving() === 'new') {
+              <span class="loading loading-spinner loading-sm"></span>
+            } @else {
+              <app-icon name="plus-circle" />
+            }
+          </button>
+
+          <button
+            class="btn btn-soft btn-warning"
+            title="Descartar cambios"
+            aria-label="Descartar cambios"
+            [disabled]="!hasNewUserChanges() || saving() === 'new'"
+            (click)="resetNewUser()"
+          >
+            <app-icon name="x-circle" />
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Inactive users -->
+  @if (inactiveUsers().length > 0) {
+    <div class="collapse collapse-arrow bg-base-100 mt-4">
+      <input type="checkbox" (change)="expandedInactiveId.set(null)" />
+      <div class="collapse-title text-sm font-medium flex items-center justify-between">
+        Usuarios desactivados
+        <span class="badge badge-sm badge-primary">{{ inactiveUsers().length }}</span>
+      </div>
+      <div class="collapse-content">
+        <div class="join join-vertical w-full">
+          @for (user of inactiveUsers(); track user.id) {
+            <div class="collapse collapse-arrow join-item border-base-300 border bg-base-100">
+              <input type="checkbox" [checked]="expandedInactiveId() === user.id" (click)="expandedInactiveId.set(expandedInactiveId() === user.id ? null : user.id)" />
+              <div class="collapse-title font-semibold flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 overflow-hidden">
+                <span class="truncate">{{ user.displayName }}</span>
+                <span class="badge badge-sm" [class.badge-primary]="user.role === 'ADMIN'" [class.badge-secondary]="user.role === 'WAITER'">{{ roleLabels[user.role] }}</span>
+              </div>
+              <div class="collapse-content">
+                <div class="flex gap-2">
+                  <button
+                    class="btn btn-soft btn-error"
+                    title="Eliminar permanentemente"
+                    aria-label="Eliminar usuario permanentemente"
+                    [disabled]="saving() === user.id"
+                    (click)="permanentDeleteUser(user)"
+                  >
+                    <app-icon name="trash" />
+                  </button>
+                  <button
+                    class="btn btn-soft btn-success"
+                    title="Reactivar"
+                    aria-label="Reactivar usuario"
+                    [disabled]="saving() === user.id"
+                    (click)="reactivateUser(user)"
+                  >
+                    @if (saving() === user.id) {
+                      <span class="loading loading-spinner loading-sm"></span>
+                    } @else {
+                      <app-icon name="upload" />
+                    }
+                  </button>
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  }
+}
