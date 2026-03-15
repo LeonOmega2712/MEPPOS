@@ -3,7 +3,7 @@
 ## Hard Rules
 
 - Source code must always be written in English.
-- Documentation, README files, and explanations must be written in English.
+- Documentation, README files, and explanations must be written in English. Exception: phase specification documents (`.claude/docs/phases/`) are written in Spanish.
 - Before proposing, modifying, or refactoring code, the repository must be reviewed and work must be done only on the latest available version. Assuming intermediate code states is not allowed.
 - The project must be considered compatible with both Windows and macOS. Instructions must apply to both systems and only detail differences when strictly necessary.
 - SOLID and DRY principles must be strictly applied whenever code is generated.

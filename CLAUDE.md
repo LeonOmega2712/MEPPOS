@@ -1,11 +1,11 @@
 # MEPPOS - Seafood Restaurant POS
 
-> Instructions generated from files in `.claude/commands/`. Refer to those files for detailed documentation.
+> Reference documentation in `.claude/docs/`. Slash commands in `.claude/commands/`.
 
 ## Hard Rules
 
 - Source code must always be written in English. This includes all code, comments, variable/function names, commit messages, inline code in documentation, and bash/shell comments inside code blocks.
-- Documentation (README, specs, and explanations) must be written in English to match the existing codebase convention.
+- Documentation (README, specs, and explanations) must be written in English to match the existing codebase convention. Exception: phase specification documents (`.claude/docs/phases/`) are written in Spanish.
 - Before proposing, modifying, or refactoring code, review the repository and work only on the latest available version. Assuming intermediate code states is not allowed.
 - The project must be compatible with both Windows and macOS.
 - SOLID and DRY principles must be strictly applied whenever code is generated.
@@ -30,9 +30,9 @@ Web app to speed up bill calculation in a seafood restaurant. Editable catalog +
 
 **Excluded from Phase 1:** Sales history, offline support, multi-terminal sync, reports, ticket printing.
 
-## Project: Phase 2 - Persistence & Reports (in progress)
+## Project: Phase 2 - Bill Registration & Ticket Printing (in progress)
 
-Bill persistence, sales history, basic reports, and role-based authentication. Current progress: JWT authentication with roles (ADMIN/WAITER), login page, protected routes, public menu for QR access, user CRUD, and security hardening are complete. Pending: bill saving, sales history, reports.
+Persistent bill management with rounds, kitchen/final ticket printing, and location-based seating. Current progress: JWT authentication with roles (ADMIN/WAITER), login page, protected routes, public menu for QR access, user CRUD, and security hardening are complete. Pending: locations (tables/bar), persistent orders with rounds, custom extras, discounts at checkout, account ownership & transfer, ticket printing (kitchen + final), order history with reprint.
 
 ### Tech Stack
 
@@ -43,7 +43,7 @@ Bill persistence, sales history, basic reports, and role-based authentication. C
 
 ### Data Model
 
-Full menu reference in `.claude/commands/menu.mermaid.md`
+Full menu reference in `.claude/docs/menu.mermaid.md`
 
 ```
 Category (id, name UK, description, base_price?, image, display_order, active)
@@ -100,15 +100,19 @@ MEPPOS/
 
 ### Reference Menu
 
-Full detail in `.claude/commands/menu.md`
+Full detail in `.claude/docs/menu.md`
 
 Main categories: Seafood, Food (Cocktails, Tostadas, Soup), Beverages (Soft drinks, Beer, Water).
 
 ## Detailed Documentation
 
-For full specifications, refer to the files in `.claude/commands/`:
+For full specifications, refer to the files in `.claude/docs/`:
 
 - `project-instructions.md` - Project rules and guidelines
-- `Fase 1 - App Marisquería (Calculadora de Cuentas).md` - Full Phase 1 technical specification
 - `menu.md` - Complete product catalog
 - `menu.mermaid.md` - Data model ER diagram
+
+Phase specifications (in Spanish) in `.claude/docs/phases/`:
+
+- `Fase 1 - App Marisquería (Calculadora de Cuentas).md` - Phase 1 technical specification
+- `Fase 2 - App Marisqueria (Registro de Cuentas).md` - Phase 2 technical specification

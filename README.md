@@ -9,7 +9,8 @@ MEPPOS/
 ├── frontend/          # Angular Application
 ├── backend/           # REST API with Node.js + Express
 ├── docker-compose.yml # Containerized PostgreSQL
-└── .claude/commands/  # Technical specifications and reference docs
+├── .claude/docs/      # Reference documentation and phase specs
+└── .claude/commands/  # Slash commands for Claude Code
 ```
 
 ---
@@ -217,7 +218,7 @@ The system uses 3 tables:
 - ✅ PWA compatibility (installable, service worker with asset caching, web app manifest, dynamic theme-color sync)
 - ✅ Animated splash screen with branded entry animation and content-aware dismissal
 
-### 🔧 Phase 2 (In Progress) - Persistence & Reports
+### 🔧 Phase 2 (In Progress) - Bill Registration & Ticket Printing
 
 - ✅ Security hardening (helmet, rate limiting, body size limit)
 - ✅ User model with roles (ADMIN/WAITER) and Prisma migration
@@ -230,15 +231,20 @@ The system uses 3 tables:
 - ✅ Login page
 - ✅ Conditional navbar (shown only when authenticated)
 - ✅ Public menu route for digital/QR access
-- ⬜ Bill persistence (save bills to database)
-- ⬜ Sales history
-- ⬜ Basic reports (daily total, best-selling products)
 - ✅ Logout/user info in settings
+- ⬜ Locations management (tables/bar with visual identifiers)
+- ⬜ Persistent orders with multiple rounds
+- ⬜ Custom extras and frequent extras list
+- ⬜ Discounts at checkout (fixed/percentage)
+- ⬜ Account ownership and transfer between waiters
+- ⬜ Kitchen ticket printing (per round)
+- ⬜ Final ticket printing (consolidated)
+- ⬜ Order history with reprint (marked as copy)
 
 ### Future Phases
 
-- Phase 3: Multi-terminal, table assignment, ticket printing
-- Phase 4: Payment integrations, analytics dashboard, online ordering
+- Phase 3: Order status tracking, centralized ordering, cashier terminal
+- Phase 4: Reports, analytics dashboard, payment integrations
 
 ---
 
@@ -317,7 +323,7 @@ backend/src/
 frontend/src/
 ├── app/              # Root component, routes, config
 ├── core/
-│   ├── guards/       # Route guards (auth, role, unsaved changes)
+│   ├── guards/       # Route guards (auth, unsaved changes)
 │   ├── interceptors/ # HTTP interceptors (auth token + 401 refresh)
 │   ├── models/       # TypeScript interfaces
 │   └── services/     # Angular services (auth, user, category, product, menu, theme, toast, confirm dialog, splash)

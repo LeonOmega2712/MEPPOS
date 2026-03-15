@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
 import { unsavedChangesGuard } from '../core/guards/unsaved-changes.guard';
-import { authGuard, roleGuard } from '../core/guards/auth.guard';
+import { authGuard } from '../core/guards/auth.guard';
 
 export const routes: Routes = [
   {

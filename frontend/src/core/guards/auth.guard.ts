@@ -13,15 +13,3 @@ export const authGuard: CanActivateFn = () => {
   return router.createUrlTree(['/login']);
 };
 
-export const roleGuard: CanActivateFn = (route) => {
-  const authService = inject(AuthService);
-  const router = inject(Router);
-
-  const requiredRole = route.data?.['role'] as string | undefined;
-
-  if (!requiredRole || authService.user()?.role === requiredRole) {
-    return true;
-  }
-
-  return router.createUrlTree(['/menu']);
-};
