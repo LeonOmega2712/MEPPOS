@@ -1,18 +1,38 @@
-Pre-commit routine: code review, documentation check, and commit message generation.
+Pre-commit routine: issue verification, code review, documentation check, and commit message generation.
 
-Execute the following 3 phases in order. After each phase, wait for the user's decision before continuing to the next.
+Execute the following 4 phases in order. After each phase, wait for the user's decision before continuing to the next.
 
 ---
 
-## Phase 1 — Code Review
+## Phase 0 — Issue Context
+
+1. Run `git branch --show-current` to identify the current branch.
+2. Extract the issue number from the branch name (e.g., `18-refactor-repository-cleanup` → issue `#18`).
+3. If an issue number is found, run `gh issue view <number>` to fetch its title, description, and acceptance criteria.
+4. Display a summary of:
+   - **Branch:** current branch name
+   - **Issue:** title and number (or "No linked issue" if not found)
+   - **Checklist:** acceptance criteria or task list from the issue body (if any)
+5. This context will be used in Phase 1 (to verify changes align with the issue) and Phase 3 (to reference the issue in the commit message).
+
+---
+
+## Phase 1 — Code Review & Issue Alignment
 
 1. Run `git diff HEAD` to see all uncommitted changes.
 2. Review the changed files for:
    - Code that can be optimized or refactored (DRY violations, unnecessary complexity, duplicated logic)
    - Missing accessibility attributes, type safety issues, or potential bugs
    - Violations of project conventions (see CLAUDE.md)
-3. Present findings as a concise list grouped by severity (High / Medium / Low). If nothing is found, say so.
-4. Ask the user:
+3. If an issue was identified in Phase 0, verify:
+   - Which acceptance criteria or checklist items are addressed by the current changes
+   - Whether any criteria are partially addressed or missing from the changes
+   - Flag any changes that seem unrelated to the issue scope
+4. Present findings as a concise list grouped by:
+   - **Issue alignment** — criteria met, partially met, or not addressed (only if an issue was found)
+   - **Code quality** — grouped by severity (High / Medium / Low)
+   - If nothing is found in either category, say so.
+5. Ask the user:
    - **Apply fixes** — implement the suggested improvements
    - **Skip** — move to Phase 2 without changes
 
@@ -23,10 +43,11 @@ Execute the following 3 phases in order. After each phase, wait for the user's d
 1. Read ALL project documentation files:
    - `README.md`
    - `CLAUDE.md`
-   - `.claude/commands/project-instructions.md`
-   - `.claude/commands/menu.md`
-   - `.claude/commands/menu.mermaid.md`
-   - `.claude/commands/Fase 1 - App Marisquería (Calculadora de Cuentas).md`
+   - `.claude/docs/project-instructions.md`
+   - `.claude/docs/menu.md`
+   - `.claude/docs/menu.mermaid.md`
+   - `.claude/docs/phases/Fase 1 - App Marisquería (Calculadora de Cuentas).md`
+   - `.claude/docs/phases/Fase 2 - App Marisqueria (Registro de Cuentas).md`
 2. Compare against the actual codebase state (including any fixes applied in Phase 1):
    - Folder structures, API endpoints, tech stack versions
    - Phase checklists, code patterns, new features/components/pages

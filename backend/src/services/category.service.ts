@@ -1,4 +1,4 @@
-import { closeDisplayOrderGaps } from '../lib/display-order';
+import { closeDisplayOrderGaps, reorderDisplayOrder } from '../lib/display-order';
 import { prisma } from '../lib/prisma';
 import { CreateCategoryDTO, UpdateCategoryDTO } from '../types/category.types';
 
@@ -105,9 +105,9 @@ export class CategoryService {
   }
 
   /**
-   * Soft delete a category and its products (set active = false)
+   * Deactivate a category and its products (set active = false)
    */
-  async deleteCategory(id: number) {
+  async deactivateCategory(id: number) {
     return prisma.$transaction(async (tx) => {
       await tx.product.updateMany({
         where: { categoryId: id },
@@ -124,9 +124,9 @@ export class CategoryService {
   }
 
   /**
-   * Permanently delete a category (hard delete, cascades to products)
+   * Permanently delete a category (cascades to products)
    */
-  async hardDeleteCategory(id: number) {
+  async deleteCategory(id: number) {
     return prisma.category.delete({
       where: { id },
     });
@@ -148,39 +148,7 @@ export class CategoryService {
    * @returns Number of categories updated
    */
   async reorderCategories(categoryIds: number[]): Promise<number> {
-    // Validate all categories exist
-    const categories = await prisma.category.findMany({
-      where: {
-        id: { in: categoryIds },
-        active: true
-      },
-      select: { id: true }
-    });
-
-    if (categories.length !== categoryIds.length) {
-      const foundIds = categories.map(c => c.id);
-      const missingIds = categoryIds.filter(id => !foundIds.includes(id));
-      throw new Error(`Invalid category IDs: ${missingIds.join(', ')}`);
-    }
-
-    // Check for duplicates
-    const uniqueIds = new Set(categoryIds);
-    if (uniqueIds.size !== categoryIds.length) {
-      throw new Error('Duplicate category IDs in reorder request');
-    }
-
-    // Build transaction: update each category with its new displayOrder
-    const updateOperations = categoryIds.map((categoryId, index) =>
-      prisma.category.update({
-        where: { id: categoryId },
-        data: { displayOrder: index }
-      })
-    );
-
-    // Execute all updates in a single atomic transaction
-    await prisma.$transaction(updateOperations);
-
-    return categoryIds.length;
+    return reorderDisplayOrder('category', categoryIds);
   }
 }
 

@@ -5,10 +5,7 @@ import {
   UpdateUserSchema,
   UserIdSchema,
 } from '../types/user.types';
-
-function hasPrismaCode(error: unknown, code: string): boolean {
-  return error instanceof Error && 'code' in error && (error as { code: string }).code === code;
-}
+import { hasPrismaCode, isZodError } from '../lib/error';
 
 export class UserController {
   async getAllUsers(_req: Request, res: Response) {
@@ -33,7 +30,7 @@ export class UserController {
 
       res.json({ success: true, data: user });
     } catch (error: unknown) {
-      if (error instanceof Error && error.name === 'ZodError') {
+      if (isZodError(error)) {
         res.status(400).json({ success: false, error: 'Invalid user ID' });
         return;
       }
@@ -48,7 +45,7 @@ export class UserController {
       const user = await userService.createUser(data);
       res.status(201).json({ success: true, data: user });
     } catch (error: unknown) {
-      if (error instanceof Error && error.name === 'ZodError') {
+      if (isZodError(error)) {
         res.status(400).json({ success: false, error: 'Invalid request body' });
         return;
       }
@@ -68,7 +65,7 @@ export class UserController {
       const user = await userService.updateUser(id, data);
       res.json({ success: true, data: user });
     } catch (error: unknown) {
-      if (error instanceof Error && error.name === 'ZodError') {
+      if (isZodError(error)) {
         res.status(400).json({ success: false, error: 'Invalid request body' });
         return;
       }
@@ -91,10 +88,10 @@ export class UserController {
       const permanent = req.query.permanent === 'true';
 
       if (permanent) {
-        const user = await userService.permanentDeleteUser(id);
+        const user = await userService.deleteUser(id);
         res.json({ success: true, data: user, message: 'User permanently deleted' });
       } else {
-        const user = await userService.deleteUser(id);
+        const user = await userService.deactivateUser(id);
         res.json({ success: true, data: user, message: 'User deactivated' });
       }
     } catch (error: unknown) {

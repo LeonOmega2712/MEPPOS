@@ -7,6 +7,7 @@ import type { MenuCategory } from '../../core/models';
   selector: 'app-menu-page',
   imports: [],
   templateUrl: './menu.html',
+  styleUrl: './menu.css',
 })
 export class MenuPage implements OnInit {
   private readonly menuService = inject(MenuService);
