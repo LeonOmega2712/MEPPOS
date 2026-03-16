@@ -144,7 +144,7 @@ export class CategoryController {
         res.status(400).json({ success: false, error: 'Invalid request body' });
         return;
       }
-      if (error instanceof Error && error.message.includes('Invalid category IDs')) {
+      if (error instanceof Error && (error.message.includes('Invalid category IDs') || error.message.includes('Duplicate category IDs'))) {
         res.status(400).json({ success: false, error: error.message });
         return;
       }

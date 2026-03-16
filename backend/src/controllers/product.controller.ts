@@ -199,7 +199,7 @@ export class ProductController {
         res.status(400).json({ success: false, error: 'Invalid request body' });
         return;
       }
-      if (error instanceof Error && error.message.includes('Invalid product IDs')) {
+      if (error instanceof Error && (error.message.includes('Invalid product IDs') || error.message.includes('Duplicate product IDs'))) {
         res.status(400).json({ success: false, error: error.message });
         return;
       }

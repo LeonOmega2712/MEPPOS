@@ -1,5 +1,5 @@
 import { Prisma } from '@prisma/client';
-import { closeDisplayOrderGaps } from '../lib/display-order';
+import { closeDisplayOrderGaps, reorderDisplayOrder } from '../lib/display-order';
 import { prisma } from '../lib/prisma';
 import { CreateProductDTO, UpdateProductDTO } from '../types/product.types';
 
@@ -255,43 +255,7 @@ export class ProductService {
    * @returns Number of products updated
    */
   async reorderProducts(categoryId: number, productIds: number[]): Promise<number> {
-    // Validate all products exist and belong to the category
-    const products = await prisma.product.findMany({
-      where: {
-        id: { in: productIds },
-        categoryId: categoryId,
-        active: true
-      },
-      select: { id: true }
-    });
-
-    // Check if all products were found
-    if (products.length !== productIds.length) {
-      const foundIds = products.map(p => p.id);
-      const missingIds = productIds.filter(id => !foundIds.includes(id));
-      throw new Error(
-        `Invalid product IDs or products don't belong to category ${categoryId}: ${missingIds.join(', ')}`
-      );
-    }
-
-    // Check for duplicates
-    const uniqueIds = new Set(productIds);
-    if (uniqueIds.size !== productIds.length) {
-      throw new Error('Duplicate product IDs in reorder request');
-    }
-
-    // Build transaction: update each product with its new displayOrder
-    const updateOperations = productIds.map((productId, index) =>
-      prisma.product.update({
-        where: { id: productId },
-        data: { displayOrder: index }
-      })
-    );
-
-    // Execute all updates in a single atomic transaction
-    await prisma.$transaction(updateOperations);
-
-    return productIds.length;
+    return reorderDisplayOrder('product', productIds, { categoryId });
   }
 }
 
