@@ -3,8 +3,8 @@ import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/rou
 import { ThemeService } from '../core/services/theme.service';
 import { SplashService } from '../core/services/splash.service';
 import { AuthService } from '../core/services/auth.service';
-import { ToastComponent } from '../shared/components/toast/toast';
-import { ConfirmDialogComponent } from '../shared/components/confirm-dialog/confirm-dialog';
+import { ToastComponent } from '../shared/components/toast';
+import { ConfirmDialogComponent } from '../shared/components/confirm-dialog';
 
 @Component({
   selector: 'app-root',

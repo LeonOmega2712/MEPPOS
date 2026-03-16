@@ -39,3 +39,10 @@ export interface UpdateCategoryPayload {
   displayOrder?: number;
   active?: boolean;
 }
+
+export interface CategoryDraft {
+  name: string;
+  description: string;
+  basePrice: number | null;
+  image: string;
+}

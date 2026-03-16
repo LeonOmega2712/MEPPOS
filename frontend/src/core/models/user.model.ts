@@ -29,3 +29,10 @@ export interface UpdateUserPayload {
   role?: Role;
   active?: boolean;
 }
+
+export interface UserDraft {
+  username: string;
+  displayName: string;
+  role: Role;
+  password: string;
+}

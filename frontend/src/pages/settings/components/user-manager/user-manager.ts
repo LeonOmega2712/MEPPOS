@@ -6,20 +6,12 @@ import { ToastService } from '../../../../core/services/toast.service';
 import { ConfirmDialogService } from '../../../../core/services/confirm-dialog.service';
 import { IconComponent } from '../../../../shared/components/icon';
 import { ROLE_LABELS } from '../../../../core/models';
-import type { User, CreateUserPayload, UpdateUserPayload, Role } from '../../../../core/models';
-
-interface UserDraft {
-  username: string;
-  displayName: string;
-  role: Role;
-  password: string;
-}
+import type { User, UserDraft, CreateUserPayload, UpdateUserPayload } from '../../../../core/models';
 
 @Component({
   selector: 'app-user-manager',
   imports: [FormsModule, IconComponent],
   templateUrl: './user-manager.html',
-  styleUrl: './user-manager.css',
 })
 export class UserManagerComponent implements OnInit {
   private readonly userService = inject(UserService);

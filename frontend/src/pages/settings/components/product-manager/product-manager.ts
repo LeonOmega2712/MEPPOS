@@ -25,7 +25,7 @@ import type {
   standalone: true,
   imports: [FormsModule, CdkDropList, CdkDrag, CdkDragHandle, CdkDragPlaceholder, IconComponent],
   templateUrl: './product-manager.html',
-  styleUrl: './product-manager.css',
+  styleUrl: '../../../../shared/styles/manager.css',
 })
 export class ProductManagerComponent implements OnInit {
   private readonly productService = inject(ProductService);

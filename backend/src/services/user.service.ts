@@ -50,7 +50,7 @@ export class UserService {
     });
   }
 
-  async deleteUser(id: number) {
+  async deactivateUser(id: number) {
     return prisma.user.update({
       where: { id },
       data: { active: false },
@@ -58,7 +58,7 @@ export class UserService {
     });
   }
 
-  async permanentDeleteUser(id: number) {
+  async deleteUser(id: number) {
     return prisma.user.delete({
       where: { id },
       select: USER_SELECT,

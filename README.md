@@ -309,7 +309,7 @@ npm run prisma:seed
 ```bash
 backend/src/
 ├── controllers/       # HTTP handlers (auth, user, category, product, menu)
-├── lib/              # Shared utilities (Prisma client, display-order helpers, JWT)
+├── lib/              # Shared utilities (Prisma client, display-order helpers, JWT, error handling)
 ├── middleware/        # Express middleware (auth, authorize)
 ├── services/         # Business logic
 ├── types/            # Zod schemas and TypeScript types
@@ -330,5 +330,7 @@ frontend/src/
 ├── environments/     # Environment configs (dev/prod)
 ├── pages/            # Page components (login, menu, bill, settings)
 │   └── settings/components/  # Settings sub-components (theme-selector, category-manager, product-manager, user-manager)
-└── shared/components/        # Reusable UI components (toast, confirm-dialog, icon)
+└── shared/
+    ├── components/            # Reusable UI components (toast, confirm-dialog, icon)
+    └── styles/                # Shared component styles (CDK drag-drop, input resets)
 ```

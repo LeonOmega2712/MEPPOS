@@ -203,7 +203,14 @@ export class ProductService {
   }
 
   /**
-   * Delete a product
+   * Deactivate a product (set active = false)
+   */
+  async deactivateProduct(id: number) {
+    return this.updateProduct(id, { active: false });
+  }
+
+  /**
+   * Permanently delete a product
    */
   async deleteProduct(id: number) {
     return prisma.product.delete({

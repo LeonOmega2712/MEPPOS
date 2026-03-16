@@ -8,12 +8,9 @@ import {
   ProductsByCategorySchema,
   ReorderProductsSchema
 } from '../types/product.types';
+import { hasPrismaCode, isZodError } from '../lib/error';
 
 export class ProductController {
-  /**
-   * GET /api/products
-   * Get all products
-   */
   async getAllProducts(req: Request, res: Response) {
     try {
       const activeOnly = req.query.active === 'true';
@@ -33,47 +30,31 @@ export class ProductController {
       });
     } catch (error) {
       console.error('Error getting products:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to get products'
-      });
+      res.status(500).json({ success: false, error: 'Failed to get products' });
     }
   }
 
-  /**
-   * GET /api/products/:id
-   * Get product by ID
-   */
   async getProductById(req: Request, res: Response) {
     try {
       const { id } = ProductIdSchema.parse(req.params);
-
       const product = await productService.getProductById(id);
 
       if (!product) {
-        return res.status(404).json({
-          success: false,
-          error: 'Product not found'
-        });
+        res.status(404).json({ success: false, error: 'Product not found' });
+        return;
       }
 
-      res.json({
-        success: true,
-        data: product
-      });
-    } catch (error) {
+      res.json({ success: true, data: product });
+    } catch (error: unknown) {
+      if (isZodError(error)) {
+        res.status(400).json({ success: false, error: 'Invalid product ID' });
+        return;
+      }
       console.error('Error getting product:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to get product'
-      });
+      res.status(500).json({ success: false, error: 'Failed to get product' });
     }
   }
 
-  /**
-   * GET /api/categories/:categoryId/products
-   * Get products by category
-   */
   async getProductsByCategory(req: Request, res: Response) {
     try {
       const { categoryId } = ProductsByCategorySchema.parse(req.params);
@@ -88,32 +69,19 @@ export class ProductController {
         data: products,
         count: products.length
       });
-    } catch (error) {
+    } catch (error: unknown) {
+      if (isZodError(error)) {
+        res.status(400).json({ success: false, error: 'Invalid category ID' });
+        return;
+      }
       console.error('Error getting products by category:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to get products'
-      });
+      res.status(500).json({ success: false, error: 'Failed to get products' });
     }
   }
 
-  /**
-   * POST /api/products
-   * Create a new product
-   */
   async createProduct(req: Request, res: Response) {
     try {
       const data = CreateProductSchema.parse(req.body);
-
-      // Check if category exists
-      const categoryExists = await categoryService.categoryExists(data.categoryId);
-      if (!categoryExists) {
-        return res.status(404).json({
-          success: false,
-          error: 'Category not found'
-        });
-      }
-
       const product = await productService.createProduct(data);
 
       res.status(201).json({
@@ -121,43 +89,28 @@ export class ProductController {
         data: product,
         message: 'Product created successfully'
       });
-    } catch (error) {
+    } catch (error: unknown) {
+      if (isZodError(error)) {
+        res.status(400).json({ success: false, error: 'Invalid request body' });
+        return;
+      }
+      if (hasPrismaCode(error, 'P2003')) {
+        res.status(404).json({ success: false, error: 'Category not found' });
+        return;
+      }
+      if (hasPrismaCode(error, 'P2002')) {
+        res.status(409).json({ success: false, error: 'Product name already exists' });
+        return;
+      }
       console.error('Error creating product:', error);
-      res.status(400).json({
-        success: false,
-        error: 'Failed to create product',
-        details: error instanceof Error ? error.message : undefined
-      });
+      res.status(500).json({ success: false, error: 'Failed to create product' });
     }
   }
 
-  /**
-   * PUT /api/products/:id
-   * Update a product
-   */
   async updateProduct(req: Request, res: Response) {
     try {
       const { id } = ProductIdSchema.parse(req.params);
       const data = UpdateProductSchema.parse(req.body);
-
-      const exists = await productService.productExists(id);
-      if (!exists) {
-        return res.status(404).json({
-          success: false,
-          error: 'Product not found'
-        });
-      }
-
-      // If categoryId is being updated, check if it exists
-      if (data.categoryId) {
-        const categoryExists = await categoryService.categoryExists(data.categoryId);
-        if (!categoryExists) {
-          return res.status(404).json({
-            success: false,
-            error: 'Category not found'
-          });
-        }
-      }
 
       const product = await productService.updateProduct(id, data);
 
@@ -166,106 +119,74 @@ export class ProductController {
         data: product,
         message: 'Product updated successfully'
       });
-    } catch (error) {
+    } catch (error: unknown) {
+      if (isZodError(error)) {
+        res.status(400).json({ success: false, error: 'Invalid request body' });
+        return;
+      }
+      if (hasPrismaCode(error, 'P2025')) {
+        res.status(404).json({ success: false, error: 'Product not found' });
+        return;
+      }
+      if (hasPrismaCode(error, 'P2003')) {
+        res.status(404).json({ success: false, error: 'Category not found' });
+        return;
+      }
+      if (hasPrismaCode(error, 'P2002')) {
+        res.status(409).json({ success: false, error: 'Product name already exists' });
+        return;
+      }
       console.error('Error updating product:', error);
-      res.status(400).json({
-        success: false,
-        error: 'Failed to update product',
-        details: error instanceof Error ? error.message : undefined
-      });
+      res.status(500).json({ success: false, error: 'Failed to update product' });
     }
   }
 
-  /**
-   * DELETE /api/products/:id
-   * Soft delete (deactivate) a product by default
-   * Use ?permanent=true to permanently delete
-   */
   async deleteProduct(req: Request, res: Response) {
     try {
       const { id } = ProductIdSchema.parse(req.params);
       const permanent = req.query.permanent === 'true';
 
-      const exists = await productService.productExists(id);
-      if (!exists) {
-        return res.status(404).json({
-          success: false,
-          error: 'Product not found'
-        });
-      }
-
       if (permanent) {
-        // Hard delete - remove from database
         await productService.deleteProduct(id);
-        res.json({
-          success: true,
-          message: 'Product permanently deleted'
-        });
+        res.json({ success: true, message: 'Product permanently deleted' });
       } else {
-        // Soft delete - set active=false
-        await productService.updateProduct(id, { active: false });
-        res.json({
-          success: true,
-          message: 'Product deactivated'
-        });
+        await productService.deactivateProduct(id);
+        res.json({ success: true, message: 'Product deactivated' });
       }
-    } catch (error) {
+    } catch (error: unknown) {
+      if (hasPrismaCode(error, 'P2025')) {
+        res.status(404).json({ success: false, error: 'Product not found' });
+        return;
+      }
       console.error('Error deleting product:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to delete product',
-        details: error instanceof Error ? error.message : undefined
-      });
+      res.status(500).json({ success: false, error: 'Failed to delete product' });
     }
   }
 
-  /**
-   * GET /api/products/:id/price
-   * Get the effective price of a product
-   */
   async getProductPrice(req: Request, res: Response) {
     try {
       const { id } = ProductIdSchema.parse(req.params);
-
       const price = await productService.getEffectivePrice(id);
 
       if (price === null) {
-        return res.status(404).json({
-          success: false,
-          error: 'Product not found or has no price'
-        });
+        res.status(404).json({ success: false, error: 'Product not found or has no price' });
+        return;
       }
 
-      res.json({
-        success: true,
-        data: { price }
-      });
-    } catch (error) {
+      res.json({ success: true, data: { price } });
+    } catch (error: unknown) {
+      if (isZodError(error)) {
+        res.status(400).json({ success: false, error: 'Invalid product ID' });
+        return;
+      }
       console.error('Error getting product price:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to get product price'
-      });
+      res.status(500).json({ success: false, error: 'Failed to get product price' });
     }
   }
 
-  /**
-   * PATCH /api/products/reorder
-   * Batch reorder products within a category
-   */
   async reorderProducts(req: Request, res: Response) {
     try {
       const { categoryId, productIds } = ReorderProductsSchema.parse(req.body);
-
-      // Verify category exists
-      const categoryExists = await categoryService.categoryExists(categoryId);
-      if (!categoryExists) {
-        return res.status(404).json({
-          success: false,
-          error: 'Category not found'
-        });
-      }
-
       const updatedCount = await productService.reorderProducts(categoryId, productIds);
 
       res.json({
@@ -273,21 +194,17 @@ export class ProductController {
         message: 'Products reordered successfully',
         data: { updated: updatedCount }
       });
-    } catch (error) {
-      console.error('Error reordering products:', error);
-
-      if (error instanceof Error && error.message.includes('Invalid product IDs')) {
-        return res.status(400).json({
-          success: false,
-          error: error.message
-        });
+    } catch (error: unknown) {
+      if (isZodError(error)) {
+        res.status(400).json({ success: false, error: 'Invalid request body' });
+        return;
       }
-
-      res.status(500).json({
-        success: false,
-        error: 'Failed to reorder products',
-        details: error instanceof Error ? error.message : undefined
-      });
+      if (error instanceof Error && error.message.includes('Invalid product IDs')) {
+        res.status(400).json({ success: false, error: error.message });
+        return;
+      }
+      console.error('Error reordering products:', error);
+      res.status(500).json({ success: false, error: 'Failed to reorder products' });
     }
   }
 }

@@ -12,20 +12,13 @@ import { CategoryService } from '../../../../core/services/category.service';
 import { ToastService } from '../../../../core/services/toast.service';
 import { ConfirmDialogService } from '../../../../core/services/confirm-dialog.service';
 import { IconComponent } from '../../../../shared/components/icon';
-import type { Category, CreateCategoryPayload, UpdateCategoryPayload } from '../../../../core/models';
-
-interface CategoryDraft {
-  name: string;
-  description: string;
-  basePrice: number | null;
-  image: string;
-}
+import type { Category, CategoryDraft, CreateCategoryPayload, UpdateCategoryPayload } from '../../../../core/models';
 
 @Component({
   selector: 'app-category-manager',
   imports: [FormsModule, CdkDropList, CdkDrag, CdkDragHandle, CdkDragPlaceholder, IconComponent],
   templateUrl: './category-manager.html',
-  styleUrl: './category-manager.css',
+  styleUrl: '../../../../shared/styles/manager.css',
 })
 export class CategoryManagerComponent implements OnInit {
   private readonly categoryService = inject(CategoryService);

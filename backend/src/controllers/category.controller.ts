@@ -6,12 +6,9 @@ import {
   CategoryIdSchema,
   ReorderCategoriesSchema
 } from '../types/category.types';
+import { hasPrismaCode, isZodError } from '../lib/error';
 
 export class CategoryController {
-  /**
-   * GET /api/categories
-   * Get all categories
-   */
   async getAllCategories(req: Request, res: Response) {
     try {
       const activeOnly = req.query.active === 'true';
@@ -34,10 +31,6 @@ export class CategoryController {
     }
   }
 
-  /**
-   * GET /api/categories/:id
-   * Get category by ID
-   */
   async getCategoryById(req: Request, res: Response) {
     try {
       const { id } = CategoryIdSchema.parse(req.params);
@@ -45,33 +38,24 @@ export class CategoryController {
       const category = await categoryService.getCategoryById(id);
 
       if (!category) {
-        return res.status(404).json({
-          success: false,
-          error: 'Category not found'
-        });
+        res.status(404).json({ success: false, error: 'Category not found' });
+        return;
       }
 
-      res.json({
-        success: true,
-        data: category
-      });
-    } catch (error) {
+      res.json({ success: true, data: category });
+    } catch (error: unknown) {
+      if (isZodError(error)) {
+        res.status(400).json({ success: false, error: 'Invalid category ID' });
+        return;
+      }
       console.error('Error getting category:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to get category'
-      });
+      res.status(500).json({ success: false, error: 'Failed to get category' });
     }
   }
 
-  /**
-   * POST /api/categories
-   * Create a new category
-   */
   async createCategory(req: Request, res: Response) {
     try {
       const data = CreateCategorySchema.parse(req.body);
-
       const category = await categoryService.createCategory(data);
 
       res.status(201).json({
@@ -79,32 +63,24 @@ export class CategoryController {
         data: category,
         message: 'Category created successfully'
       });
-    } catch (error) {
+    } catch (error: unknown) {
+      if (isZodError(error)) {
+        res.status(400).json({ success: false, error: 'Invalid request body' });
+        return;
+      }
+      if (hasPrismaCode(error, 'P2002')) {
+        res.status(409).json({ success: false, error: 'Category name already exists' });
+        return;
+      }
       console.error('Error creating category:', error);
-      res.status(400).json({
-        success: false,
-        error: 'Failed to create category',
-        details: error instanceof Error ? error.message : undefined
-      });
+      res.status(500).json({ success: false, error: 'Failed to create category' });
     }
   }
 
-  /**
-   * PUT /api/categories/:id
-   * Update a category
-   */
   async updateCategory(req: Request, res: Response) {
     try {
       const { id } = CategoryIdSchema.parse(req.params);
       const data = UpdateCategorySchema.parse(req.body);
-
-      const exists = await categoryService.categoryExists(id);
-      if (!exists) {
-        return res.status(404).json({
-          success: false,
-          error: 'Category not found'
-        });
-      }
 
       const category = await categoryService.updateCategory(id, data);
 
@@ -113,64 +89,49 @@ export class CategoryController {
         data: category,
         message: 'Category updated successfully'
       });
-    } catch (error) {
+    } catch (error: unknown) {
+      if (isZodError(error)) {
+        res.status(400).json({ success: false, error: 'Invalid request body' });
+        return;
+      }
+      if (hasPrismaCode(error, 'P2025')) {
+        res.status(404).json({ success: false, error: 'Category not found' });
+        return;
+      }
+      if (hasPrismaCode(error, 'P2002')) {
+        res.status(409).json({ success: false, error: 'Category name already exists' });
+        return;
+      }
       console.error('Error updating category:', error);
-      res.status(400).json({
-        success: false,
-        error: 'Failed to update category',
-        details: error instanceof Error ? error.message : undefined
-      });
+      res.status(500).json({ success: false, error: 'Failed to update category' });
     }
   }
 
-  /**
-   * DELETE /api/categories/:id
-   * Soft delete (deactivate) a category, or hard delete with ?permanent=true
-   */
   async deleteCategory(req: Request, res: Response) {
     try {
       const { id } = CategoryIdSchema.parse(req.params);
       const permanent = req.query.permanent === 'true';
 
-      const exists = await categoryService.categoryExists(id);
-      if (!exists) {
-        return res.status(404).json({
-          success: false,
-          error: 'Category not found'
-        });
-      }
-
       if (permanent) {
-        await categoryService.hardDeleteCategory(id);
-        res.json({
-          success: true,
-          message: 'Category permanently deleted'
-        });
-      } else {
         await categoryService.deleteCategory(id);
-        res.json({
-          success: true,
-          message: 'Category deactivated successfully'
-        });
+        res.json({ success: true, message: 'Category permanently deleted' });
+      } else {
+        await categoryService.deactivateCategory(id);
+        res.json({ success: true, message: 'Category deactivated successfully' });
       }
-    } catch (error) {
+    } catch (error: unknown) {
+      if (hasPrismaCode(error, 'P2025')) {
+        res.status(404).json({ success: false, error: 'Category not found' });
+        return;
+      }
       console.error('Error deleting category:', error);
-      res.status(400).json({
-        success: false,
-        error: 'Failed to delete category',
-        details: error instanceof Error ? error.message : undefined
-      });
+      res.status(500).json({ success: false, error: 'Failed to delete category' });
     }
   }
 
-  /**
-   * PATCH /api/categories/reorder
-   * Batch reorder all categories
-   */
   async reorderCategories(req: Request, res: Response) {
     try {
       const { categoryIds } = ReorderCategoriesSchema.parse(req.body);
-
       const updatedCount = await categoryService.reorderCategories(categoryIds);
 
       res.json({
@@ -178,21 +139,17 @@ export class CategoryController {
         message: 'Categories reordered successfully',
         data: { updated: updatedCount }
       });
-    } catch (error) {
-      console.error('Error reordering categories:', error);
-
-      if (error instanceof Error && error.message.includes('Invalid category IDs')) {
-        return res.status(400).json({
-          success: false,
-          error: error.message
-        });
+    } catch (error: unknown) {
+      if (isZodError(error)) {
+        res.status(400).json({ success: false, error: 'Invalid request body' });
+        return;
       }
-
-      res.status(500).json({
-        success: false,
-        error: 'Failed to reorder categories',
-        details: error instanceof Error ? error.message : undefined
-      });
+      if (error instanceof Error && error.message.includes('Invalid category IDs')) {
+        res.status(400).json({ success: false, error: error.message });
+        return;
+      }
+      console.error('Error reordering categories:', error);
+      res.status(500).json({ success: false, error: 'Failed to reorder categories' });
     }
   }
 }
