@@ -116,6 +116,13 @@ export class BillPage implements OnInit, HasUnsavedChanges {
     }
   }
 
+  preventDecimalPaste(event: ClipboardEvent): void {
+    const text = event.clipboardData?.getData('text') ?? '';
+    if (!/^\d+$/.test(text)) {
+      event.preventDefault();
+    }
+  }
+
   hasUnsavedChanges(): boolean {
     return this.billItems().size > 0;
   }
