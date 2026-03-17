@@ -13,8 +13,7 @@
     "prisma:seed": "ts-node prisma/seed.ts",
     "db:reset": "prisma migrate reset",
     "db:push": "prisma db push",
-    "postinstall": "prisma generate",
-    "heroku-postbuild": "DATABASE_URL=$DIRECT_URL npx prisma migrate deploy"
+    "postinstall": "prisma generate"
   },
   "keywords": [
     "pos",
