@@ -4,3 +4,20 @@
 @plugin "daisyui" {
   themes: all;
 }
+
+/* iOS Safari auto-zooms when a focused input has font-size < 16px. DaisyUI v5 fixes
+   this by bumping --font-size to 1rem on .input:focus-within, but that causes child
+   .label spans to resize via font-size:inherit. We apply the 16px floor directly on
+   the inner elements and neutralize the wrapper change to keep labels stable. */
+@supports (-webkit-touch-callout: none) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  .input:focus,
+  .input:focus-within {
+    --font-size: 0.875rem;
+  }
+}
