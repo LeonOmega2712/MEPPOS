@@ -38,3 +38,11 @@
 .scrollbar-auto-hide.scrolling::-webkit-scrollbar-thumb {
   background: oklch(0.5 0 0 / 0.4);
 }
+
+/* iOS Safari auto-zooms when a focused input has font-size < 16px, causing labels
+   to visually resize. A 16px floor prevents the zoom without overriding larger sizes. */
+input,
+select,
+textarea {
+  font-size: max(16px, 1em);
+}
