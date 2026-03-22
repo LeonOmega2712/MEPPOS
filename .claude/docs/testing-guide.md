@@ -35,6 +35,13 @@ export default defineConfig({
     environment: 'node',
     include: ['tests/**/*.test.ts'],
     exclude: ['tests/integration-db/**'],  // Real-DB tests excluded
+    coverage: {
+      provider: 'v8',
+      include: ['src/**/*.ts'],
+      exclude: ['src/index.ts', 'src/lib/prisma.ts'],
+      reporter: ['text', 'html'],
+      reportsDirectory: 'coverage',
+    },
   },
 });
 ```
@@ -45,6 +52,7 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['tests/integration-db/**/*.test.ts'],
+    fileParallelism: false, // Files share a single DB — run sequentially
     globalSetup: ['tests/integration-db/globalSetup.ts'],
     setupFiles: ['tests/integration-db/setup.ts'],
     testTimeout: 15_000,   // Real DB ops are slower
@@ -80,6 +88,7 @@ Tests are compiled separately by Vitest using its own TypeScript handling.
 ```json
 "test": "vitest run",                                        // Unit + mocked integration tests
 "test:watch": "vitest",                                      // Same, in watch mode
+"test:coverage": "vitest run --coverage",                    // Unit tests + V8 coverage report
 "test:integration": "vitest run -c vitest.integration.config.ts",  // Real-DB tests
 "test:db:up": "docker compose -f ../docker-compose.test.yml up -d --wait",  // Start test DB
 "test:db:down": "docker compose -f ../docker-compose.test.yml down"         // Stop test DB
@@ -87,6 +96,7 @@ Tests are compiled separately by Vitest using its own TypeScript handling.
 
 - `vitest run` exits after running all tests — useful for CI pipelines.
 - `vitest` (without `run`) stays alive and re-runs tests when you save files — useful during development.
+- `test:coverage` runs the same unit + mocked tests but generates a coverage report (terminal table + HTML in `coverage/`).
 - `test:db:up` starts the PostgreSQL test container and waits until the healthcheck passes.
 - `test:integration` runs **only** the real-DB tests using the separate Vitest config.
 
