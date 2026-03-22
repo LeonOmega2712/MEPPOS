@@ -305,21 +305,22 @@ Prisma errors are `Error` instances with an extra `code` property. `Object.assig
 
 **Why it exists:** It's the simplest possible integration test. It validates that the app.ts extraction works, that supertest is configured correctly, and serves as a smoke test for the entire middleware chain (CORS, helmet, rate limiting, JSON parsing all run before this endpoint).
 
-### 3.3 Auth Login Endpoint — `tests/integration/auth.test.ts`
+### 3.3 Auth Endpoints — `tests/integration/auth.test.ts`
 
 **Source:** `src/controllers/auth.controller.ts` → `src/services/auth.service.ts`
 
-**What it tests:** The `POST /api/auth/login` endpoint — the entry point for authentication.
+**What it tests:** All four auth endpoints — login, refresh, logout, and me.
 
-**Testing approach:** Mocks `authService.login` at the module level so we don't need a database with real users. The focus is on the controller layer: does it validate input with Zod? Does it return the right status codes? Does it set the refresh token cookie?
+**Testing approach:** Mocks `authService` (login and refresh) at the module level so we don't need a database with real users. The `logout` and `me` endpoints don't call the service — logout just clears a cookie, and me returns `req.user` populated by the auth middleware.
 
-**Test groups:**
+**Test groups (16 tests):**
 
-| Group | What it verifies |
-|---|---|
-| Valid credentials | 200 response, accessToken in body, user data in body, refresh_token cookie set |
-| Invalid credentials | 401 when service returns `null` |
-| Validation errors | 400 when username/password/body is missing, service NOT called (Zod rejects before reaching the service) |
+| Endpoint | Tests | What it verifies |
+| --- | --- | --- |
+| `POST /api/auth/login` | 5 | 200 with tokens + cookie, 401 invalid creds, 400 validation (Zod rejects before service call) |
+| `POST /api/auth/refresh` | 5 | New tokens on valid cookie, sets new cookie, 401 missing/invalid/expired cookie, clears cookie on failure |
+| `POST /api/auth/logout` | 2 | Success message, clears refresh_token cookie (expires in past) |
+| `GET /api/auth/me` | 2 | Returns token payload, 401 without token |
 
 **Key insight — "service NOT called" assertions:**
 
@@ -332,11 +333,11 @@ This verifies that Zod validation runs **before** the service call. If validatio
 **Cookie testing:**
 
 ```ts
-const cookies: string[] = res.headers['set-cookie'] ?? [];
+const cookies = [res.headers['set-cookie']].flat().filter(Boolean) as string[];
 expect(cookies.some((c: string) => c.startsWith('refresh_token='))).toBe(true);
 ```
 
-HTTP cookies come back as an array of strings in the `set-cookie` header. We check that at least one starts with `refresh_token=`.
+The `set-cookie` header can be a `string` or `string[]` depending on how many cookies are set. The `.flat().filter(Boolean)` pattern normalizes both cases. For logout, we verify the cookie has an expired date (`expires=Thu, 01 Jan 1970`) which tells the browser to delete it.
 
 ### 3.4 Display Order Utilities — `tests/unit/lib/display-order.test.ts`
 
@@ -683,7 +684,47 @@ This is a minimal sanity check that runs before the more complex integration tes
 
 - Returns 200 without any Authorization header
 
-### 3.12 Lesson Learned: `fileParallelism: false`
+### 3.12 User CRUD — `tests/integration-db/users.test.ts`
+
+**Source:** `src/controllers/user.controller.ts` → `src/services/user.service.ts`
+
+**What it tests:** Full user lifecycle through HTTP against a real PostgreSQL database — create, read, update, soft delete, and hard delete.
+
+**Key behaviors tested (21 tests):**
+
+#### POST /api/users (Create — 7 tests)
+
+- Creates a user and returns it **without the password field** (the `USER_SELECT` in the service omits `password`)
+- Verifies password is **bcrypt-hashed** before storing (compares plain text against DB hash)
+- Duplicate username returns 409
+- Missing fields returns 400 (Zod validation)
+- Password too short returns 400
+- WAITER role returns 403 (admin-only)
+- Role defaults to WAITER when not specified
+
+#### GET /api/users (Read — 6 tests)
+
+- Returns all users ordered by ID, with count
+- Never exposes passwords in any user object
+- WAITER gets 403 (admin-only endpoint)
+- Get by ID returns 200 with user data
+- Non-existent ID returns 404
+- Invalid ID format (e.g., "abc") returns 400
+
+#### PUT /api/users/:id (Update — 4 tests)
+
+- Updates displayName and role
+- Hashes new password when updating (verifies via bcrypt.compare on DB)
+- Non-existent user returns 404
+- Duplicate username returns 409
+
+#### DELETE (Soft + Hard — 4 tests)
+
+- Soft delete: deactivates user (`active: false`), returns message "User deactivated"
+- Hard delete (`?permanent=true`): removes from DB entirely, verified with `findUnique` returning null
+- Both return 404 for non-existent users
+
+### 3.13 Lesson Learned: `fileParallelism: false`
 
 By default, Vitest runs test files in **parallel** (different workers). This is fast for unit tests, but for real-DB integration tests it causes **race conditions** — one file's `resetDb()` truncates tables while another file is in the middle of a test.
 
@@ -707,13 +748,14 @@ Tests within a single file still run sequentially (Vitest's default), so the com
 | `unit/lib/jwt.test.ts` | Unit | 9 | Token generation, verification, cross-secret rejection |
 | `unit/services/product-price.test.ts` | Unit | 5 | Price fallback logic, Decimal conversion |
 | `integration/health.test.ts` | Integration (mocked) | 2 | Health endpoint, supertest smoke test |
-| `integration/auth.test.ts` | Integration (mocked) | 7 | Login endpoint, Zod validation, cookie setting |
+| `integration/auth.test.ts` | Integration (mocked) | 16 | Login, refresh, logout, me — Zod validation, cookies |
 | `integration/auth-middleware.test.ts` | Integration (mocked) | 8 | Authentication, authorization, token rejection |
 | `integration-db/smoke.test.ts` | Integration (real DB) | 4 | DB connection, migrations, CRUD, resetDb |
 | `integration-db/categories.test.ts` | Integration (real DB) | 23 | Full category CRUD lifecycle, auth guards |
 | `integration-db/products.test.ts` | Integration (real DB) | 28 | Product CRUD, price resolution, category move, reactivation |
 | `integration-db/menu.test.ts` | Integration (real DB) | 13 | Public menu: filtering, ordering, price resolution, response shape |
-| **Total** | | **114** | |
+| `integration-db/users.test.ts` | Integration (real DB) | 21 | User CRUD, bcrypt hashing, soft/hard delete, auth guards |
+| **Total** | | **144** | |
 
 ---
 
