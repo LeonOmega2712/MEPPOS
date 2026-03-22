@@ -558,11 +558,93 @@ This reduces repetition — every request is authenticated by default with an ad
 | Duplicate IDs | 400 — `"Duplicate category IDs"` |
 | Non-existent IDs | 400 — `"Invalid category IDs: ..."` |
 
-### 3.9 DB Smoke Test — `tests/integration-db/smoke.test.ts`
+### 3.9 Product CRUD — `tests/integration-db/products.test.ts`
+
+**Source:** `src/controllers/product.controller.ts` → `src/services/product.service.ts`
+
+**What it tests:** The complete product lifecycle including complex service-level logic: category moves, deactivation with gap closing, reactivation with parent category reactivation, and the effective price resolution endpoint.
+
+**Testing approach:** Same as categories — full-stack, no mocks. Uses a `seedCategory` helper since every product needs a parent category.
+
+#### POST /api/products (Create)
+
+| Test case | What it verifies |
+|---|---|
+| Auto displayOrder | First product in category gets 0, auto-increments per category |
+| Duplicate name | 409 — Product names are globally unique |
+| Non-existent category | 404 — Prisma P2003 foreign key violation detected |
+| Missing fields | 400 — Zod validation |
+| WAITER blocked | 403 |
+
+#### GET endpoints (Read)
+
+| Test case | What it verifies |
+|---|---|
+| All products | Returns products with category info, includes `categories` array |
+| `?active=true` filter | Returns only active products |
+| By ID | Returns product with its full category |
+| By category | `GET /categories/:id/products` scopes correctly |
+| WAITER can read | GET routes only require authentication |
+
+#### GET /api/products/:id/price (Price Resolution)
+
+| Test case | What it verifies |
+|---|---|
+| Product has price | Returns product's own price (ignores category basePrice) |
+| Falls back to category | Returns category basePrice when product price is null |
+| Both null | 404 — no price available |
+| Non-existent product | 404 |
+
+This tests the same three-level fallback logic from the unit tests (section 3.6), but through the full HTTP stack with real Prisma Decimals from PostgreSQL.
+
+#### PUT /api/products/:id (Update)
+
+| Test case | What it verifies |
+|---|---|
+| Update fields | Name and price change correctly |
+| Non-existent | 404 |
+| Duplicate name | 409 |
+| **Category move** | Product gets new displayOrder at end of target category, gaps closed in source category |
+
+**Category move** is one of the most complex operations: it's a transaction that calculates the next displayOrder in the new category, moves the product, and then closes gaps in the old category.
+
+#### Deactivation & Reactivation
+
+| Test case | What it verifies |
+|---|---|
+| Deactivate | Product set to `active: false`, displayOrder gaps closed in its category |
+| Reactivate | Product set to `active: true`, existing products shifted |
+| **Parent reactivation** | Reactivating a product in an inactive category also reactivates the category |
+
+**Parent reactivation** is a key business rule: if a product is reactivated but its category is inactive, the category is automatically reactivated too. This prevents orphan products visible in the menu without their parent category.
+
+#### DELETE & REORDER
+
+| Test case | What it verifies |
+|---|---|
+| Hard delete | Product permanently removed from DB |
+| Non-existent | 404 |
+| Reorder | Products within a category get new displayOrder matching array index |
+| Cross-category | 400 when productIds don't belong to the specified categoryId |
+
+### 3.10 DB Smoke Test — `tests/integration-db/smoke.test.ts`
 
 **What it tests:** Validates that the entire test DB infrastructure works — connection, migrations applied, CRUD operations, and that `resetDb()` clears data between tests.
 
 This is a minimal sanity check that runs before the more complex integration tests. If this fails, the infrastructure setup has an issue.
+
+### 3.11 Lesson Learned: `fileParallelism: false`
+
+By default, Vitest runs test files in **parallel** (different workers). This is fast for unit tests, but for real-DB integration tests it causes **race conditions** — one file's `resetDb()` truncates tables while another file is in the middle of a test.
+
+The fix is simple:
+
+```ts
+// vitest.integration.config.ts
+fileParallelism: false, // Run files sequentially — they share a database
+```
+
+Tests within a single file still run sequentially (Vitest's default), so the combination means: file A runs all its tests, then file B, etc. This is the standard pattern for database integration tests.
 
 ---
 
@@ -579,7 +661,8 @@ This is a minimal sanity check that runs before the more complex integration tes
 | `integration/auth-middleware.test.ts` | Integration (mocked) | 8 | Authentication, authorization, token rejection |
 | `integration-db/smoke.test.ts` | Integration (real DB) | 4 | DB connection, migrations, CRUD, resetDb |
 | `integration-db/categories.test.ts` | Integration (real DB) | 23 | Full category CRUD lifecycle, auth guards |
-| **Total** | | **73** | |
+| `integration-db/products.test.ts` | Integration (real DB) | 28 | Product CRUD, price resolution, category move, reactivation |
+| **Total** | | **101** | |
 
 ---
 
@@ -591,6 +674,7 @@ This is a minimal sanity check that runs before the more complex integration tes
 | Function imports dependency internally | `vi.mock()` | Mocking `prisma` module |
 | Pure function with no dependencies | No mocking | JWT functions, error utilities |
 | Testing HTTP layer end-to-end | Supertest + mock only the DB | Auth middleware tests |
+| Testing full stack with real DB | Supertest + real Prisma + Docker PostgreSQL | Category/Product CRUD tests |
 
 ---
 
