@@ -633,7 +633,47 @@ This tests the same three-level fallback logic from the unit tests (section 3.6)
 
 This is a minimal sanity check that runs before the more complex integration tests. If this fails, the infrastructure setup has an issue.
 
-### 3.11 Lesson Learned: `fileParallelism: false`
+### 3.11 Public Menu Endpoint — `tests/integration-db/menu.test.ts`
+
+**What it tests:** `GET /api/menu` — a **public** endpoint that returns the full menu for QR/digital menu display.
+
+**Why this test is different from the CRUD tests:**
+
+- **No auth tokens needed** — the menu is public. We use plain `request(app).get('/api/menu')` instead of the `api` helper.
+- **Tests the service's transformation logic** — the `MenuService` doesn't just return raw Prisma data. It filters (active only), orders (by `displayOrder`), resolves prices (product → category fallback), and **reshapes** the data (strips `categoryId`, `active`, `createdAt`, nested `category.basePrice` from products).
+- **Response shape validation** — the frontend consumes this endpoint directly. We assert exact object shapes with `toEqual()` + `not.toHaveProperty()` to catch accidental field leaks (e.g., if someone adds `include: { ... }` to the Prisma query without updating the mapping).
+
+**Test breakdown (13 tests):**
+
+#### Filtering (3 tests)
+
+- Only active categories appear in response
+- Only active products within active categories appear
+- Products of inactive categories are excluded entirely (even if the products themselves are active)
+
+#### Ordering (2 tests)
+
+- Categories sorted by `displayOrder`
+- Products sorted by `displayOrder` within each category
+
+#### Price resolution (4 tests)
+
+- Uses product price when set (overrides category basePrice)
+- Falls back to category `basePrice` when product price is null
+- Returns `null` when both product and category prices are null
+- Prices are plain `number` types, not Prisma `Decimal` strings — validates `typeof === 'number'`
+
+#### Response shape (3 tests)
+
+- Top-level structure: `{ success, data, count }`
+- Category shape: `{ id, name, description, basePrice, image, displayOrder, products }` — no `active`, `createdAt`, `updatedAt`, `_count`
+- Product shape: `{ id, name, description, price, image, displayOrder, customizable }` — no `categoryId`, `active`, `createdAt`, `updatedAt`, `category`
+
+#### Public access (1 test)
+
+- Returns 200 without any Authorization header
+
+### 3.12 Lesson Learned: `fileParallelism: false`
 
 By default, Vitest runs test files in **parallel** (different workers). This is fast for unit tests, but for real-DB integration tests it causes **race conditions** — one file's `resetDb()` truncates tables while another file is in the middle of a test.
 
@@ -662,7 +702,8 @@ Tests within a single file still run sequentially (Vitest's default), so the com
 | `integration-db/smoke.test.ts` | Integration (real DB) | 4 | DB connection, migrations, CRUD, resetDb |
 | `integration-db/categories.test.ts` | Integration (real DB) | 23 | Full category CRUD lifecycle, auth guards |
 | `integration-db/products.test.ts` | Integration (real DB) | 28 | Product CRUD, price resolution, category move, reactivation |
-| **Total** | | **101** | |
+| `integration-db/menu.test.ts` | Integration (real DB) | 13 | Public menu: filtering, ordering, price resolution, response shape |
+| **Total** | | **114** | |
 
 ---
 
