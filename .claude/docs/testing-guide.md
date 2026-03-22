@@ -719,7 +719,58 @@ Tests within a single file still run sequentially (Vitest's default), so the com
 
 ---
 
-## 6. Running Tests
+## 6. Code Coverage
+
+### 6.1 Setup
+
+Coverage uses `@vitest/coverage-v8` — the V8 engine's built-in code coverage (no Babel/Istanbul instrumentation needed).
+
+Configuration in `vitest.config.ts`:
+
+```ts
+coverage: {
+  provider: 'v8',
+  include: ['src/**/*.ts'],             // Only measure source code
+  exclude: ['src/index.ts', 'src/lib/prisma.ts'], // Untestable without real server/DB
+  reporter: ['text', 'html'],           // Terminal table + browsable HTML
+  reportsDirectory: 'coverage',         // Output dir (gitignored)
+},
+```
+
+**Why exclude `index.ts` and `prisma.ts`?**
+
+- `index.ts` just calls `app.listen()` — testing it would require starting a real HTTP server, which supertest already bypasses by importing `app.ts` directly.
+- `prisma.ts` configures the Prisma client with the PrismaPg adapter — it only runs meaningfully against a real database, and coverage from integration-db tests uses a separate config.
+
+### 6.2 Understanding the Numbers
+
+`npm run test:coverage` only measures unit + mocked integration tests (no Docker). Controllers and services show low coverage here because they're primarily tested by the real-DB integration suite under `vitest.integration.config.ts`.
+
+High-coverage areas (these are fully unit-tested):
+
+- `src/lib/` — 100% (error utils, display-order, JWT)
+- `src/types/` — 100% (Zod schemas)
+- `src/middleware/` — ~87% (auth middleware)
+
+Low-coverage areas (tested by real-DB integration tests instead):
+
+- `src/controllers/` — tested via supertest + real PostgreSQL
+- `src/services/` — tested via supertest + real PostgreSQL
+
+### 6.3 Reporters
+
+- **`text`** — prints a table in the terminal showing % statements, branches, functions, and lines per file
+- **`html`** — generates a browsable report in `coverage/` that you can open in a browser to see line-by-line highlighting
+
+```bash
+# After running coverage, open the HTML report:
+open coverage/index.html   # macOS
+start coverage/index.html  # Windows
+```
+
+---
+
+## 7. Running Tests
 
 ```bash
 # --- Unit + mocked integration tests (no Docker needed) ---
@@ -728,6 +779,10 @@ npm test                                    # Run all once
 npm run test:watch                          # Watch mode (re-runs on save)
 npx vitest run tests/unit/lib/jwt.test.ts   # Run a specific file
 npx vitest run --reporter=verbose           # Verbose output
+
+# --- Coverage (no Docker needed) ---
+
+npm run test:coverage                       # Run tests + generate coverage report
 
 # --- Real-DB integration tests (Docker required) ---
 
