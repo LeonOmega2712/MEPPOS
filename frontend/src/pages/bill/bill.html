@@ -73,6 +73,7 @@
 <footer class="bg-base-200 footer-shadow">
   <!-- Totals bar (always visible) -->
   <div class="container mx-auto flex items-center p-3 sm:p-4"
+    data-testid="footer-toggle"
     [class.cursor-pointer]="totalItems() > 0"
     (click)="totalItems() > 0 && toggleFooter()">
     <div class="flex items-center flex-1">
@@ -89,7 +90,7 @@
       }
     </div>
     <div class="flex items-center justify-end flex-1">
-      <span class="badge badge-lg badge-success font-bold">
+      <span data-testid="bill-total" class="badge badge-lg badge-success font-bold">
         <app-icon name="currency-dollar" />
         {{ totalPrice().toFixed(2) }}
       </span>

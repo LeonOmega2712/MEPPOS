@@ -8,6 +8,14 @@ export interface TokenPayload {
   role: Role;
 }
 
+const isProduction = process.env.NODE_ENV === 'production';
+
+if (isProduction && (!process.env.JWT_ACCESS_SECRET || !process.env.JWT_REFRESH_SECRET)) {
+  throw new Error(
+    'JWT_ACCESS_SECRET and JWT_REFRESH_SECRET must be set in production',
+  );
+}
+
 const ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || 'dev-access-secret';
 const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'dev-refresh-secret';
 const ACCESS_EXPIRY = '15m';
