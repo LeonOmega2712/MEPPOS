@@ -6,7 +6,7 @@
       <p class="text-center text-base-content/60 mb-4">Iniciar sesión</p>
 
       @if (error()) {
-        <div role="alert" class="alert alert-error alert-soft mb-2">
+        <div role="alert" data-testid="login-error" class="alert alert-error alert-soft mb-2">
           <span>{{ error() }}</span>
         </div>
       }
@@ -16,6 +16,7 @@
           <span class="label w-24 shrink-0">Usuario</span>
           <input
             type="text"
+            data-testid="username-input"
             [(ngModel)]="username"
             name="username"
             autocomplete="username"
@@ -28,6 +29,7 @@
           <span class="label w-24 shrink-0">Contraseña</span>
           <input
             type="password"
+            data-testid="password-input"
             [(ngModel)]="password"
             name="password"
             autocomplete="current-password"
@@ -38,6 +40,7 @@
 
         <button
           type="submit"
+          data-testid="login-submit"
           class="btn btn-primary w-full"
           [disabled]="loading() || !username || !password"
         >
