@@ -115,6 +115,10 @@ Thumbs.db
 /frontend/.nyc_output
 /backend/.nyc_output
 
+# Playwright generated output
+/frontend/playwright-report/
+/frontend/test-results/
+
 # =========================================
 # MISC
 # =========================================
