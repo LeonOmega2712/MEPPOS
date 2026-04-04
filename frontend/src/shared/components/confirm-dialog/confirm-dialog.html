@@ -15,10 +15,12 @@
     }
 
     <div class="modal-action">
-      <button class="btn btn-soft btn-error" (click)="dialogService.cancel()"
-        [attr.aria-label]="dialogService.cancelText()">
-        <app-icon name="x-circle" />
-      </button>
+      @if (dialogService.cancelable()) {
+        <button class="btn btn-soft btn-error" (click)="dialogService.cancel()"
+          [attr.aria-label]="dialogService.cancelText()">
+          <app-icon name="x-circle" />
+        </button>
+      }
       <button class="btn btn-soft btn-success"
         [disabled]="dialogService.requireInput() && dialogService.inputValue() !== dialogService.requireInput()"
         (click)="dialogService.accept()"
@@ -27,7 +29,9 @@
       </button>
     </div>
   </div>
-  <form method="dialog" class="modal-backdrop">
-    <button (click)="dialogService.cancel()">close</button>
-  </form>
+  @if (dialogService.cancelable()) {
+    <form method="dialog" class="modal-backdrop">
+      <button (click)="dialogService.cancel()">close</button>
+    </form>
+  }
 </dialog>

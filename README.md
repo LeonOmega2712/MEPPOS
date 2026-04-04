@@ -59,21 +59,31 @@ Frontend will be running at `http://localhost:4200`
 ### Backend (`/backend`)
 
 ```bash
-npm run dev              # Development with hot-reload
-npm run build            # Compile to JavaScript
-npm start                # Run compiled version
-npm run prisma:migrate   # Create/apply migrations
-npm run prisma:studio    # Open Prisma Studio (DB GUI)
-npm run prisma:seed      # Seed database with sample data
-npm run db:reset         # Reset database (deletes everything)
+npm run dev                  # Development with hot-reload
+npm run build                # Compile to JavaScript
+npm start                    # Run compiled version
+npm run prisma:migrate       # Create/apply migrations
+npm run prisma:studio        # Open Prisma Studio (DB GUI)
+npm run prisma:seed          # Seed database with sample data
+npm run db:reset             # Reset database (deletes everything)
+npm test                     # Run unit tests
+npm run test:watch           # Run unit tests in watch mode
+npm run test:coverage        # Run unit tests with coverage report
+npm run test:db:up           # Start test PostgreSQL container
+npm run test:integration     # Run integration tests (requires test DB)
+npm run test:db:down         # Stop test PostgreSQL container
 ```
 
 ### Frontend (`/frontend`)
 
 ```bash
-npm start            # Development server
-npm run build        # Production build
-npm test             # Run tests
+npm start                # Development server
+npm run build            # Production build
+npm test                 # Run unit tests (Vitest)
+npm run e2e              # Run E2E tests headless (Playwright)
+npm run e2e:ui           # Run E2E tests with Playwright UI
+npm run e2e:headed       # Run E2E tests in headed browser
+npm run e2e:report       # Show last E2E test report
 ```
 
 ---
@@ -172,6 +182,7 @@ ADMIN_DEFAULT_PASSWORD=admin123
 - Angular CDK ^21.1.3
 - Angular Service Worker ^21.1.3
 - Vitest ^4.0.8
+- Playwright (E2E testing)
 - RxJS ~7.8.0
 
 ### Backend
@@ -232,6 +243,12 @@ The system uses 3 tables:
 - ✅ Conditional navbar (shown only when authenticated)
 - ✅ Public menu route for digital/QR access
 - ✅ Logout/user info in settings
+- ✅ Backend unit tests (JWT utilities, display-order helpers, price resolution)
+- ✅ Backend integration tests (categories, products, auth, users, public menu)
+- ✅ Frontend E2E tests with Playwright (auth flows, bill calculator)
+- ✅ GitHub Actions CI pipeline (backend + frontend jobs on every push)
+- ✅ CD pipeline (auto-deploy to Koyeb + Vercel on push to master after CI passes)
+- ✅ PWA auto-update: SwUpdate prompt with forced reload on new version
 - ⬜ Locations management (tables/bar with visual identifiers)
 - ⬜ Persistent orders with multiple rounds
 - ⬜ Custom extras and frequent extras list
@@ -326,7 +343,7 @@ frontend/src/
 │   ├── guards/       # Route guards (auth, unsaved changes)
 │   ├── interceptors/ # HTTP interceptors (auth token + 401 refresh)
 │   ├── models/       # TypeScript interfaces
-│   └── services/     # Angular services (auth, user, category, product, menu, theme, toast, confirm dialog, splash)
+│   └── services/     # Angular services (auth, user, category, product, menu, theme, toast, confirm dialog, splash, pwa-update)
 ├── environments/     # Environment configs (dev/prod)
 ├── pages/            # Page components (login, menu, bill, settings)
 │   └── settings/components/  # Settings sub-components (theme-selector, category-manager, product-manager, user-manager)

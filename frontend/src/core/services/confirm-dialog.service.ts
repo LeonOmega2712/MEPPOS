@@ -6,6 +6,7 @@ export interface ConfirmDialogOptions {
   confirmText?: string;
   cancelText?: string;
   requireInput?: string;
+  cancelable?: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -17,6 +18,7 @@ export class ConfirmDialogService {
   readonly cancelText = signal('Cancelar');
   readonly requireInput = signal('');
   readonly inputValue = signal('');
+  readonly cancelable = signal(true);
 
   private resolver: ((value: boolean) => void) | null = null;
 
@@ -27,6 +29,7 @@ export class ConfirmDialogService {
     this.cancelText.set(options.cancelText ?? 'Cancelar');
     this.requireInput.set(options.requireInput ?? '');
     this.inputValue.set('');
+    this.cancelable.set(options.cancelable ?? true);
     this.visible.set(true);
 
     return new Promise<boolean>((resolve) => {
