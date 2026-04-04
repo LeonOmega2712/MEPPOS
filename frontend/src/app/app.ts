@@ -3,6 +3,7 @@ import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/rou
 import { ThemeService } from '../core/services/theme.service';
 import { SplashService } from '../core/services/splash.service';
 import { AuthService } from '../core/services/auth.service';
+import { PwaUpdateService } from '../core/services/pwa-update.service';
 import { ToastComponent } from '../shared/components/toast';
 import { ConfirmDialogComponent } from '../shared/components/confirm-dialog';
 
@@ -21,6 +22,7 @@ export class App {
   constructor() {
     inject(ThemeService).init();
     inject(SplashService);
+    inject(PwaUpdateService).init();
     this.authService.initialize().subscribe();
   }
 
