@@ -91,3 +91,42 @@ export async function setupLoginFailMocks(page: Page): Promise<void> {
     route.fulfill({ status: 401, json: { success: false, error: 'Credenciales inválidas' } }),
   );
 }
+
+export async function setupNetworkErrorMocks(page: Page): Promise<void> {
+  await mockRefreshFail(page);
+
+  await page.route(`${API_BASE}/auth/login`, (route) => route.abort());
+}
+
+// Simulates a Koyeb cold start: returns 200 OK with HTML for the first N attempts,
+// then fulfills with the provided response on subsequent requests.
+export async function setupColdStartMocks(
+  page: Page,
+  htmlAttempts: number,
+  finalResponse: { status: number; json: object },
+): Promise<void> {
+  await mockRefreshFail(page);
+
+  let attempts = 0;
+  await page.route(`${API_BASE}/auth/login`, (route) => {
+    attempts++;
+    if (attempts <= htmlAttempts) {
+      route.fulfill({
+        status: 200,
+        contentType: 'text/html',
+        body: '<html>Your service is almost ready! We are deploying your application.</html>',
+      });
+    } else {
+      route.fulfill(finalResponse);
+    }
+  });
+}
+
+// Simulates a request that hangs indefinitely (used to test the cold start hint).
+export async function setupHangingRequestMocks(page: Page): Promise<void> {
+  await mockRefreshFail(page);
+
+  await page.route(`${API_BASE}/auth/login`, () => {
+    // Intentionally never fulfilled — request hangs until page navigation or timeout
+  });
+}

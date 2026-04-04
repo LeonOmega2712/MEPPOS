@@ -21,6 +21,7 @@
 - Use appropriate architectural patterns according to the project context. Front-end and back-end may use different patterns if this improves clarity, scalability, and maintainability.
 - Official documentation of the tools and technologies used must be the primary technical reference.
 - Technical quality is the top priority: responses must be well-founded, justify decisions, and propose better alternatives when they exist, even if they contradict the initial instruction, always with solid arguments.
+- When planning or implementing any feature, proactively adopt the perspective of the relevant domain expert and surface optimizations without waiting for a second prompt. For frontend work: consider UX, accessibility, perceived performance, and feedback clarity. For backend work: consider reliability, error handling, security, and scalability. For QA/testing: consider edge cases, coverage gaps, and regression risk. Flag findings and apply high-priority improvements as part of the initial implementation.
 
 ## Project: Phase 1 - Bill Calculator
 

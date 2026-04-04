@@ -246,9 +246,11 @@ The system uses 3 tables:
 - ✅ Backend unit tests (JWT utilities, display-order helpers, price resolution)
 - ✅ Backend integration tests (categories, products, auth, users, public menu)
 - ✅ Frontend E2E tests with Playwright (auth flows, bill calculator)
-- ✅ GitHub Actions CI pipeline (backend + frontend jobs on every push)
+- ✅ Frontend unit tests with Vitest (interceptors, login page logic)
+- ✅ GitHub Actions CI pipeline (backend + frontend unit + E2E jobs on every push)
 - ✅ CD pipeline (auto-deploy to Koyeb + Vercel on push to master after CI passes)
 - ✅ PWA auto-update: SwUpdate prompt with forced reload on new version
+- ✅ Detailed login error messages with Koyeb cold start auto-retry (exponential backoff)
 - ⬜ Locations management (tables/bar with visual identifiers)
 - ⬜ Persistent orders with multiple rounds
 - ⬜ Custom extras and frequent extras list
@@ -341,7 +343,7 @@ frontend/src/
 ├── app/              # Root component, routes, config
 ├── core/
 │   ├── guards/       # Route guards (auth, unsaved changes)
-│   ├── interceptors/ # HTTP interceptors (auth token + 401 refresh)
+│   ├── interceptors/ # HTTP interceptors (auth, server error handling with cold start retry)
 │   ├── models/       # TypeScript interfaces
 │   └── services/     # Angular services (auth, user, category, product, menu, theme, toast, confirm dialog, splash, pwa-update)
 ├── environments/     # Environment configs (dev/prod)
