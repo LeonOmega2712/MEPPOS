@@ -120,6 +120,13 @@ Thumbs.db
 /frontend/test-results/
 
 # =========================================
+# LOCAL DEV UTILITIES
+# =========================================
+
+# Local mock servers used for manual testing (not part of the project)
+*-mock.mjs
+
+# =========================================
 # MISC
 # =========================================
 
