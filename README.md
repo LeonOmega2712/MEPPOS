@@ -342,7 +342,7 @@ backend/src/
 frontend/src/
 ├── app/              # Root component, routes, config
 ├── core/
-│   ├── guards/       # Route guards (auth, unsaved changes)
+│   ├── guards/       # Route guards (auth, no-auth, unsaved changes)
 │   ├── interceptors/ # HTTP interceptors (auth, server error handling with cold start retry)
 │   ├── models/       # TypeScript interfaces
 │   └── services/     # Angular services (auth, user, category, product, menu, theme, toast, confirm dialog, splash, pwa-update)

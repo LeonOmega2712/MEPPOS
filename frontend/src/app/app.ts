@@ -23,7 +23,6 @@ export class App {
     inject(ThemeService).init();
     inject(SplashService);
     inject(PwaUpdateService).init();
-    this.authService.initialize().subscribe();
   }
 
   onScroll(): void {

@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import {
   setupApiMocks,
+  setupAuthenticatedMocks,
   setupLoginFailMocks,
   setupNetworkErrorMocks,
   setupColdStartMocks,
@@ -105,6 +106,16 @@ test.describe('Authentication', () => {
     await expect(page.locator('[data-testid="login-error"]')).toBeVisible({ timeout: 15_000 });
     await expect(page.locator('[data-testid="login-error"]')).toContainText('Usuario o contraseña incorrectos');
     await expect(page.locator('[data-testid="login-retry"]')).not.toBeVisible();
+  });
+
+  test('authenticated user accessing /login is redirected to /bill', async ({ page }) => {
+    await setupAuthenticatedMocks(page);
+    await page.route('**/api/menu', (route) =>
+      route.fulfill({ status: 200, json: { success: true, data: [] } }),
+    );
+    await page.goto('/login');
+
+    await expect(page).toHaveURL(/\/bill/);
   });
 
   test('shows cold start hint after extended loading', async ({ page }) => {

@@ -5,7 +5,6 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { AuthService } from '../../core/services/auth.service';
 import { COLD_START_STATUS } from '../../core/interceptors/server-error.interceptor';
 
-// Delay before showing the cold start hint to the user (ms).
 // Aligns with the first retry window so the hint appears as the server is waking up.
 const COLD_START_HINT_DELAY_MS = 4000;
 
@@ -23,9 +22,6 @@ export class LoginPage {
   password = '';
 
   constructor() {
-    if (this.authService.isAuthenticated()) {
-      this.router.navigate(['/bill']);
-    }
     inject(DestroyRef).onDestroy(() => this.clearHint());
   }
 

@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { unsavedChangesGuard } from '../core/guards/unsaved-changes.guard';
 import { authGuard } from '../core/guards/auth.guard';
+import { noAuthGuard } from '../core/guards/no-auth.guard';
 
 export const routes: Routes = [
   {
@@ -11,6 +12,7 @@ export const routes: Routes = [
   {
     path: 'login',
     loadComponent: () => import('../pages/login/login').then(m => m.LoginPage),
+    canActivate: [noAuthGuard],
   },
   {
     path: 'menu',
@@ -30,6 +32,6 @@ export const routes: Routes = [
   },
   {
     path: '**',
-    redirectTo: 'menu',
+    redirectTo: 'login',
   },
 ];

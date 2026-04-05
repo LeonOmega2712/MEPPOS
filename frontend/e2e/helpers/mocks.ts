@@ -59,6 +59,18 @@ export const mockMenu = [
   },
 ];
 
+export async function setupAuthenticatedMocks(page: Page): Promise<void> {
+  await page.route(`${API_BASE}/auth/refresh`, (route) =>
+    route.fulfill({
+      status: 200,
+      json: {
+        success: true,
+        data: { accessToken: 'test-access-token', user: mockUser },
+      },
+    }),
+  );
+}
+
 async function mockRefreshFail(page: Page): Promise<void> {
   await page.route(`${API_BASE}/auth/refresh`, (route) =>
     route.fulfill({ status: 401, json: { success: false, error: 'Unauthorized' } }),
