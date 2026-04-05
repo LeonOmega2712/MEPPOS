@@ -11,13 +11,12 @@ describe('LoginPage', () => {
   let fixture: ComponentFixture<LoginPage>;
   let component: LoginPage;
   let loginSubject: Subject<unknown>;
-  let authServiceMock: { isAuthenticated: () => boolean; login: ReturnType<typeof vi.fn> };
+  let authServiceMock: { login: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
     loginSubject = new Subject();
 
     authServiceMock = {
-      isAuthenticated: () => false,
       login: vi.fn().mockReturnValue(loginSubject.asObservable()),
     };
 
