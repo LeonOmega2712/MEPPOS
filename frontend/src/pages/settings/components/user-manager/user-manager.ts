@@ -1,4 +1,4 @@
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, effect, inject, OnInit, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { UserService } from '../../../../core/services/user.service';
 import { AuthService } from '../../../../core/services/auth.service';
@@ -19,20 +19,23 @@ export class UserManagerComponent implements OnInit {
   private readonly toastService = inject(ToastService);
   private readonly confirmDialogService = inject(ConfirmDialogService);
 
-  users = signal<User[]>([]);
-  loading = signal(true);
+  readonly loading = this.userService.usersLoading;
+  readonly revalidating = this.userService.usersRevalidating;
+  readonly error = this.userService.usersError;
+  private readonly usersSignal = this.userService.users;
+
   saving = signal<number | 'new' | null>(null);
   expandedUserId = signal<number | 'new' | null>(null);
   expandedInactiveId = signal<number | null>(null);
 
   activeUsers = computed(() =>
-    this.users()
+    (this.usersSignal() ?? [])
       .filter((u) => u.active)
       .sort((a, b) => a.id - b.id)
   );
 
   inactiveUsers = computed(() =>
-    this.users()
+    (this.usersSignal() ?? [])
       .filter((u) => !u.active)
       .sort((a, b) => a.id - b.id)
   );
@@ -40,25 +43,32 @@ export class UserManagerComponent implements OnInit {
   drafts: Record<number, UserDraft> = {};
   newUser: CreateUserPayload = this.emptyUser();
 
-  ngOnInit(): void {
-    this.loadUsers();
+  readonly roleLabels = ROLE_LABELS;
+
+  constructor() {
+    effect(() => {
+      const items = this.usersSignal();
+      if (!items) return;
+      untracked(() => {
+        const ids = new Set(items.map((u) => u.id));
+        for (const item of items) {
+          if (!this.drafts[item.id] || !this.hasDraftChanges(item.id)) {
+            this.drafts[item.id] = this.toDraft(item);
+          }
+        }
+        for (const id of Object.keys(this.drafts)) {
+          if (!ids.has(Number(id))) delete this.drafts[Number(id)];
+        }
+      });
+    });
   }
 
-  loadUsers(): void {
-    if (this.users().length === 0) {
-      this.loading.set(true);
-    }
-    this.userService.getUsers().subscribe({
-      next: (data) => {
-        this.users.set(data);
-        this.initDrafts(data);
-        this.loading.set(false);
-      },
-      error: () => {
-        this.toastService.error('Error al cargar usuarios');
-        this.loading.set(false);
-      },
-    });
+  ngOnInit(): void {
+    this.userService.ensureUsers();
+  }
+
+  refresh(): void {
+    this.userService.refreshUsers();
   }
 
   createUser(): void {
@@ -82,7 +92,7 @@ export class UserManagerComponent implements OnInit {
           this.newUser = this.emptyUser();
           this.saving.set(null);
           this.toastService.info(`Usuario "${inactive.username}" reactivado`);
-          this.loadUsers();
+          this.userService.refreshUsers();
         },
         error: () => {
           this.toastService.error('Error al reactivar usuario');
@@ -104,7 +114,7 @@ export class UserManagerComponent implements OnInit {
         this.newUser = this.emptyUser();
         this.saving.set(null);
         this.toastService.success('Usuario creado');
-        this.loadUsers();
+        this.userService.refreshUsers();
       },
       error: () => {
         this.toastService.error('Error al crear usuario');
@@ -129,7 +139,7 @@ export class UserManagerComponent implements OnInit {
       next: () => {
         this.saving.set(null);
         this.toastService.success('Usuario actualizado');
-        this.loadUsers();
+        this.userService.refreshUsers();
       },
       error: () => {
         this.toastService.error('Error al actualizar usuario');
@@ -185,7 +195,7 @@ export class UserManagerComponent implements OnInit {
     if (userId === 'new') {
       return this.hasNewUserChanges();
     }
-    const original = this.users().find((u) => u.id === userId);
+    const original = (this.usersSignal() ?? []).find((u) => u.id === userId);
     const draft = this.drafts[userId];
     if (!original || !draft) return false;
     return (
@@ -201,7 +211,7 @@ export class UserManagerComponent implements OnInit {
       this.resetNewUser();
       return;
     }
-    const original = this.users().find((u) => u.id === userId);
+    const original = (this.usersSignal() ?? []).find((u) => u.id === userId);
     if (original) {
       this.drafts[userId] = this.toDraft(original);
     }
@@ -223,7 +233,7 @@ export class UserManagerComponent implements OnInit {
       next: () => {
         this.saving.set(null);
         this.toastService.success('Usuario desactivado');
-        this.loadUsers();
+        this.userService.refreshUsers();
       },
       error: () => {
         this.toastService.error('Error al desactivar usuario');
@@ -238,7 +248,7 @@ export class UserManagerComponent implements OnInit {
       next: () => {
         this.saving.set(null);
         this.toastService.success('Usuario reactivado');
-        this.loadUsers();
+        this.userService.refreshUsers();
       },
       error: () => {
         this.toastService.error('Error al reactivar usuario');
@@ -260,7 +270,7 @@ export class UserManagerComponent implements OnInit {
       next: () => {
         this.saving.set(null);
         this.toastService.success('Usuario eliminado permanentemente');
-        this.loadUsers();
+        this.userService.refreshUsers();
       },
       error: () => {
         this.toastService.error('Error al eliminar usuario');
@@ -273,8 +283,6 @@ export class UserManagerComponent implements OnInit {
     return this.authService.user()?.id === userId;
   }
 
-  readonly roleLabels = ROLE_LABELS;
-
   hasNewUserChanges(): boolean {
     return (
       !!this.newUser.username.trim() ||
@@ -286,13 +294,6 @@ export class UserManagerComponent implements OnInit {
 
   resetNewUser(): void {
     this.newUser = this.emptyUser();
-  }
-
-  private initDrafts(users: User[]): void {
-    this.drafts = {};
-    for (const user of users) {
-      this.drafts[user.id] = this.toDraft(user);
-    }
   }
 
   private toDraft(user: User): UserDraft {

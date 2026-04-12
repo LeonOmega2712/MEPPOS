@@ -3,12 +3,18 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, tap, catchError, of, map } from 'rxjs';
 import { environment } from '../../environments/environment';
+import { CategoryService } from './category.service';
+import { ProductService } from './product.service';
+import { UserService } from './user.service';
 import type { ApiResponse, AuthUser, AuthResponse, LoginRequest } from '../models';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
+  private readonly categoryService = inject(CategoryService);
+  private readonly productService = inject(ProductService);
+  private readonly userService = inject(UserService);
   private readonly baseUrl = `${environment.apiUrl}/auth`;
 
   private readonly _accessToken = signal<string | null>(null);
@@ -44,6 +50,9 @@ export class AuthService {
       .subscribe();
     this._accessToken.set(null);
     this._user.set(null);
+    this.categoryService.invalidateCategories();
+    this.productService.invalidateProducts();
+    this.userService.invalidateUsers();
     this.router.navigate(['/login']);
   }
 

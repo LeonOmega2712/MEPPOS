@@ -1,4 +1,4 @@
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, effect, inject, OnInit, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
   CdkDropList,
@@ -25,8 +25,11 @@ export class CategoryManagerComponent implements OnInit {
   private readonly toastService = inject(ToastService);
   private readonly confirmDialogService = inject(ConfirmDialogService);
 
-  categories = signal<Category[]>([]);
-  loading = signal(true);
+  readonly loading = this.categoryService.categoriesLoading;
+  readonly revalidating = this.categoryService.categoriesRevalidating;
+  readonly error = this.categoryService.categoriesError;
+  private readonly categories = this.categoryService.categories;
+
   saving = signal<number | 'new' | null>(null);
   reordering = signal(false);
   dragHeight = signal(0);
@@ -34,13 +37,13 @@ export class CategoryManagerComponent implements OnInit {
   expandedInactiveId = signal<number | null>(null);
 
   activeCategories = computed(() =>
-    this.categories()
+    (this.categories() ?? [])
       .filter((c) => c.active)
       .sort((a, b) => a.displayOrder - b.displayOrder)
   );
 
   inactiveCategories = computed(() =>
-    this.categories()
+    (this.categories() ?? [])
       .filter((c) => !c.active)
       .sort((a, b) => a.displayOrder - b.displayOrder)
   );
@@ -48,25 +51,30 @@ export class CategoryManagerComponent implements OnInit {
   drafts: Record<number, CategoryDraft> = {};
   newCategory: CreateCategoryPayload = this.emptyCategory();
 
-  ngOnInit(): void {
-    this.loadCategories();
+  constructor() {
+    effect(() => {
+      const items = this.categories();
+      if (!items) return;
+      untracked(() => {
+        const ids = new Set(items.map((c) => c.id));
+        for (const item of items) {
+          if (!this.drafts[item.id] || !this.hasDraftChanges(item.id)) {
+            this.drafts[item.id] = this.toDraft(item);
+          }
+        }
+        for (const id of Object.keys(this.drafts)) {
+          if (!ids.has(Number(id))) delete this.drafts[Number(id)];
+        }
+      });
+    });
   }
 
-  loadCategories(): void {
-    if (this.categories().length === 0) {
-      this.loading.set(true);
-    }
-    this.categoryService.getCategories().subscribe({
-      next: (data) => {
-        this.categories.set(data);
-        this.initDrafts(data);
-        this.loading.set(false);
-      },
-      error: () => {
-        this.toastService.error('Error al cargar categorías');
-        this.loading.set(false);
-      },
-    });
+  ngOnInit(): void {
+    this.categoryService.ensureCategories();
+  }
+
+  refresh(): void {
+    this.categoryService.refreshCategories();
   }
 
   createCategory(): void {
@@ -90,7 +98,7 @@ export class CategoryManagerComponent implements OnInit {
           this.newCategory = this.emptyCategory();
           this.saving.set(null);
           this.toastService.info(`Categoría "${inactive.name}" reactivada`);
-          this.loadCategories();
+          this.categoryService.refreshCategories();
         },
         error: () => {
           this.toastService.error('Error al reactivar categoría');
@@ -107,7 +115,7 @@ export class CategoryManagerComponent implements OnInit {
         this.newCategory = this.emptyCategory();
         this.saving.set(null);
         this.toastService.success('Categoría creada');
-        this.loadCategories();
+        this.categoryService.refreshCategories();
       },
       error: () => {
         this.toastService.error('Error al crear categoría');
@@ -130,7 +138,7 @@ export class CategoryManagerComponent implements OnInit {
       next: () => {
         this.saving.set(null);
         this.toastService.success('Categoría actualizada');
-        this.loadCategories();
+        this.categoryService.refreshCategories();
       },
       error: () => {
         this.toastService.error('Error al actualizar categoría');
@@ -160,7 +168,6 @@ export class CategoryManagerComponent implements OnInit {
     const isCurrentlyExpanded = currentExpandedId === categoryId;
 
     if (isCurrentlyExpanded) {
-      // Closing the current collapse
       if (categoryId !== 'new' && this.hasDraftChanges(categoryId)) {
         const confirmed = await this.confirmDialogService.confirm({
           message: 'Hay cambios sin guardar. ¿Desea descartarlos?',
@@ -170,9 +177,7 @@ export class CategoryManagerComponent implements OnInit {
       }
       this.expandedCategoryId.set(null);
     } else {
-      // Opening a new collapse
       if (currentExpandedId !== null) {
-        // Check if current expanded has unsaved changes
         if (this.hasDraftChanges(currentExpandedId)) {
           const confirmed = await this.confirmDialogService.confirm({
             message: 'Hay cambios sin guardar en otra categoría. ¿Desea descartarlos?',
@@ -189,7 +194,7 @@ export class CategoryManagerComponent implements OnInit {
     if (categoryId === 'new') {
       return this.hasNewCategoryChanges();
     }
-    const original = this.categories().find((c) => c.id === categoryId);
+    const original = (this.categories() ?? []).find((c) => c.id === categoryId);
     const draft = this.drafts[categoryId];
     if (!original || !draft) return false;
     return (
@@ -205,7 +210,7 @@ export class CategoryManagerComponent implements OnInit {
       this.resetNewCategory();
       return;
     }
-    const original = this.categories().find((c) => c.id === categoryId);
+    const original = (this.categories() ?? []).find((c) => c.id === categoryId);
     if (original) {
       this.drafts[categoryId] = this.toDraft(original);
     }
@@ -222,12 +227,10 @@ export class CategoryManagerComponent implements OnInit {
     const items = [...this.activeCategories()];
     moveItemInArray(items, event.previousIndex, event.currentIndex);
 
-    // Optimistically update UI
     const updatedItems = items.map((cat, index) => ({ ...cat, displayOrder: index }));
-    this.categories.set([...updatedItems, ...this.inactiveCategories()]);
+    this.categoryService.setCategoriesData([...updatedItems, ...this.inactiveCategories()]);
 
-    const categoryIds = items.map(c => c.id);
-
+    const categoryIds = items.map((c) => c.id);
     this.reordering.set(true);
 
     this.categoryService.reorderCategories(categoryIds).subscribe({
@@ -238,7 +241,7 @@ export class CategoryManagerComponent implements OnInit {
       error: () => {
         this.reordering.set(false);
         this.toastService.error('Error al actualizar orden');
-        this.loadCategories();
+        this.categoryService.refreshCategories();
       },
     });
   }
@@ -255,7 +258,7 @@ export class CategoryManagerComponent implements OnInit {
       next: () => {
         this.saving.set(null);
         this.toastService.success('Categoría desactivada');
-        this.loadCategories();
+        this.categoryService.refreshCategories();
       },
       error: () => {
         this.toastService.error('Error al desactivar categoría');
@@ -270,7 +273,7 @@ export class CategoryManagerComponent implements OnInit {
       next: () => {
         this.saving.set(null);
         this.toastService.success('Categoría reactivada');
-        this.loadCategories();
+        this.categoryService.refreshCategories();
       },
       error: () => {
         this.toastService.error('Error al reactivar categoría');
@@ -292,7 +295,7 @@ export class CategoryManagerComponent implements OnInit {
       next: () => {
         this.saving.set(null);
         this.toastService.success('Categoría eliminada permanentemente');
-        this.loadCategories();
+        this.categoryService.refreshCategories();
       },
       error: () => {
         this.toastService.error('Error al eliminar categoría');
@@ -300,23 +303,6 @@ export class CategoryManagerComponent implements OnInit {
       },
     });
   }
-
-  private initDrafts(categories: Category[]): void {
-    this.drafts = {};
-    for (const cat of categories) {
-      this.drafts[cat.id] = this.toDraft(cat);
-    }
-  }
-
-  private toDraft(category: Category): CategoryDraft {
-    return {
-      name: category.name,
-      description: category.description ?? '',
-      basePrice: category.basePrice,
-      image: category.image ?? '',
-    };
-  }
-
 
   hasNewCategoryChanges(): boolean {
     return (
@@ -350,6 +336,15 @@ export class CategoryManagerComponent implements OnInit {
       payload.image = this.newCategory.image.trim();
     }
     return payload;
+  }
+
+  private toDraft(category: Category): CategoryDraft {
+    return {
+      name: category.name,
+      description: category.description ?? '',
+      basePrice: category.basePrice,
+      image: category.image ?? '',
+    };
   }
 
   private toNumberOrNull(value: unknown): number | null {
