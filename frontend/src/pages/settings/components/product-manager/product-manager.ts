@@ -1,4 +1,4 @@
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, effect, inject, OnInit, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
   CdkDropList,
@@ -9,6 +9,7 @@ import {
   type CdkDragDrop,
 } from '@angular/cdk/drag-drop';
 import { ProductService } from '../../../../core/services/product.service';
+import { CategoryService } from '../../../../core/services/category.service';
 import { ToastService } from '../../../../core/services/toast.service';
 import { ConfirmDialogService } from '../../../../core/services/confirm-dialog.service';
 import { IconComponent } from '../../../../shared/components/icon';
@@ -29,24 +30,33 @@ import type {
 })
 export class ProductManagerComponent implements OnInit {
   private readonly productService = inject(ProductService);
+  private readonly categoryService = inject(CategoryService);
   private readonly toastService = inject(ToastService);
   private readonly confirmDialogService = inject(ConfirmDialogService);
 
-  products = signal<Product[]>([]);
-  categories = signal<Category[]>([]);
-  loading = signal(true);
+  readonly loading = this.productService.productsLoading;
+  readonly revalidating = this.productService.productsRevalidating;
+  readonly error = this.productService.productsError;
+  private readonly productsData = this.productService.productsData;
+
+  private readonly optimisticProducts = signal<Product[] | null>(null);
+
+  readonly products = computed<Product[]>(
+    () => this.optimisticProducts() ?? this.productsData()?.products ?? []
+  );
+
+  readonly activeCategories = computed(() =>
+    (this.categoryService.categories() ?? this.productsData()?.categories ?? [])
+      .filter((c: Category) => c.active)
+      .sort((a: Category, b: Category) => a.displayOrder - b.displayOrder)
+  );
+
   saving = signal<number | 'new' | null>(null);
   reordering = signal<number | null>(null);
   dragHeight = signal(0);
   expandedCategoryId = signal<number | null>(null);
   expandedProductId = signal<number | 'new' | null>(null);
   expandedInactiveProductId = signal<number | null>(null);
-
-  activeCategories = computed(() =>
-    this.categories()
-      .filter((c) => c.active)
-      .sort((a, b) => a.displayOrder - b.displayOrder)
-  );
 
   productsByCategory = computed(() => {
     const grouped = new Map<number, Product[]>();
@@ -68,26 +78,30 @@ export class ProductManagerComponent implements OnInit {
   drafts: Record<number, ProductDraft> = {};
   newProduct: CreateProductPayload = this.emptyProduct();
 
-  ngOnInit(): void {
-    this.loadProducts();
+  constructor() {
+    effect(() => {
+      const items = this.productsData()?.products;
+      if (!items) return;
+      untracked(() => {
+        const ids = new Set(items.map((p) => p.id));
+        for (const item of items) {
+          if (!this.drafts[item.id] || !this.hasDraftChanges(item.id)) {
+            this.drafts[item.id] = this.toDraft(item);
+          }
+        }
+        for (const id of Object.keys(this.drafts)) {
+          if (!ids.has(Number(id))) delete this.drafts[Number(id)];
+        }
+      });
+    });
   }
 
-  loadProducts(): void {
-    if (this.products().length === 0) {
-      this.loading.set(true);
-    }
-    this.productService.getProducts().subscribe({
-      next: ({ products, categories }) => {
-        this.products.set(products);
-        this.categories.set(categories);
-        this.initDrafts(products);
-        this.loading.set(false);
-      },
-      error: () => {
-        this.toastService.error('Error al cargar productos');
-        this.loading.set(false);
-      },
-    });
+  ngOnInit(): void {
+    this.productService.ensureProducts();
+  }
+
+  refresh(): void {
+    this.productService.refreshProducts();
   }
 
   createProduct(): void {
@@ -113,7 +127,7 @@ export class ProductManagerComponent implements OnInit {
           this.newProduct = this.emptyProduct();
           this.saving.set(null);
           this.toastService.info(`Producto "${inactive.name}" reactivado`);
-          this.loadProducts();
+          this.productService.refreshProducts();
         },
         error: () => {
           this.toastService.error('Error al reactivar producto');
@@ -130,7 +144,7 @@ export class ProductManagerComponent implements OnInit {
         this.newProduct = this.emptyProduct();
         this.saving.set(null);
         this.toastService.success('Producto creado');
-        this.loadProducts();
+        this.productService.refreshProducts();
       },
       error: (err) => {
         const message = err.error?.error === 'Category not found'
@@ -160,7 +174,7 @@ export class ProductManagerComponent implements OnInit {
       next: () => {
         this.saving.set(null);
         this.toastService.success('Producto actualizado');
-        this.loadProducts();
+        this.productService.refreshProducts();
       },
       error: (err) => {
         const message = err.error?.error === 'Category not found'
@@ -185,7 +199,7 @@ export class ProductManagerComponent implements OnInit {
       next: () => {
         this.saving.set(null);
         this.toastService.success('Producto desactivado');
-        this.loadProducts();
+        this.productService.refreshProducts();
       },
       error: () => {
         this.toastService.error('Error al desactivar producto');
@@ -208,7 +222,7 @@ export class ProductManagerComponent implements OnInit {
       next: () => {
         this.saving.set(null);
         this.toastService.success('Producto eliminado permanentemente');
-        this.loadProducts();
+        this.productService.refreshProducts();
       },
       error: () => {
         this.toastService.error('Error al eliminar producto');
@@ -223,7 +237,7 @@ export class ProductManagerComponent implements OnInit {
       next: () => {
         this.saving.set(null);
         this.toastService.success('Producto reactivado');
-        this.loadProducts();
+        this.productService.refreshProducts();
       },
       error: () => {
         this.toastService.error('Error al reactivar producto');
@@ -243,34 +257,132 @@ export class ProductManagerComponent implements OnInit {
     const items = [...this.productsByCategory().get(categoryId)!];
     moveItemInArray(items, event.previousIndex, event.currentIndex);
 
-    // Optimistically update UI
     const updatedItems = items.map((prod, index) => ({ ...prod, displayOrder: index }));
     const otherProducts = this.products().filter((p) => p.categoryId !== categoryId);
-    this.products.set([...otherProducts, ...updatedItems]);
+    this.optimisticProducts.set([...otherProducts, ...updatedItems]);
 
-    // Extract ordered IDs for backend
-    const productIds = items.map(p => p.id);
-
+    const productIds = items.map((p) => p.id);
     this.reordering.set(categoryId);
 
-    // Single API call with transaction
     this.productService.reorderProducts(categoryId, productIds).subscribe({
       next: () => {
         this.reordering.set(null);
         this.toastService.success('Orden actualizado');
+        this.optimisticProducts.set(null);
       },
       error: () => {
         this.reordering.set(null);
         this.toastService.error('Error al actualizar orden');
-        this.loadProducts();
+        this.optimisticProducts.set(null);
+        this.productService.refreshProducts();
       },
     });
   }
 
-  private toNumberOrNull(value: unknown): number | null {
-    if (value == null || value === '') return null;
-    const num = Number(value);
-    return isNaN(num) ? null : num;
+  hasUnsavedChanges(): boolean {
+    const expandedId = this.expandedProductId();
+    if (expandedId === null) return false;
+    return this.hasDraftChanges(expandedId);
+  }
+
+  discardChanges(): void {
+    const expandedId = this.expandedProductId();
+    if (expandedId !== null) {
+      this.resetDraft(expandedId);
+      this.expandedProductId.set(null);
+    }
+  }
+
+  async onCategoryToggle(event: Event, categoryId: number): Promise<void> {
+    event.preventDefault();
+
+    if (this.hasUnsavedChanges()) {
+      const confirmed = await this.confirmDialogService.confirm({
+        message: 'Hay cambios sin guardar. ¿Desea descartarlos?',
+      });
+      if (!confirmed) return;
+      this.discardChanges();
+    }
+
+    const isCurrentlyExpanded = this.expandedCategoryId() === categoryId;
+    this.expandedProductId.set(null);
+    this.expandedCategoryId.set(isCurrentlyExpanded ? null : categoryId);
+  }
+
+  async onCollapseToggle(event: Event, productId: number | 'new'): Promise<void> {
+    event.preventDefault();
+
+    const currentExpandedId = this.expandedProductId();
+    const isCurrentlyExpanded = currentExpandedId === productId;
+
+    if (isCurrentlyExpanded) {
+      if (productId !== 'new' && this.hasDraftChanges(productId)) {
+        const confirmed = await this.confirmDialogService.confirm({
+          message: 'Hay cambios sin guardar. ¿Desea descartarlos?',
+        });
+        if (!confirmed) return;
+        this.resetDraft(productId);
+      }
+      this.expandedProductId.set(null);
+    } else {
+      if (currentExpandedId !== null) {
+        if (this.hasDraftChanges(currentExpandedId)) {
+          const confirmed = await this.confirmDialogService.confirm({
+            message: 'Hay cambios sin guardar en otro producto. ¿Desea descartarlos?',
+          });
+          if (!confirmed) return;
+          this.resetDraft(currentExpandedId);
+        }
+      }
+      this.expandedProductId.set(productId);
+    }
+  }
+
+  hasDraftChanges(productId: number | 'new'): boolean {
+    if (productId === 'new') {
+      return this.hasNewProductChanges();
+    }
+    const original = this.products().find((p) => p.id === productId);
+    const draft = this.drafts[productId];
+    if (!original || !draft) return false;
+    return (
+      draft.categoryId !== original.categoryId ||
+      draft.name !== original.name ||
+      (draft.description ?? '') !== (original.description ?? '') ||
+      this.toNumberOrNull(draft.price) !== this.toNumberOrNull(original.price) ||
+      (draft.image ?? '') !== (original.image ?? '') ||
+      draft.customizable !== original.customizable
+    );
+  }
+
+  resetDraft(productId: number | 'new'): void {
+    if (productId === 'new') {
+      this.resetNewProduct();
+      return;
+    }
+    const original = this.products().find((p) => p.id === productId);
+    if (original) {
+      this.drafts[productId] = this.toDraft(original);
+    }
+  }
+
+  hasNewProductChanges(): boolean {
+    return (
+      !!this.newProduct.name.trim() ||
+      !!this.newProduct.description?.trim() ||
+      this.toNumberOrNull(this.newProduct.price) != null ||
+      !!this.newProduct.image?.trim() ||
+      !!this.newProduct.customizable
+    );
+  }
+
+  resetNewProduct(): void {
+    this.newProduct = this.emptyProduct();
+  }
+
+  getEffectivePrice(product: Product): number | null {
+    const price = product.price ?? product.category.basePrice;
+    return this.toNumber(price);
   }
 
   private emptyProduct(): CreateProductPayload {
@@ -313,126 +425,15 @@ export class ProductManagerComponent implements OnInit {
     };
   }
 
-  private initDrafts(products: Product[]): void {
-    this.drafts = {};
-    for (const prod of products) {
-      this.drafts[prod.id] = this.toDraft(prod);
-    }
-  }
-
-
-  hasNewProductChanges(): boolean {
-    return (
-      !!this.newProduct.name.trim() ||
-      !!this.newProduct.description?.trim() ||
-      this.toNumberOrNull(this.newProduct.price) != null ||
-      !!this.newProduct.image?.trim() ||
-      !!this.newProduct.customizable
-    );
-  }
-
-  resetNewProduct(): void {
-    this.newProduct = this.emptyProduct();
-  }
-
-  getEffectivePrice(product: Product): number | null {
-    const price = product.price ?? product.category.basePrice;
-    return this.toNumber(price);
+  private toNumberOrNull(value: unknown): number | null {
+    if (value == null || value === '') return null;
+    const num = Number(value);
+    return isNaN(num) ? null : num;
   }
 
   private toNumber(value: unknown): number | null {
     if (value == null) return null;
     const num = Number(value);
     return isNaN(num) ? null : num;
-  }
-
-  hasUnsavedChanges(): boolean {
-    const expandedId = this.expandedProductId();
-    if (expandedId === null) return false;
-    return this.hasDraftChanges(expandedId);
-  }
-
-  discardChanges(): void {
-    const expandedId = this.expandedProductId();
-    if (expandedId !== null) {
-      this.resetDraft(expandedId);
-      this.expandedProductId.set(null);
-    }
-  }
-
-  async onCategoryToggle(event: Event, categoryId: number): Promise<void> {
-    event.preventDefault();
-
-    if (this.hasUnsavedChanges()) {
-      const confirmed = await this.confirmDialogService.confirm({
-        message: 'Hay cambios sin guardar. ¿Desea descartarlos?',
-      });
-      if (!confirmed) return;
-      this.discardChanges();
-    }
-
-    const isCurrentlyExpanded = this.expandedCategoryId() === categoryId;
-    this.expandedProductId.set(null);
-    this.expandedCategoryId.set(isCurrentlyExpanded ? null : categoryId);
-  }
-
-  async onCollapseToggle(event: Event, productId: number | 'new'): Promise<void> {
-    event.preventDefault();
-
-    const currentExpandedId = this.expandedProductId();
-    const isCurrentlyExpanded = currentExpandedId === productId;
-
-    if (isCurrentlyExpanded) {
-      // Closing the current collapse
-      if (productId !== 'new' && this.hasDraftChanges(productId)) {
-        const confirmed = await this.confirmDialogService.confirm({
-          message: 'Hay cambios sin guardar. ¿Desea descartarlos?',
-        });
-        if (!confirmed) return;
-        this.resetDraft(productId);
-      }
-      this.expandedProductId.set(null);
-    } else {
-      // Opening a new collapse
-      if (currentExpandedId !== null) {
-        // Check if current expanded has unsaved changes
-        if (this.hasDraftChanges(currentExpandedId)) {
-          const confirmed = await this.confirmDialogService.confirm({
-            message: 'Hay cambios sin guardar en otro producto. ¿Desea descartarlos?',
-          });
-          if (!confirmed) return;
-          this.resetDraft(currentExpandedId);
-        }
-      }
-      this.expandedProductId.set(productId);
-    }
-  }
-
-  hasDraftChanges(productId: number | 'new'): boolean {
-    if (productId === 'new') {
-      return this.hasNewProductChanges();
-    }
-    const original = this.products().find((p) => p.id === productId);
-    const draft = this.drafts[productId];
-    if (!original || !draft) return false;
-    return (
-      draft.categoryId !== original.categoryId ||
-      draft.name !== original.name ||
-      (draft.description ?? '') !== (original.description ?? '') ||
-      this.toNumberOrNull(draft.price) !== this.toNumberOrNull(original.price) ||
-      (draft.image ?? '') !== (original.image ?? '') ||
-      draft.customizable !== original.customizable
-    );
-  }
-
-  resetDraft(productId: number | 'new'): void {
-    if (productId === 'new') {
-      this.resetNewProduct();
-      return;
-    }
-    const original = this.products().find((p) => p.id === productId);
-    if (original) {
-      this.drafts[productId] = this.toDraft(original);
-    }
   }
 }

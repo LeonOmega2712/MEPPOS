@@ -251,6 +251,7 @@ The system uses 3 tables:
 - ✅ CD pipeline (auto-deploy to Koyeb + Vercel on push to master after CI passes)
 - ✅ PWA auto-update: SwUpdate prompt with forced reload on new version
 - ✅ Detailed login error messages with Koyeb cold start auto-retry (exponential backoff)
+- ✅ SWR caching for settings tabs (categories, products, users) — instant tab switches, background revalidation, manual refresh
 - ⬜ Locations management (tables/bar with visual identifiers)
 - ⬜ Persistent orders with multiple rounds
 - ⬜ Custom extras and frequent extras list
@@ -345,7 +346,8 @@ frontend/src/
 │   ├── guards/       # Route guards (auth, no-auth, unsaved changes)
 │   ├── interceptors/ # HTTP interceptors (auth, server error handling with cold start retry)
 │   ├── models/       # TypeScript interfaces
-│   └── services/     # Angular services (auth, user, category, product, menu, theme, toast, confirm dialog, splash, pwa-update)
+│   ├── services/     # Angular services (auth, user, category, product, menu, theme, toast, confirm dialog, splash, pwa-update)
+│   └── utils/        # Utility classes (SWR cache)
 ├── environments/     # Environment configs (dev/prod)
 ├── pages/            # Page components (login, menu, bill, settings)
 │   └── settings/components/  # Settings sub-components (theme-selector, category-manager, product-manager, user-manager)

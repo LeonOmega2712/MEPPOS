@@ -1,7 +1,8 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, Signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 import { environment } from '../../environments/environment';
+import { SwrCache } from '../utils/swr-cache';
 import type {
   ProductsApiResponse,
   ApiResponse,
@@ -21,13 +22,31 @@ export class ProductService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = `${environment.apiUrl}/products`;
 
-  getProducts(): Observable<ProductsWithCategories> {
-    return this.http
-      .get<ProductsApiResponse<Product[]>>(this.baseUrl)
-      .pipe(map((response) => ({
-        products: response.data,
-        categories: response.categories
-      })));
+  private readonly cache = new SwrCache<ProductsWithCategories>({
+    fetcher: () =>
+      this.http
+        .get<ProductsApiResponse<Product[]>>(this.baseUrl)
+        .pipe(map((response) => ({
+          products: response.data,
+          categories: response.categories,
+        }))),
+  });
+
+  readonly productsData: Signal<ProductsWithCategories | null> = this.cache.data;
+  readonly productsLoading: Signal<boolean> = this.cache.loading;
+  readonly productsRevalidating: Signal<boolean> = this.cache.revalidating;
+  readonly productsError: Signal<unknown> = this.cache.error;
+
+  ensureProducts(): void {
+    this.cache.ensureLoaded();
+  }
+
+  refreshProducts(): void {
+    this.cache.refreshInBackground();
+  }
+
+  invalidateProducts(): void {
+    this.cache.reset();
   }
 
   createProduct(data: CreateProductPayload): Observable<Product> {

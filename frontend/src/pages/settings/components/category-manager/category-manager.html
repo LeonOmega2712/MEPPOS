@@ -2,7 +2,32 @@
   <div class="flex justify-center py-12">
     <span class="loading loading-spinner loading-lg"></span>
   </div>
+} @else if (error() && activeCategories().length === 0 && inactiveCategories().length === 0) {
+  <div class="alert alert-error alert-soft mt-4" role="alert">
+    <app-icon name="x-circle" />
+    <span>No se pudieron cargar los datos. Verifica tu conexión e intenta de nuevo.</span>
+    <button class="btn btn-sm btn-ghost" (click)="refresh()">Reintentar</button>
+  </div>
 } @else {
+  <div class="flex items-center justify-between mb-3">
+    <span class="text-sm text-base-content/50" aria-live="polite" aria-atomic="true">
+      @if (revalidating()) { Actualizando... }
+    </span>
+    <button
+      class="btn btn-soft btn-sm gap-1"
+      aria-label="Actualizar lista"
+      [disabled]="loading() || revalidating()"
+      (click)="refresh()"
+    >
+      @if (revalidating()) {
+        <span class="loading loading-spinner loading-xs"></span>
+      } @else {
+        <app-icon name="arrow-path" sizeClass="size-4" />
+      }
+      Actualizar
+    </button>
+  </div>
+
   <!-- Active categories (drag-and-drop list) -->
   <div cdkDropList [cdkDropListData]="activeCategories()" (cdkDropListDropped)="onDrop($event)">
     @for (category of activeCategories(); track category.id) {
