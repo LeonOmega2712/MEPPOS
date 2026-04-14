@@ -1,19 +1,19 @@
-import { Subject } from 'rxjs';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { Observable, Subject } from 'rxjs';
+import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 import { SwrCache } from './swr-cache';
 
 describe('SwrCache', () => {
   let fetchSubject: Subject<string>;
-  let fetcherMock: ReturnType<typeof vi.fn>;
-  let nowMock: ReturnType<typeof vi.fn>;
+  let fetcherMock: Mock<() => Observable<string>>;
+  let nowMock: Mock<() => number>;
   let cache: SwrCache<string>;
 
   const TTL = 1000;
 
   beforeEach(() => {
     fetchSubject = new Subject<string>();
-    fetcherMock = vi.fn().mockReturnValue(fetchSubject.asObservable());
-    nowMock = vi.fn().mockReturnValue(0);
+    fetcherMock = vi.fn<() => Observable<string>>().mockReturnValue(fetchSubject.asObservable());
+    nowMock = vi.fn<() => number>().mockReturnValue(0);
     cache = new SwrCache<string>({ fetcher: fetcherMock, ttlMs: TTL, now: nowMock });
   });
 
@@ -55,7 +55,7 @@ describe('SwrCache', () => {
     });
 
     it('second ensureLoaded within TTL does not call fetcher again', () => {
-      fetcherMock.mockReturnValue(new Subject().asObservable());
+      fetcherMock.mockReturnValue(new Subject<string>().asObservable());
       cache.ensureLoaded();
 
       expect(fetcherMock).toHaveBeenCalledTimes(1);
