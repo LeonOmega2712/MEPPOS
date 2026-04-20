@@ -9,7 +9,7 @@ type TransactionClient = Prisma.TransactionClient;
  */
 export async function closeDisplayOrderGaps(
   tx: TransactionClient,
-  model: 'category' | 'product',
+  model: 'category' | 'product' | 'location',
   filter: Record<string, unknown> = {}
 ): Promise<void> {
   const delegate = tx[model] as any;
@@ -31,7 +31,7 @@ export async function closeDisplayOrderGaps(
  * Checks for existence, scope membership, and duplicates before applying.
  */
 export async function reorderDisplayOrder(
-  model: 'category' | 'product',
+  model: 'category' | 'product' | 'location',
   ids: number[],
   filter: Record<string, unknown> = {}
 ): Promise<number> {

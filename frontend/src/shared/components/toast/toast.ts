@@ -13,7 +13,7 @@ const ALERT_CLASS: Record<ToastType, string> = {
   template: `
     <div class="toast toast-end toast-bottom z-50">
       @for (toast of toastService.toasts(); track toast.id) {
-        <div [class]="alertClass[toast.type]">
+        <div [class]="alertClass[toast.type]" data-testid="toast" [attr.data-toast-type]="toast.type">
           <span>{{ toast.message }}</span>
         </div>
       }

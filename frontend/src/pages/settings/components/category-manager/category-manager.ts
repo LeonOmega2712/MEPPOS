@@ -79,6 +79,7 @@ export class CategoryManagerComponent implements OnInit {
 
   createCategory(): void {
     if (!this.newCategory.name.trim()) return;
+    if (!this.isValidDraftPrice(this.newCategory.basePrice)) return;
 
     const inactive = this.inactiveCategories().find(
       (c) => c.name.toLowerCase() === this.newCategory.name.trim().toLowerCase()
@@ -127,6 +128,7 @@ export class CategoryManagerComponent implements OnInit {
   saveCategory(category: Category): void {
     const draft = this.drafts[category.id];
     if (!draft) return;
+    if (!this.isValidDraftPrice(draft.basePrice)) return;
     this.saving.set(category.id);
     const payload: UpdateCategoryPayload = {
       name: draft.name,
@@ -311,6 +313,11 @@ export class CategoryManagerComponent implements OnInit {
       this.toNumberOrNull(this.newCategory.basePrice) != null ||
       !!this.newCategory.image?.trim()
     );
+  }
+
+  isValidDraftPrice(value: unknown): boolean {
+    const price = this.toNumberOrNull(value);
+    return price === null || price >= 0;
   }
 
   resetNewCategory(): void {

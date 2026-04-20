@@ -9,7 +9,7 @@ import { prisma } from '../../../src/lib/prisma';
  */
 export async function resetDb() {
   await prisma.$executeRawUnsafe(
-    'TRUNCATE TABLE "products", "categories", "users" RESTART IDENTITY CASCADE',
+    'TRUNCATE TABLE "products", "categories", "users", "custom_extras", "locations" RESTART IDENTITY CASCADE',
   );
 }
 

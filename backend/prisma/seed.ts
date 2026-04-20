@@ -522,12 +522,35 @@ async function main() {
   console.log('✅ Water and juices created');
 
   // ============================================
+  // LOCATIONS
+  // ============================================
+
+  const locationCount = await prisma.location.count();
+  if (locationCount === 0) {
+    await prisma.location.createMany({
+      data: [
+        { name: 'Mesa 1', type: 'table', displayOrder: 1 },
+        { name: 'Mesa 2', type: 'table', displayOrder: 2 },
+        { name: 'Mesa 3', type: 'table', displayOrder: 3 },
+        { name: 'Mesa 4', type: 'table', displayOrder: 4 },
+        { name: 'Mesa 5', type: 'table', displayOrder: 5 },
+        { name: 'Mesa 6', type: 'table', displayOrder: 6 },
+        { name: 'Mesa 7', type: 'table', displayOrder: 7 },
+        { name: 'Barra', type: 'bar', displayOrder: 8 },
+      ],
+    });
+  }
+
+  console.log('✅ Locations created');
+
+  // ============================================
   // SUMMARY
   // ============================================
 
   const userCount = await prisma.user.count();
   const categoryCount = await prisma.category.count();
   const productCount = await prisma.product.count();
+  const finalLocationCount = await prisma.location.count();
 
   console.log('\n╔════════════════════════════════════════╗');
   console.log('║       🌱 SEED SUMMARY                  ║');
@@ -535,6 +558,7 @@ async function main() {
   console.log(`║  Users: ${userCount}                              ║`);
   console.log(`║  Categories: ${categoryCount}                          ║`);
   console.log(`║  Products: ${productCount}                           ║`);
+  console.log(`║  Locations: ${finalLocationCount}                          ║`);
   console.log('╚════════════════════════════════════════╝');
   console.log('\n✅ Seed completed successfully!');
 }

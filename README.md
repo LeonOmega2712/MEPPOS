@@ -145,6 +145,11 @@ ADMIN_DEFAULT_PASSWORD=admin123
 - `GET /api/products` - List all products with raw `price` + `categories` array (supports `?active=true`)
 - `GET /api/products/:id` - Get a product by ID
 - `GET /api/products/:id/price` - Get effective price (direct or inherited from category)
+- `GET /api/locations` - List all locations (supports `?active=true`)
+- `GET /api/extras` - List all active custom extras
+- `POST /api/extras` - Create custom extra
+- `PUT /api/extras/:id` - Update custom extra
+- `DELETE /api/extras/:id` - Soft delete (deactivate) extra. Hard delete with `?permanent=true`
 
 ### Admin-only Endpoints
 
@@ -161,6 +166,10 @@ ADMIN_DEFAULT_PASSWORD=admin123
 - `POST /api/users` - Create user
 - `PUT /api/users/:id` - Update user
 - `DELETE /api/users/:id` - Soft delete (deactivate) user
+- `POST /api/locations` - Create location
+- `PUT /api/locations/:id` - Update location
+- `DELETE /api/locations/:id` - Soft delete (deactivate) location. Hard delete with `?permanent=true`
+- `PATCH /api/locations/reorder` - Batch reorder locations (atomic transaction)
 
 #### Health Check
 
@@ -201,11 +210,13 @@ ADMIN_DEFAULT_PASSWORD=admin123
 
 ### Data Model
 
-The system uses 3 tables:
+The system uses 5 tables:
 
 1. **categories** - Product categories with optional base price
 2. **products** - Individual products that can inherit price from their category or define their own
 3. **users** - Staff accounts with roles (ADMIN, WAITER) for authentication
+4. **custom_extras** - Reusable non-catalog items (extras) with a required default price, created by any authenticated user
+5. **locations** - Physical restaurant locations: tables and bar (type enforced via DB CHECK constraint). Bar orders receive a system-assigned numeric identifier (daily consecutive) at order-creation time; no separate identifier table is required.
 
 ---
 
@@ -251,10 +262,10 @@ The system uses 3 tables:
 - ✅ CD pipeline (auto-deploy to Koyeb + Vercel on push to master after CI passes)
 - ✅ PWA auto-update: SwUpdate prompt with forced reload on new version
 - ✅ Detailed login error messages with Koyeb cold start auto-retry (exponential backoff)
-- ✅ SWR caching for settings tabs (categories, products, users) — instant tab switches, background revalidation, manual refresh
-- ⬜ Locations management (tables/bar with visual identifiers)
+- ✅ SWR caching for settings tabs (categories, products, users, locations, extras) — instant tab switches, background revalidation, manual refresh
+- ✅ Locations management (DB migrations, backend API, admin UI with drag-and-drop reorder)
+- ✅ Custom extras management (DB migration, backend API, admin UI)
 - ⬜ Persistent orders with multiple rounds
-- ⬜ Custom extras and frequent extras list
 - ⬜ Discounts at checkout (fixed/percentage)
 - ⬜ Account ownership and transfer between waiters
 - ⬜ Kitchen ticket printing (per round)
@@ -324,11 +335,16 @@ npm run prisma:seed
 - **Validation**: Zod on all endpoints
 - **Type Safety**: Strict TypeScript
 
+### Testing Conventions
+
+- **Frontend E2E (Playwright) runs without a backend.** The CI job only boots the Angular dev server — no Postgres, no API. Every `/api/*` call touched by an E2E test must be stubbed via `page.route(...)` in [`frontend/e2e/helpers/mocks.ts`](frontend/e2e/helpers/mocks.ts). When adding endpoints, extend that file with a `setupXxxMocks(page)` helper and compose it with `setupApiMocks(page)` in the test's `beforeEach`.
+- **Full-stack coverage lives in backend integration tests**, not E2E: see `backend/tests/integration/` (mocked Prisma) and `backend/tests/integration-db/` (real Postgres via docker compose).
+
 ### Backend Folder Structure
 
 ```bash
 backend/src/
-├── controllers/       # HTTP handlers (auth, user, category, product, menu)
+├── controllers/       # HTTP handlers (auth, user, category, product, menu, location, custom-extra)
 ├── lib/              # Shared utilities (Prisma client, display-order helpers, JWT, error handling)
 ├── middleware/        # Express middleware (auth, authorize)
 ├── services/         # Business logic
@@ -346,11 +362,11 @@ frontend/src/
 │   ├── guards/       # Route guards (auth, no-auth, unsaved changes)
 │   ├── interceptors/ # HTTP interceptors (auth, server error handling with cold start retry)
 │   ├── models/       # TypeScript interfaces
-│   ├── services/     # Angular services (auth, user, category, product, menu, theme, toast, confirm dialog, splash, pwa-update)
+│   ├── services/     # Angular services (auth, user, category, product, menu, location, custom-extra, theme, toast, confirm dialog, splash, pwa-update)
 │   └── utils/        # Utility classes (SWR cache)
 ├── environments/     # Environment configs (dev/prod)
 ├── pages/            # Page components (login, menu, bill, settings)
-│   └── settings/components/  # Settings sub-components (theme-selector, category-manager, product-manager, user-manager)
+│   └── settings/components/  # Settings sub-components (theme-selector, category-manager, product-manager, user-manager, location-manager, custom-extra-manager)
 └── shared/
     ├── components/            # Reusable UI components (toast, confirm-dialog, icon)
     └── styles/                # Shared component styles (CDK drag-drop, input resets)
