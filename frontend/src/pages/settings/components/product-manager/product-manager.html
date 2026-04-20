@@ -145,7 +145,7 @@
                         class="btn btn-soft btn-success"
                         title="Guardar"
                         aria-label="Guardar producto"
-                        [disabled]="!drafts[product.id]?.name?.trim() || !hasDraftChanges(product.id) || saving() === product.id"
+                        [disabled]="!drafts[product.id]?.name?.trim() || !isValidDraftPrice(drafts[product.id]?.price) || !hasDraftChanges(product.id) || saving() === product.id"
                         (click)="saveProduct(product)"
                       >
                         @if (saving() === product.id) {
@@ -258,7 +258,7 @@
               class="btn btn-soft btn-success"
               title="Crear"
               aria-label="Crear producto"
-              [disabled]="!newProduct.name.trim() || !newProduct.categoryId || saving() === 'new'"
+              [disabled]="!newProduct.name.trim() || !newProduct.categoryId || !isValidDraftPrice(newProduct.price) || saving() === 'new'"
               (click)="createProduct()"
             >
               @if (saving() === 'new') {

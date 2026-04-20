@@ -3,6 +3,8 @@ import { ThemeSelectorComponent } from './components/theme-selector/theme-select
 import { CategoryManagerComponent } from './components/category-manager/category-manager';
 import { ProductManagerComponent } from './components/product-manager/product-manager';
 import { UserManagerComponent } from './components/user-manager/user-manager';
+import { LocationManagerComponent } from './components/location-manager/location-manager';
+import { CustomExtraManagerComponent } from './components/custom-extra-manager/custom-extra-manager';
 import { IconComponent } from '../../shared/components/icon';
 import { ConfirmDialogService } from '../../core/services/confirm-dialog.service';
 import { SplashService } from '../../core/services/splash.service';
@@ -10,13 +12,13 @@ import { AuthService } from '../../core/services/auth.service';
 import { HasUnsavedChanges } from '../../core/guards/unsaved-changes.guard';
 import { ROLE_LABELS } from '../../core/models';
 
-type SettingsTab = 'categories' | 'products' | 'users';
+type SettingsTab = 'categories' | 'products' | 'users' | 'locations' | 'extras';
 
-const TAB_ORDER: SettingsTab[] = ['categories', 'products', 'users'];
+const TAB_ORDER: SettingsTab[] = ['categories', 'products', 'users', 'locations', 'extras'];
 
 @Component({
   selector: 'app-settings-page',
-  imports: [ThemeSelectorComponent, CategoryManagerComponent, ProductManagerComponent, UserManagerComponent, IconComponent],
+  imports: [ThemeSelectorComponent, CategoryManagerComponent, ProductManagerComponent, UserManagerComponent, LocationManagerComponent, CustomExtraManagerComponent, IconComponent],
   templateUrl: './settings.html',
   styleUrl: './settings.css',
 })
@@ -28,6 +30,8 @@ export class SettingsPage implements HasUnsavedChanges, OnInit {
   categoryManager = viewChild(CategoryManagerComponent);
   productManager = viewChild(ProductManagerComponent);
   userManager = viewChild(UserManagerComponent);
+  locationManager = viewChild(LocationManagerComponent);
+  customExtraManager = viewChild(CustomExtraManagerComponent);
 
   protected readonly roleLabels = ROLE_LABELS;
 
@@ -39,16 +43,21 @@ export class SettingsPage implements HasUnsavedChanges, OnInit {
   }
 
   hasUnsavedChanges(): boolean {
-    const categoryMgr = this.categoryManager();
-    const productMgr = this.productManager();
-    const userMgr = this.userManager();
-    return !!(categoryMgr?.hasUnsavedChanges() || productMgr?.hasUnsavedChanges() || userMgr?.hasUnsavedChanges());
+    return !!(
+      this.categoryManager()?.hasUnsavedChanges() ||
+      this.productManager()?.hasUnsavedChanges() ||
+      this.userManager()?.hasUnsavedChanges() ||
+      this.locationManager()?.hasUnsavedChanges() ||
+      this.customExtraManager()?.hasUnsavedChanges()
+    );
   }
 
   discardChanges(): void {
     this.categoryManager()?.discardChanges();
     this.productManager()?.discardChanges();
     this.userManager()?.discardChanges();
+    this.locationManager()?.discardChanges();
+    this.customExtraManager()?.discardChanges();
   }
 
   async selectTab(event: Event, tab: SettingsTab): Promise<void> {
@@ -72,11 +81,13 @@ export class SettingsPage implements HasUnsavedChanges, OnInit {
     this.activeTab.set(tab);
   }
 
-  private getActiveComponent(): CategoryManagerComponent | ProductManagerComponent | UserManagerComponent | undefined {
+  private getActiveComponent(): CategoryManagerComponent | ProductManagerComponent | UserManagerComponent | LocationManagerComponent | CustomExtraManagerComponent | undefined {
     switch (this.activeTab()) {
       case 'categories': return this.categoryManager();
       case 'products': return this.productManager();
       case 'users': return this.userManager();
+      case 'locations': return this.locationManager();
+      case 'extras': return this.customExtraManager();
     }
   }
 }

@@ -13,6 +13,10 @@ vi.mock('../../../src/lib/prisma', () => ({
       findMany: vi.fn(),
       update: vi.fn(),
     },
+    location: {
+      findMany: vi.fn(),
+      update: vi.fn(),
+    },
     $transaction: vi.fn(),
   },
 }));
@@ -33,6 +37,7 @@ describe('closeDisplayOrderGaps', () => {
     fakeTx = {
       category: { findMany: mockFindMany, update: mockUpdate },
       product: { findMany: mockFindMany, update: mockUpdate },
+      location: { findMany: mockFindMany, update: mockUpdate },
     };
   });
 
@@ -79,6 +84,16 @@ describe('closeDisplayOrderGaps', () => {
     await closeDisplayOrderGaps(fakeTx, 'product');
 
     expect(mockUpdate).toHaveBeenCalledWith({ where: { id: 1 }, data: { displayOrder: 0 } });
+  });
+
+  it('works with the location model', async () => {
+    mockFindMany.mockResolvedValue([{ id: 10 }, { id: 20 }]);
+
+    await closeDisplayOrderGaps(fakeTx, 'location');
+
+    expect(mockUpdate).toHaveBeenCalledTimes(2);
+    expect(mockUpdate).toHaveBeenCalledWith({ where: { id: 10 }, data: { displayOrder: 0 } });
+    expect(mockUpdate).toHaveBeenCalledWith({ where: { id: 20 }, data: { displayOrder: 1 } });
   });
 });
 
@@ -141,5 +156,28 @@ describe('reorderDisplayOrder', () => {
       where: { id: { in: [10, 20] }, active: true, categoryId: 5 },
       select: { id: true },
     });
+  });
+
+  it('works with the location model', async () => {
+    vi.mocked(prisma.location.findMany).mockResolvedValue([
+      { id: 3 }, { id: 1 }, { id: 2 },
+    ] as any);
+    vi.mocked(prisma.location.update).mockResolvedValue({} as any);
+    vi.mocked(prisma.$transaction).mockResolvedValue([]);
+
+    const count = await reorderDisplayOrder('location', [3, 1, 2]);
+
+    expect(count).toBe(3);
+    expect(prisma.location.update).toHaveBeenCalledWith({ where: { id: 3 }, data: { displayOrder: 0 } });
+    expect(prisma.location.update).toHaveBeenCalledWith({ where: { id: 1 }, data: { displayOrder: 1 } });
+    expect(prisma.location.update).toHaveBeenCalledWith({ where: { id: 2 }, data: { displayOrder: 2 } });
+  });
+
+  it('throws an error for location model when IDs are missing', async () => {
+    vi.mocked(prisma.location.findMany).mockResolvedValue([{ id: 1 }] as any);
+
+    await expect(
+      reorderDisplayOrder('location', [1, 99])
+    ).rejects.toThrow('Invalid location IDs: 99');
   });
 });

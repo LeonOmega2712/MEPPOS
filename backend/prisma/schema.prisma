@@ -28,8 +28,46 @@ model User {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
+  customExtras CustomExtra[]
+
   @@index([active])
   @@map("users")
+}
+
+// ============================================
+// PHASE 2 — EXTRAS
+// ============================================
+
+model CustomExtra {
+  id           Int       @id @default(autoincrement())
+  name         String    @unique @db.VarChar(255)
+  defaultPrice Decimal   @map("default_price") @db.Decimal(10, 2)
+  active       Boolean   @default(true)
+  createdBy    Int?      @map("created_by")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime? @updatedAt @map("updated_at")
+
+  creator User? @relation(fields: [createdBy], references: [id])
+
+  @@map("custom_extras")
+}
+
+// ============================================
+// PHASE 2 — LOCATIONS
+// ============================================
+
+model Location {
+  id           Int       @id @default(autoincrement())
+  name         String    @db.VarChar(100)
+  type         String    @db.VarChar(20)
+  active       Boolean   @default(true)
+  displayOrder Int       @default(0) @map("display_order")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime? @updatedAt @map("updated_at")
+
+  @@index([displayOrder])
+  @@index([active])
+  @@map("locations")
 }
 
 // ============================================

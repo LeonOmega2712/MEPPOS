@@ -4,3 +4,5 @@ export type { ApiResponse, ProductsApiResponse } from './api-response.model';
 export type { AuthUser, LoginRequest, AuthResponse } from './auth.model';
 export type { User, Role, CreateUserPayload, UpdateUserPayload, UserDraft } from './user.model';
 export { ROLE_LABELS } from './user.model';
+export type { Location, LocationType, LocationDraft, CreateLocationPayload, UpdateLocationPayload } from './location.model';
+export type { CustomExtra, CustomExtraDraft, CreateCustomExtraPayload, UpdateCustomExtraPayload } from './custom-extra.model';

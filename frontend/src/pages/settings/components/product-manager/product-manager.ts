@@ -106,6 +106,7 @@ export class ProductManagerComponent implements OnInit {
 
   createProduct(): void {
     if (!this.newProduct.name.trim() || !this.newProduct.categoryId) return;
+    if (!this.isValidDraftPrice(this.newProduct.price)) return;
 
     const inactive = this.inactiveProducts().find(
       (p) => p.name.toLowerCase() === this.newProduct.name.trim().toLowerCase()
@@ -159,6 +160,7 @@ export class ProductManagerComponent implements OnInit {
   saveProduct(product: Product): void {
     const draft = this.drafts[product.id];
     if (!draft) return;
+    if (!this.isValidDraftPrice(draft.price)) return;
 
     this.saving.set(product.id);
     const payload: UpdateProductPayload = {
@@ -374,6 +376,11 @@ export class ProductManagerComponent implements OnInit {
       !!this.newProduct.image?.trim() ||
       !!this.newProduct.customizable
     );
+  }
+
+  isValidDraftPrice(value: unknown): boolean {
+    const price = this.toNumberOrNull(value);
+    return price === null || price >= 0;
   }
 
   resetNewProduct(): void {

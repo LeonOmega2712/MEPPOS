@@ -33,13 +33,13 @@ Web app to speed up bill calculation in a seafood restaurant. Editable catalog +
 
 ## Project: Phase 2 - Bill Registration & Ticket Printing (in progress)
 
-Persistent bill management with rounds, kitchen/final ticket printing, and location-based seating. Current progress: JWT authentication with roles (ADMIN/WAITER), login page, protected routes, public menu for QR access, user CRUD, and security hardening are complete. Pending: locations (tables/bar), persistent orders with rounds, custom extras, discounts at checkout, account ownership & transfer, ticket printing (kitchen + final), order history with reprint.
+Persistent bill management with rounds, kitchen/final ticket printing, and location-based seating. Current progress: JWT authentication with roles (ADMIN/WAITER), login page, protected routes, public menu for QR access, user CRUD, security hardening, locations management (DB + backend API + admin UI — tables + bar; bar orders receive an auto-assigned daily consecutive number), and custom extras management (DB + backend API + admin UI) are complete. Pending: persistent orders with rounds, discounts at checkout, account ownership & transfer, ticket printing (kitchen + final), order history with reprint.
 
 ### Tech Stack
 
 - **Frontend:** Angular ^21.0.0, TypeScript ~5.9.2, Tailwind CSS ^4.1.12, DaisyUI ^5.5.14, Angular CDK ^21.1.3, Vitest ^4.0.8
 - **Backend:** Node.js 18+, Express.js 5.2.1, TypeScript 5.9.3, Prisma ORM 7.3.0, Zod 4.3.6, bcryptjs, jsonwebtoken, helmet, express-rate-limit, cookie-parser
-- **Database:** PostgreSQL 15+ (tables: `categories`, `products`, `users`)
+- **Database:** PostgreSQL 15+ (tables: `categories`, `products`, `users`, `custom_extras`, `locations`)
 - **Deploy:** Docker + docker-compose (dev), Koyeb (backend), Netlify/Vercel (frontend)
 
 ### Data Model
@@ -47,13 +47,17 @@ Persistent bill management with rounds, kitchen/final ticket printing, and locat
 Full menu reference in `.claude/docs/menu.mermaid.md`
 
 ```
-Category (id, name UK, description, base_price?, image, display_order, active)
-Product  (id, category_id FK, name UK, description, price?, image, display_order, customizable, active)
-User     (id, username UK, password, display_name, role [ADMIN|WAITER], active)
+Category    (id, name UK, description, base_price?, image, display_order, active)
+Product     (id, category_id FK, name UK, description, price?, image, display_order, customizable, active)
+User        (id, username UK, password, display_name, role [ADMIN|WAITER], active)
+CustomExtra (id, name UK, default_price, active, created_by FK→User?)
+Location    (id, name, type [table|bar], display_order, active)
 ```
 
 - `Category` contains `Product` (1:N)
 - `price` in Product is nullable (inherits from Category's `base_price` if not set)
+- `Location.type` is enforced as `table` or `bar` via a DB CHECK constraint
+- Bar orders receive an auto-assigned numeric identifier stored on the future `orders.bar_position` column (daily consecutive, resets at 00:00 local time). No separate identifier table is needed.
 
 ### Project Structure
 
@@ -82,6 +86,11 @@ MEPPOS/
 - `GET    /api/products` - Get all products with raw price + categories array (supports ?active=true)
 - `GET    /api/products/:id` - Get product by ID
 - `GET    /api/products/:id/price` - Get resolved price
+- `GET    /api/locations` - Get all locations (supports ?active=true)
+- `GET    /api/extras` - Get all custom extras (supports ?active=true)
+- `POST   /api/extras` - Create custom extra
+- `PUT    /api/extras/:id` - Update custom extra
+- `DELETE /api/extras/:id` - Soft delete (deactivate) extra. Hard delete with `?permanent=true`
 
 **Admin-only routes:**
 
@@ -98,6 +107,10 @@ MEPPOS/
 - `POST   /api/users` - Create user
 - `PUT    /api/users/:id` - Update user
 - `DELETE /api/users/:id` - Soft delete (deactivate) user
+- `POST   /api/locations` - Create location
+- `PUT    /api/locations/:id` - Update location
+- `DELETE /api/locations/:id` - Soft delete (deactivate) location. Hard delete with `?permanent=true`
+- `PATCH  /api/locations/reorder` - Batch reorder locations (atomic transaction)
 
 ### Reference Menu
 

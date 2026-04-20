@@ -1,0 +1,212 @@
+@if (loading()) {
+  <div class="flex justify-center py-12">
+    <span class="loading loading-spinner loading-lg"></span>
+  </div>
+} @else if (error() && activeLocations().length === 0 && inactiveLocations().length === 0) {
+  <div class="alert alert-error alert-soft mt-4" role="alert">
+    <app-icon name="x-circle" />
+    <span>No se pudieron cargar las ubicaciones. Verifica tu conexión e intenta de nuevo.</span>
+    <button class="btn btn-sm btn-ghost" (click)="refresh()">Reintentar</button>
+  </div>
+} @else {
+  <div class="flex items-center justify-between mb-3">
+    <span class="text-sm text-base-content/50" aria-live="polite">
+      @if (revalidating()) { Actualizando... }
+    </span>
+    <button
+      class="btn btn-soft btn-sm gap-1"
+      aria-label="Actualizar lista"
+      [disabled]="loading() || revalidating()"
+      (click)="refresh()"
+    >
+      @if (revalidating()) {
+        <span class="loading loading-spinner loading-xs"></span>
+      } @else {
+        <app-icon name="arrow-path" sizeClass="size-4" />
+      }
+      Actualizar
+    </button>
+  </div>
+
+  <!-- Active locations (drag-drop reorder) -->
+  <div cdkDropList (cdkDropListDropped)="onDrop($event)" data-testid="locations-list">
+    @for (location of activeLocations(); track location.id) {
+      <div
+        cdkDrag
+        [cdkDragDisabled]="reordering() || saving() !== null || expandedLocationId() !== null"
+        class="collapse collapse-arrow bg-base-100 shadow-sm mb-2"
+        data-testid="location-item"
+      >
+        <div *cdkDragPlaceholder class="bg-base-200 rounded-box mb-2" [style.height.px]="dragHeight()"></div>
+        <input type="checkbox" [checked]="expandedLocationId() === location.id" (click)="onCollapseToggle($event, location.id)" />
+        <div class="collapse-title font-medium flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 overflow-hidden" data-testid="location-item-name">
+          <div class="flex items-center gap-2 min-w-0">
+            <div cdkDragHandle class="relative z-10 cursor-grab active:cursor-grabbing touch-none p-1 -ml-1" (pointerdown)="onDragHandleDown($event)">
+              <app-icon name="drag-handle" sizeClass="size-5 opacity-40" />
+            </div>
+            <span class="truncate">{{ location.name }}</span>
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            @if (hasDraftChanges(location.id)) {
+              <span class="badge badge-warning badge-sm">Sin guardar</span>
+            }
+            <span class="badge badge-sm" [class.badge-primary]="location.type === 'table'" [class.badge-secondary]="location.type === 'bar'">
+              {{ typeLabels[location.type] }}
+            </span>
+          </div>
+        </div>
+        <div class="collapse-content">
+          <div class="flex flex-col gap-3">
+            <label class="input w-full">
+              <span class="label w-28 shrink-0">Nombre *</span>
+              <input type="text" [(ngModel)]="drafts[location.id].name" />
+            </label>
+            <label class="select w-full">
+              <span class="label w-28 shrink-0">Tipo</span>
+              <select [(ngModel)]="drafts[location.id].type">
+                <option value="table">Mesa</option>
+                <option value="bar">Barra</option>
+              </select>
+            </label>
+            <div class="divider my-1"></div>
+            <div class="flex gap-2">
+              <button
+                class="btn btn-soft btn-success"
+                title="Guardar"
+                [disabled]="!drafts[location.id]?.name?.trim() || !hasDraftChanges(location.id) || saving() === location.id"
+                (click)="saveLocation(location)"
+              >
+                @if (saving() === location.id) {
+                  <span class="loading loading-spinner loading-sm"></span>
+                } @else {
+                  <app-icon name="check-circle" />
+                }
+              </button>
+              <button
+                class="btn btn-soft btn-warning"
+                title="Descartar cambios"
+                [disabled]="!hasDraftChanges(location.id) || saving() === location.id"
+                (click)="resetDraft(location.id)"
+              >
+                <app-icon name="x-circle" />
+              </button>
+              <button
+                class="btn btn-soft btn-error"
+                title="Desactivar"
+                [disabled]="saving() === location.id"
+                (click)="deactivateLocation(location)"
+              >
+                <app-icon name="archive-down" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+
+  @if (activeLocations().length === 0 && inactiveLocations().length === 0) {
+    <p class="text-base-content/60 text-center py-8">No hay ubicaciones registradas.</p>
+  }
+
+  <!-- New location -->
+  <div class="collapse collapse-arrow bg-base-100 shadow-sm mb-2" data-testid="new-location-panel">
+    <input type="checkbox" data-testid="new-location-toggle" [checked]="expandedLocationId() === 'new'" (click)="onCollapseToggle($event, 'new')" />
+    <div class="collapse-title font-medium">
+      <span class="flex items-center gap-2">
+        <app-icon name="plus-circle" sizeClass="size-5 opacity-40" />
+        Nueva ubicación
+      </span>
+    </div>
+    <div class="collapse-content">
+      <div class="flex flex-col gap-3">
+        <label class="input w-full">
+          <span class="label w-28 shrink-0">Nombre *</span>
+          <input type="text" data-testid="new-location-name" [(ngModel)]="newLocation.name" autocomplete="off" />
+        </label>
+        <label class="select w-full">
+          <span class="label w-28 shrink-0">Tipo</span>
+          <select data-testid="new-location-type" [(ngModel)]="newLocation.type">
+            <option value="table">Mesa</option>
+            <option value="bar">Barra</option>
+          </select>
+        </label>
+        <div class="divider my-1"></div>
+        <div class="flex gap-2">
+          <button
+            class="btn btn-soft btn-success"
+            title="Crear"
+            data-testid="new-location-submit"
+            [disabled]="!newLocation.name.trim() || saving() === 'new'"
+            (click)="createLocation()"
+          >
+            @if (saving() === 'new') {
+              <span class="loading loading-spinner loading-sm"></span>
+            } @else {
+              <app-icon name="plus-circle" />
+            }
+          </button>
+          <button
+            class="btn btn-soft btn-warning"
+            title="Descartar"
+            [disabled]="!newLocation.name.trim() || saving() === 'new'"
+            (click)="resetDraft('new')"
+          >
+            <app-icon name="x-circle" />
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Inactive locations -->
+  @if (inactiveLocations().length > 0) {
+    <div class="collapse collapse-arrow bg-base-100 mt-4">
+      <input type="checkbox" (change)="expandedInactiveId.set(null)" />
+      <div class="collapse-title text-sm font-medium flex items-center justify-between">
+        Ubicaciones desactivadas
+        <span class="badge badge-sm badge-primary">{{ inactiveLocations().length }}</span>
+      </div>
+      <div class="collapse-content">
+        <div class="join join-vertical w-full">
+          @for (location of inactiveLocations(); track location.id) {
+            <div class="collapse collapse-arrow join-item border-base-300 border bg-base-100">
+              <input type="checkbox" [checked]="expandedInactiveId() === location.id" (click)="expandedInactiveId.set(expandedInactiveId() === location.id ? null : location.id)" />
+              <div class="collapse-title font-semibold flex items-center justify-between gap-1 overflow-hidden">
+                <span class="truncate">{{ location.name }}</span>
+                <span class="badge badge-sm" [class.badge-primary]="location.type === 'table'" [class.badge-secondary]="location.type === 'bar'">
+                  {{ typeLabels[location.type] }}
+                </span>
+              </div>
+              <div class="collapse-content">
+                <div class="flex gap-2">
+                  <button
+                    class="btn btn-soft btn-error"
+                    title="Eliminar permanentemente"
+                    [disabled]="saving() === location.id"
+                    (click)="permanentDeleteLocation(location)"
+                  >
+                    <app-icon name="trash" />
+                  </button>
+                  <button
+                    class="btn btn-soft btn-success"
+                    title="Reactivar"
+                    [disabled]="saving() === location.id"
+                    (click)="reactivateLocation(location)"
+                  >
+                    @if (saving() === location.id) {
+                      <span class="loading loading-spinner loading-sm"></span>
+                    } @else {
+                      <app-icon name="upload" />
+                    }
+                  </button>
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  }
+
+}

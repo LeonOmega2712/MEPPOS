@@ -85,7 +85,7 @@
                 class="btn btn-soft btn-success"
                 title="Guardar"
                 aria-label="Guardar categoría"
-                [disabled]="!drafts[category.id]?.name?.trim() || !hasDraftChanges(category.id) || saving() === category.id"
+                [disabled]="!drafts[category.id]?.name?.trim() || !isValidDraftPrice(drafts[category.id]?.basePrice) || !hasDraftChanges(category.id) || saving() === category.id"
                 (click)="saveCategory(category)"
               >
                 @if (saving() === category.id) {
@@ -164,7 +164,7 @@
             class="btn btn-soft btn-success"
             title="Crear"
             aria-label="Crear categoría"
-            [disabled]="!newCategory.name.trim() || saving() === 'new'"
+            [disabled]="!newCategory.name.trim() || !isValidDraftPrice(newCategory.basePrice) || saving() === 'new'"
             (click)="createCategory()"
           >
             @if (saving() === 'new') {

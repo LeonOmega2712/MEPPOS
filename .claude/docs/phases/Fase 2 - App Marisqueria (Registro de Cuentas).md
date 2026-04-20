@@ -33,7 +33,7 @@ Extensión de la calculadora de Fase 1 hacia un sistema de cuentas persistentes.
 - ✅ Para llevar con consecutivo diario
 - ✅ Impresión de tickets de cocina y ticket final
 - ✅ Historial consultable con reimpresión marcada como copia
-- ✅ Identificadores visuales para posiciones de barra
+- ✅ Identificador numérico auto-asignado para órdenes de barra (consecutivo diario, reinicio a las 00:00)
 
 ---
 
@@ -102,7 +102,6 @@ Sin cambios respecto a Fase 1. Se extienden las capas existentes.
 │                                 │
 │  categories, products (Fase 1)  │
 │  locations                      │
-│  location_identifiers           │
 │  orders                         │
 │  order_rounds                   │
 │  order_items                    │
@@ -117,7 +116,7 @@ Sin cambios respecto a Fase 1. Se extienden las capas existentes.
 
 ### Tabla: `locations`
 
-Mesas y barras configurables. Una barra puede tener múltiples cuentas activas simultáneas a través de identificadores visuales.
+Mesas y barras configurables. Una barra puede tener múltiples cuentas activas simultáneas; cada orden de barra recibe un identificador numérico auto-asignado por el sistema (ver `orders.bar_position`).
 
 ```sql
 CREATE TABLE locations (
@@ -131,20 +130,6 @@ CREATE TABLE locations (
 );
 ```
 
-### Tabla: `location_identifiers`
-
-Identificadores visuales para posiciones dentro de la barra (ej. "estrella", "luna", "corazón"). Referencia física para colocar junto al cliente.
-
-```sql
-CREATE TABLE location_identifiers (
-  id         SERIAL PRIMARY KEY,
-  label      VARCHAR(100) NOT NULL,
-  icon       VARCHAR(100),           -- nombre de icono o emoji
-  active     BOOLEAN DEFAULT true,
-  created_at TIMESTAMP DEFAULT NOW()
-);
-```
-
 ### Tabla: `orders`
 
 Cuenta abierta por un mesero para una ubicación específica.
@@ -153,7 +138,7 @@ Cuenta abierta por un mesero para una ubicación específica.
 CREATE TABLE orders (
   id              SERIAL PRIMARY KEY,
   location_id     INTEGER REFERENCES locations(id),
-  identifier_id   INTEGER REFERENCES location_identifiers(id),  -- solo para barra
+  bar_position    INTEGER,            -- solo para barra (consecutivo diario auto-asignado)
   takeout_number  INTEGER,            -- solo para para llevar (consecutivo diario)
   order_type      VARCHAR(20) NOT NULL CHECK (order_type IN ('dine_in', 'bar', 'takeout')),
   status          VARCHAR(20) NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'charged', 'cancelled')),
@@ -163,6 +148,8 @@ CREATE TABLE orders (
   notes           TEXT
 );
 ```
+
+> `bar_position` y `takeout_number` siguen el mismo patrón: el backend calcula el siguiente valor al crear la orden como `MAX(campo) + 1` filtrando por `opened_at >= inicio_del_día_local`, de modo que ambos contadores reinician a las 00:00 sin requerir cron.
 
 ### Tabla: `order_rounds`
 
@@ -203,7 +190,7 @@ Lista de extras frecuentes reutilizables, administrable por cualquier mesero.
 CREATE TABLE custom_extras (
   id          SERIAL PRIMARY KEY,
   name        VARCHAR(255) NOT NULL UNIQUE,
-  default_price DECIMAL(10,2),
+  default_price DECIMAL(10,2) NOT NULL,
   active      BOOLEAN DEFAULT true,
   created_by  INTEGER REFERENCES users(id),
   created_at  TIMESTAMP DEFAULT NOW(),
@@ -235,8 +222,8 @@ CREATE TABLE order_discounts (
 
 1. Mesero selecciona tipo: mesa / barra / para llevar
 2. Si es mesa: selecciona mesa disponible
-3. Si es barra: selecciona identificador visual disponible
-4. Si es para llevar: sistema asigna número consecutivo del día
+3. Si es barra: sistema asigna automáticamente el siguiente número consecutivo del día (`bar_position`)
+4. Si es para llevar: sistema asigna número consecutivo del día (`takeout_number`)
 5. Se crea `order` con status `open` y `owner_user_id` del mesero activo
 
 ### Agregar ronda
@@ -250,7 +237,7 @@ CREATE TABLE order_discounts (
 
 Contenido:
 
-- Ubicación (nombre de mesa / identificador de barra / número para llevar)
+- Ubicación (nombre de mesa / barra con `bar_position` / número para llevar)
 - Mesero
 - Número de ronda
 - Lista de items con cantidad y nombre
@@ -313,9 +300,6 @@ Todas las respuestas siguen el mismo formato de Fase 1: `{ success: boolean, dat
 | POST | `/api/locations` | Crea una ubicación (admin) |
 | PUT | `/api/locations/:id` | Edita una ubicación (admin) |
 | DELETE | `/api/locations/:id` | Desactiva una ubicación (admin) |
-| GET | `/api/location-identifiers` | Lista identificadores de barra |
-| POST | `/api/location-identifiers` | Crea identificador (solo admin) |
-| DELETE | `/api/location-identifiers/:id` | Desactiva identificador (solo admin) |
 
 ### Cuentas
 
@@ -393,7 +377,7 @@ Todas las respuestas siguen el mismo formato de Fase 1: `{ success: boolean, dat
 - Lista de mesas y barras con estado
 - Agregar / editar / desactivar mesas
 - Agregar / editar / desactivar barras
-- Gestión de identificadores visuales de barra
+- Los identificadores de las órdenes de barra se asignan automáticamente y no requieren administración
 
 ---
 
@@ -415,7 +399,7 @@ La impresión se gestiona desde el navegador mediante `window.print()` con una h
 - **Edición de items:** confirmación explícita con descripción del cambio
 - **Cancelación de cuenta:** confirmación en dos pasos para evitar errores
 - **Transferencia:** inmediata pero con notificación push/toast al owner anterior
-- **Para llevar:** el consecutivo diario se reinicia a las 00:00 en el timezone local del negocio
+- **Consecutivos diarios** (`bar_position` y `takeout_number`): se reinician a las 00:00 en el timezone local del negocio. El reinicio es implícito: el cálculo del siguiente valor filtra por `opened_at >= inicio_del_día_local`, por lo que no requiere tarea programada
 
 ---
 
@@ -431,15 +415,13 @@ Para la notificación de transferencia de cuenta no se requiere WebSocket en Fas
 
 ### Base de Datos
 
-- [ ] Diseñar y crear migración Prisma: `locations`, `location_identifiers`, `orders`, `order_rounds`, `order_items`, `custom_extras`, `order_discounts`
-- [ ] Seed de ubicaciones iniciales (7 mesas + 1 barra con identificadores de ejemplo)
-- [ ] Seed de identificadores visuales base
+- [ ] Diseñar y crear migración Prisma: `locations`, `orders`, `order_rounds`, `order_items`, `custom_extras`, `order_discounts`
+- [ ] Seed de ubicaciones iniciales (7 mesas + 1 barra)
 
 ### Backend
 
 - [ ] CRUD `/api/locations` (con validación de tipo y estado)
-- [ ] CRUD `/api/location-identifiers`
-- [ ] `POST /api/orders` (abrir cuenta con validación de ubicación disponible)
+- [ ] `POST /api/orders` (abrir cuenta con validación de ubicación disponible; auto-asignación de `bar_position` para barra y `takeout_number` para para llevar como consecutivos diarios)
 - [ ] `GET /api/orders` (con filtro mine/all)
 - [ ] `GET /api/orders/:id` (detalle con rondas e items)
 - [ ] `POST /api/orders/:id/rounds` (nueva ronda con items)
@@ -451,7 +433,7 @@ Para la notificación de transferencia de cuenta no se requiere WebSocket en Fas
 - [ ] CRUD `/api/extras`
 - [ ] `GET /api/history` (paginado con filtros)
 - [ ] `GET /api/history/:id/ticket` (datos para reimpresión)
-- [ ] Lógica de consecutivo diario para para llevar
+- [ ] Lógica de consecutivos diarios para `bar_position` y `takeout_number` (cálculo al crear orden, sin cron)
 - [ ] Validaciones Zod para todos los endpoints nuevos
 
 ### Frontend
@@ -471,8 +453,7 @@ Para la notificación de transferencia de cuenta no se requiere WebSocket en Fas
 - [ ] Estilos `@media print` para tickets
 - [ ] Advertencias de intervención en cuenta ajena
 - [ ] Polling de cuentas activas para notificación de transferencias
-- [ ] Admin: Gestión de ubicaciones y barras
-- [ ] Admin: Gestión de identificadores visuales
+- [ ] Admin: Gestión de ubicaciones (mesas y barras)
 - [ ] Admin: Extras frecuentes
 
 ### Deploy
@@ -509,6 +490,34 @@ Para la notificación de transferencia de cuenta no se requiere WebSocket en Fas
 - El precio de un producto podría cambiar después del cobro
 - El historial debe reflejar exactamente lo que se cobró en ese momento, no recalcular
 
+### ¿Por qué no snapshotear nombres de producto, ubicación, categoría o usuario en las tablas históricas?
+
+Fase 2 entrega **reimpresión de tickets**, no reportes históricos de largo plazo. La integridad histórica completa se difiere a Fase 4 (reportes y analytics), donde el requerimiento se vuelve fuerte.
+
+**Estado actual por entidad:**
+
+| Entidad         | Referencia histórica                                  | Precio capturado              | Nombre capturado | Riesgo                       |
+| --------------- | ----------------------------------------------------- | ----------------------------- | ---------------- | ---------------------------- |
+| `products`      | `order_items.product_id`                              | ✅ `unit_price`               | ❌ JOIN          | Ticket muestra nombre actual |
+| `locations`     | `orders.location_id`                                  | n/a                           | ❌ JOIN          | Ticket muestra nombre actual |
+| `categories`    | `products.category_id` (indirecta)                    | ✅ vía `unit_price` resuelto  | ❌ JOIN          | Solo reportes por categoría  |
+| `users`         | `orders.owner_user_id`, `order_rounds.user_id`        | n/a                           | ❌ JOIN          | Solo reportes por mesero     |
+| `custom_extras` | **no es FK** — se copia a `order_items.custom_name`   | ✅ `unit_price`               | ✅ snapshot      | Ninguno                      |
+
+**Mitigaciones vigentes en Fase 2:**
+
+- Borrado lógico (`active=false`) es el default: la fila sobrevive, el FK resuelve, el ticket se renderiza igual.
+- Borrado físico (`?permanent=true`) está gated detrás de confirmación + type-to-confirm; uso excepcional.
+- Todos los precios se capturan en inserción (`order_items.unit_price`, `order_discounts.amount`).
+
+**Trade-off consciente**: si un producto / ubicación / categoría / usuario se renombra entre la transacción y una consulta posterior, se muestra el nombre actual vía JOIN. Aceptable para reimpresión de tickets del día, no para reportes históricos.
+
+**A evaluar en Fase 4** cuando se diseñe el módulo de reportes:
+
+- Snapshot de `product_name` / `location_name` en `order_items` / `orders` al momento de la inserción.
+- `ON DELETE RESTRICT` (o check a nivel de aplicación) para impedir hard-delete de filas de catálogo referenciadas desde órdenes históricas.
+- Política explícita de archivo/anonimización de usuarios con historial de ventas.
+
 ---
 
 ## 13. Señales de que Fase 2 está completa
@@ -523,12 +532,24 @@ Para la notificación de transferencia de cuenta no se requiere WebSocket en Fas
 
 ---
 
-## 14. Próximos Pasos (Fase 3)
+## 14. Próximos Pasos
+
+### Fase 3 — Operación y flujos avanzados
 
 - Control de órdenes con estatus (preparando / pendiente / cobrado)
 - Pedidos centralizados desde punto fijo (no mesero a mesa)
 - Cobro integrado al momento del pedido
 - Posible incorporación de terminal en caja registradora
+- Evaluación de WebSockets para notificaciones en tiempo real si el volumen lo justifica
+
+### Fase 4 — Reportes, analytics e integridad histórica
+
+- Reportes y analytics (ventas por período, por categoría, por mesero, productos más vendidos)
+- Snapshots de nombre de producto / ubicación en `order_items` / `orders` al momento de la inserción (ver sección 12)
+- `ON DELETE RESTRICT` o check a nivel de aplicación que impida hard-delete de filas de catálogo referenciadas por órdenes históricas
+- Política explícita de archivo / anonimización de usuarios con historial de ventas
+- Integraciones (TPV, métodos de pago, API de pedidos en línea)
+- Backup automático y exports (Excel / PDF)
 
 ---
 

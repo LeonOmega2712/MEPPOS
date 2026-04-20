@@ -4,6 +4,8 @@ import { categoryController } from '../controllers/category.controller';
 import { productController } from '../controllers/product.controller';
 import { authController } from '../controllers/auth.controller';
 import { userController } from '../controllers/user.controller';
+import { locationController } from '../controllers/location.controller';
+import { customExtraController } from '../controllers/custom-extra.controller';
 import { authenticate, authorize } from '../middleware/auth.middleware';
 
 const router = Router();
@@ -39,6 +41,15 @@ router.get('/products', productController.getAllProducts.bind(productController)
 router.get('/products/:id', productController.getProductById.bind(productController));
 router.get('/products/:id/price', productController.getProductPrice.bind(productController));
 
+// Locations (GET — waiters need to see locations to open orders)
+router.get('/locations', locationController.getAllLocations.bind(locationController));
+
+// Custom extras (all mutations available to any authenticated user)
+router.get('/extras', customExtraController.getAllExtras.bind(customExtraController));
+router.post('/extras', customExtraController.createExtra.bind(customExtraController));
+router.put('/extras/:id', customExtraController.updateExtra.bind(customExtraController));
+router.delete('/extras/:id', customExtraController.deleteExtra.bind(customExtraController));
+
 // ============================================
 // ADMIN-ONLY ROUTES
 // ============================================
@@ -63,5 +74,11 @@ router.post('/products', productController.createProduct.bind(productController)
 router.put('/products/:id', productController.updateProduct.bind(productController));
 router.delete('/products/:id', productController.deleteProduct.bind(productController));
 router.patch('/products/reorder', productController.reorderProducts.bind(productController));
+
+// Locations (mutations — admin only)
+router.post('/locations', locationController.createLocation.bind(locationController));
+router.put('/locations/:id', locationController.updateLocation.bind(locationController));
+router.delete('/locations/:id', locationController.deleteLocation.bind(locationController));
+router.patch('/locations/reorder', locationController.reorderLocations.bind(locationController));
 
 export { router as apiRoutes };

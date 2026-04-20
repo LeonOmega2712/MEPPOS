@@ -73,6 +73,36 @@
           </div>
         }
       </div>
+
+      <input
+        type="radio"
+        name="settings_tabs"
+        class="tab"
+        aria-label="Ubicaciones"
+        [checked]="activeTab() === 'locations'"
+        (click)="selectTab($event, 'locations')" />
+      <div class="tab-content bg-base-200 p-0">
+        @if (activeTab() === 'locations') {
+          <div [class.slide-from-left]="slideDirection() === 'left'" [class.slide-from-right]="slideDirection() === 'right'">
+            <app-location-manager />
+          </div>
+        }
+      </div>
+
+      <input
+        type="radio"
+        name="settings_tabs"
+        class="tab"
+        aria-label="Extras"
+        [checked]="activeTab() === 'extras'"
+        (click)="selectTab($event, 'extras')" />
+      <div class="tab-content bg-base-200 p-0">
+        @if (activeTab() === 'extras') {
+          <div [class.slide-from-left]="slideDirection() === 'left'" [class.slide-from-right]="slideDirection() === 'right'">
+            <app-custom-extra-manager />
+          </div>
+        }
+      </div>
     </div>
   }
 
