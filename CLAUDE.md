@@ -22,6 +22,7 @@
 - Official documentation of the tools and technologies used must be the primary technical reference.
 - Technical quality is the top priority: responses must be well-founded, justify decisions, and propose better alternatives when they exist, even if they contradict the initial instruction, always with solid arguments.
 - When planning or implementing any feature, proactively adopt the perspective of the relevant domain expert and surface optimizations without waiting for a second prompt. For frontend work: consider UX, accessibility, perceived performance, and feedback clarity. For backend work: consider reliability, error handling, security, and scalability. For QA/testing: consider edge cases, coverage gaps, and regression risk. Flag findings and apply high-priority improvements as part of the initial implementation.
+- **Frontend E2E tests (Playwright) run without a backend.** The CI Frontend E2E job boots only the Angular dev server; there is no Postgres and no API. Every `/api/*` request an E2E test touches MUST be stubbed via `page.route(...)` in `frontend/e2e/helpers/mocks.ts`. When adding endpoints, extend that file with a `setupXxxMocks(page)` helper and compose it with `setupApiMocks(page)` in the test's `beforeEach`. Full-stack coverage lives in the backend integration tests, not E2E.
 
 ## Project: Phase 1 - Bill Calculator
 

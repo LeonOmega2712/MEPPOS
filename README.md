@@ -335,6 +335,11 @@ npm run prisma:seed
 - **Validation**: Zod on all endpoints
 - **Type Safety**: Strict TypeScript
 
+### Testing Conventions
+
+- **Frontend E2E (Playwright) runs without a backend.** The CI job only boots the Angular dev server — no Postgres, no API. Every `/api/*` call touched by an E2E test must be stubbed via `page.route(...)` in [`frontend/e2e/helpers/mocks.ts`](frontend/e2e/helpers/mocks.ts). When adding endpoints, extend that file with a `setupXxxMocks(page)` helper and compose it with `setupApiMocks(page)` in the test's `beforeEach`.
+- **Full-stack coverage lives in backend integration tests**, not E2E: see `backend/tests/integration/` (mocked Prisma) and `backend/tests/integration-db/` (real Postgres via docker compose).
+
 ### Backend Folder Structure
 
 ```bash

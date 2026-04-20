@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { setupApiMocks, setupAuthenticatedMocks, setupSettingsMocks } from './helpers/mocks';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -30,7 +31,15 @@ function listenForToast(page: Page, type: 'success' | 'error') {
 
 test.describe('Settings page — Extras & Ubicaciones tabs', () => {
   test.beforeEach(async ({ page }) => {
+    await setupApiMocks(page);
+    await setupSettingsMocks(page);
     await loginAsAdmin(page);
+    // Override refresh with a success handler AFTER login so that navigating
+    // to /settings (a full reload) restores the admin session instead of
+    // dropping the user back to the login page. If this ran before login,
+    // the app would treat the initial / load as already authenticated and
+    // skip the login form entirely.
+    await setupAuthenticatedMocks(page);
   });
 
   // ─── Extras tab ────────────────────────────────────────────────────────────
@@ -49,25 +58,12 @@ test.describe('Settings page — Extras & Ubicaciones tabs', () => {
       await expect(page.getByTestId('new-extra-submit')).toBeDisabled();
     });
 
-    test('can create a new extra with name only (no price)', async ({ page }) => {
-      const name = `SMOKE_EXTRA_${Date.now()}`;
-
+    test('create button stays disabled when price is empty', async ({ page }) => {
       await navigateToSettingsTab(page, 'Extras');
       await expect(page.locator('.loading-spinner')).not.toBeVisible({ timeout: 8_000 });
       await expandNewPanel(page, 'new-extra-toggle');
-      await page.getByTestId('new-extra-name').fill(name);
-      await expect(page.getByTestId('new-extra-submit')).toBeEnabled();
-
-      const responsePromise = page.waitForResponse(
-        (res) => res.url().includes('/api/extras') && res.request().method() === 'POST',
-      );
-      await page.getByTestId('new-extra-submit').click({ force: true });
-      const response = await responsePromise;
-      expect(response.status()).toBe(201);
-
-      await expect(
-        page.locator('[data-testid="extra-item-name"]', { hasText: name }),
-      ).toBeVisible({ timeout: 8_000 });
+      await page.getByTestId('new-extra-name').fill(`SMOKE_NO_PRICE_${Date.now()}`);
+      await expect(page.getByTestId('new-extra-submit')).toBeDisabled();
     });
 
     test('can create a new extra with name and price', async ({ page }) => {
@@ -99,6 +95,7 @@ test.describe('Settings page — Extras & Ubicaciones tabs', () => {
       await expect(page.locator('.loading-spinner')).not.toBeVisible({ timeout: 8_000 });
       await expandNewPanel(page, 'new-extra-toggle');
       await page.getByTestId('new-extra-name').fill(name);
+      await page.getByTestId('new-extra-price').fill('5.00');
 
       const firstPost = page.waitForResponse(
         (res) => res.url().includes('/api/extras') && res.request().method() === 'POST',
@@ -107,11 +104,13 @@ test.describe('Settings page — Extras & Ubicaciones tabs', () => {
       const firstRes = await firstPost;
       expect(firstRes.status()).toBe(201);
 
-      // Panel stays open after create (expandedExtraId remains 'new'); just fill the name again
       await expect(
         page.locator('[data-testid="extra-item-name"]', { hasText: name }),
       ).toBeVisible({ timeout: 8_000 });
+
+      // Panel auto-resets after a successful create; fill name + price again for the duplicate attempt
       await page.getByTestId('new-extra-name').fill(name);
+      await page.getByTestId('new-extra-price').fill('5.00');
 
       const secondPost = page.waitForResponse(
         (res) => res.url().includes('/api/extras') && res.request().method() === 'POST',
