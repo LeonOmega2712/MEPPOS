@@ -9,6 +9,7 @@
     <button class="btn btn-sm btn-ghost" (click)="refresh()">Reintentar</button>
   </div>
 } @else {
+  <div class="overflow-x-hidden">
   <div class="flex items-center justify-between mb-3">
     <span class="text-sm text-base-content/50" aria-live="polite">
       @if (revalidating()) { Actualizando... }
@@ -187,4 +188,5 @@
       </div>
     </div>
   }
+  </div>
 }

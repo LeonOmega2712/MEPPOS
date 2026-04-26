@@ -132,6 +132,7 @@ export class LocationManagerComponent implements OnInit {
     this.locationService.deleteLocation(location.id).subscribe({
       next: () => {
         this.saving.set(null);
+        this.clearDraftAndCollapse(location.id);
         this.toastService.success('Ubicación desactivada');
         this.locationService.refreshLocations();
       },
@@ -169,6 +170,7 @@ export class LocationManagerComponent implements OnInit {
     this.locationService.deleteLocation(location.id, true).subscribe({
       next: () => {
         this.saving.set(null);
+        this.clearDraftAndCollapse(location.id);
         this.toastService.success('Ubicación eliminada permanentemente');
         this.locationService.refreshLocations();
       },
@@ -256,6 +258,12 @@ export class LocationManagerComponent implements OnInit {
     if (locationId === 'new') { this.newLocation = this.emptyLocation(); return; }
     const original = (this.locationsSignal() ?? []).find((l) => l.id === locationId);
     if (original) this.drafts[locationId] = this.toDraft(original);
+  }
+
+  private clearDraftAndCollapse(locationId: number): void {
+    delete this.drafts[locationId];
+    if (this.expandedLocationId() === locationId) this.expandedLocationId.set(null);
+    if (this.expandedInactiveId() === locationId) this.expandedInactiveId.set(null);
   }
 
   private toDraft(location: Location): LocationDraft {

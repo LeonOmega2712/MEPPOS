@@ -200,6 +200,7 @@ export class ProductManagerComponent implements OnInit {
     this.productService.deleteProduct(product.id).subscribe({
       next: () => {
         this.saving.set(null);
+        this.clearDraftAndCollapse(product.id);
         this.toastService.success('Producto desactivado');
         this.productService.refreshProducts();
       },
@@ -223,6 +224,7 @@ export class ProductManagerComponent implements OnInit {
     this.productService.deleteProduct(product.id, true).subscribe({
       next: () => {
         this.saving.set(null);
+        this.clearDraftAndCollapse(product.id);
         this.toastService.success('Producto eliminado permanentemente');
         this.productService.refreshProducts();
       },
@@ -390,6 +392,12 @@ export class ProductManagerComponent implements OnInit {
   getEffectivePrice(product: Product): number | null {
     const price = product.price ?? product.category.basePrice;
     return this.toNumber(price);
+  }
+
+  private clearDraftAndCollapse(productId: number): void {
+    delete this.drafts[productId];
+    if (this.expandedProductId() === productId) this.expandedProductId.set(null);
+    if (this.expandedInactiveProductId() === productId) this.expandedInactiveProductId.set(null);
   }
 
   private emptyProduct(): CreateProductPayload {

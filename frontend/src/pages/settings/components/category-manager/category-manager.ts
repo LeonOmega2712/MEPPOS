@@ -259,6 +259,7 @@ export class CategoryManagerComponent implements OnInit {
     this.categoryService.deleteCategory(category.id).subscribe({
       next: () => {
         this.saving.set(null);
+        this.clearDraftAndCollapse(category.id);
         this.toastService.success('Categoría desactivada');
         this.categoryService.refreshCategories();
       },
@@ -296,6 +297,7 @@ export class CategoryManagerComponent implements OnInit {
     this.categoryService.deleteCategory(category.id, true).subscribe({
       next: () => {
         this.saving.set(null);
+        this.clearDraftAndCollapse(category.id);
         this.toastService.success('Categoría eliminada permanentemente');
         this.categoryService.refreshCategories();
       },
@@ -322,6 +324,12 @@ export class CategoryManagerComponent implements OnInit {
 
   resetNewCategory(): void {
     this.newCategory = this.emptyCategory();
+  }
+
+  private clearDraftAndCollapse(categoryId: number): void {
+    delete this.drafts[categoryId];
+    if (this.expandedCategoryId() === categoryId) this.expandedCategoryId.set(null);
+    if (this.expandedInactiveId() === categoryId) this.expandedInactiveId.set(null);
   }
 
   private emptyCategory(): CreateCategoryPayload {

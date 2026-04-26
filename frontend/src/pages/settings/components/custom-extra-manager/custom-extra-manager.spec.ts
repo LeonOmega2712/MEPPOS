@@ -351,4 +351,57 @@ describe('CustomExtraManagerComponent', () => {
       expect(component.activeExtras()[1].name).toBe('Limón');
     });
   });
+
+  // ─── deactivateExtra cleanup (issue #51) ─────────────────────────────────
+
+  describe('deactivateExtra() cleanup', () => {
+    beforeEach(() => {
+      extrasData.set([EXTRA_1, EXTRA_2]);
+      TestBed.flushEffects();
+    });
+
+    it('clears expandedExtraId and resets draft after success, so opening another row does not trigger the unsaved-changes dialog', async () => {
+      component.expandedExtraId.set(EXTRA_1.id);
+      component.drafts[EXTRA_1.id].name = 'Edited but not saved';
+
+      await component.deactivateExtra(EXTRA_1);
+      deleteExtraSubject.next();
+      deleteExtraSubject.complete();
+
+      expect(component.expandedExtraId()).toBeNull();
+      expect(component.hasDraftChanges(EXTRA_1.id)).toBe(false);
+
+      await component.onCollapseToggle(new Event('click'), EXTRA_2.id);
+
+      expect(confirmDialogServiceMock.confirm).toHaveBeenCalledTimes(1);
+      expect(component.expandedExtraId()).toBe(EXTRA_2.id);
+    });
+
+    it('does NOT clear expanded state on error', async () => {
+      component.expandedExtraId.set(EXTRA_1.id);
+      component.drafts[EXTRA_1.id].name = 'Edited';
+
+      await component.deactivateExtra(EXTRA_1);
+      deleteExtraSubject.error(new Error('boom'));
+
+      expect(component.expandedExtraId()).toBe(EXTRA_1.id);
+      expect(component.hasDraftChanges(EXTRA_1.id)).toBe(true);
+    });
+  });
+
+  describe('permanentDeleteExtra() cleanup', () => {
+    it('clears expandedInactiveId after success', async () => {
+      const inactive: CustomExtra = { ...EXTRA_1, id: 5, active: false };
+      extrasData.set([inactive]);
+      TestBed.flushEffects();
+      component.expandedInactiveId.set(inactive.id);
+
+      await component.permanentDeleteExtra(inactive);
+      deleteExtraSubject.next();
+      deleteExtraSubject.complete();
+
+      expect(component.expandedInactiveId()).toBeNull();
+      expect(component.drafts[inactive.id]).toBeUndefined();
+    });
+  });
 });
