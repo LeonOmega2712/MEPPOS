@@ -121,6 +121,7 @@ export class CustomExtraManagerComponent implements OnInit {
     this.customExtraService.deleteExtra(extra.id).subscribe({
       next: () => {
         this.saving.set(null);
+        this.clearDraftAndCollapse(extra.id);
         this.toastService.success('Extra desactivado');
         this.customExtraService.refreshExtras();
       },
@@ -158,6 +159,7 @@ export class CustomExtraManagerComponent implements OnInit {
     this.customExtraService.deleteExtra(extra.id, true).subscribe({
       next: () => {
         this.saving.set(null);
+        this.clearDraftAndCollapse(extra.id);
         this.toastService.success('Extra eliminado permanentemente');
         this.customExtraService.refreshExtras();
       },
@@ -231,6 +233,12 @@ export class CustomExtraManagerComponent implements OnInit {
 
   formatPrice(extra: CustomExtra): string {
     return `$${(+extra.defaultPrice).toFixed(2)}`;
+  }
+
+  private clearDraftAndCollapse(extraId: number): void {
+    delete this.drafts[extraId];
+    if (this.expandedExtraId() === extraId) this.expandedExtraId.set(null);
+    if (this.expandedInactiveId() === extraId) this.expandedInactiveId.set(null);
   }
 
   private parsePrice(value: string): number | null {

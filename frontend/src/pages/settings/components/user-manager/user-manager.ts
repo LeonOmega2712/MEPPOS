@@ -232,6 +232,7 @@ export class UserManagerComponent implements OnInit {
     this.userService.deleteUser(user.id).subscribe({
       next: () => {
         this.saving.set(null);
+        this.clearDraftAndCollapse(user.id);
         this.toastService.success('Usuario desactivado');
         this.userService.refreshUsers();
       },
@@ -269,6 +270,7 @@ export class UserManagerComponent implements OnInit {
     this.userService.deleteUser(user.id, true).subscribe({
       next: () => {
         this.saving.set(null);
+        this.clearDraftAndCollapse(user.id);
         this.toastService.success('Usuario eliminado permanentemente');
         this.userService.refreshUsers();
       },
@@ -294,6 +296,12 @@ export class UserManagerComponent implements OnInit {
 
   resetNewUser(): void {
     this.newUser = this.emptyUser();
+  }
+
+  private clearDraftAndCollapse(userId: number): void {
+    delete this.drafts[userId];
+    if (this.expandedUserId() === userId) this.expandedUserId.set(null);
+    if (this.expandedInactiveId() === userId) this.expandedInactiveId.set(null);
   }
 
   private toDraft(user: User): UserDraft {

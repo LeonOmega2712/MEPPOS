@@ -309,6 +309,60 @@ describe('LocationManagerComponent', () => {
     });
   });
 
+  // ─── deactivateLocation cleanup (issue #51) ──────────────────────────────
+
+  describe('deactivateLocation() cleanup', () => {
+    beforeEach(() => {
+      locationsData.set([LOC_1, LOC_2]);
+      TestBed.flushEffects();
+    });
+
+    it('clears expandedLocationId and resets draft after success, so opening another row does not trigger the unsaved-changes dialog', async () => {
+      component.expandedLocationId.set(LOC_1.id);
+      component.drafts[LOC_1.id].name = 'Edited but not saved';
+
+      await component.deactivateLocation(LOC_1);
+      deleteLocationSubject.next();
+      deleteLocationSubject.complete();
+
+      expect(component.expandedLocationId()).toBeNull();
+      expect(component.hasDraftChanges(LOC_1.id)).toBe(false);
+
+      await component.onCollapseToggle(new Event('click'), LOC_2.id);
+
+      expect(confirmDialogServiceMock.confirm).toHaveBeenCalledTimes(1);
+      expect(component.expandedLocationId()).toBe(LOC_2.id);
+    });
+
+    it('does NOT clear expanded state on error', async () => {
+      component.expandedLocationId.set(LOC_1.id);
+      component.drafts[LOC_1.id].name = 'Edited';
+
+      await component.deactivateLocation(LOC_1);
+      deleteLocationSubject.error(new Error('boom'));
+
+      expect(component.expandedLocationId()).toBe(LOC_1.id);
+      expect(component.hasDraftChanges(LOC_1.id)).toBe(true);
+    });
+  });
+
+  describe('permanentDeleteLocation() cleanup', () => {
+    it('clears expandedInactiveId after success', async () => {
+      const inactive: Location = { ...LOC_1, id: 5, active: false };
+      locationsData.set([inactive]);
+      TestBed.flushEffects();
+      component.expandedInactiveId.set(inactive.id);
+      confirmDialogServiceMock.confirm.mockResolvedValueOnce(true);
+
+      await component.permanentDeleteLocation(inactive);
+      deleteLocationSubject.next();
+      deleteLocationSubject.complete();
+
+      expect(component.expandedInactiveId()).toBeNull();
+      expect(component.drafts[inactive.id]).toBeUndefined();
+    });
+  });
+
   // ─── computed signals ─────────────────────────────────────────────────────
 
   describe('activeLocations / inactiveLocations computed', () => {
