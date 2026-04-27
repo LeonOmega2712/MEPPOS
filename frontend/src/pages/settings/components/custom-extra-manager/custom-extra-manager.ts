@@ -4,11 +4,12 @@ import { CustomExtraService } from '../../../../core/services/custom-extra.servi
 import { ToastService } from '../../../../core/services/toast.service';
 import { ConfirmDialogService } from '../../../../core/services/confirm-dialog.service';
 import { IconComponent } from '../../../../shared/components/icon';
+import { CurrencyInputDirective } from '../../../../shared/directives/currency-input.directive';
 import type { CustomExtra, CustomExtraDraft, CreateCustomExtraPayload } from '../../../../core/models';
 
 @Component({
   selector: 'app-custom-extra-manager',
-  imports: [FormsModule, IconComponent],
+  imports: [FormsModule, IconComponent, CurrencyInputDirective],
   templateUrl: './custom-extra-manager.html',
   styleUrl: '../../../../shared/styles/manager.css',
 })
@@ -39,7 +40,7 @@ export class CustomExtraManagerComponent implements OnInit {
   );
 
   drafts: Record<number, CustomExtraDraft> = {};
-  newExtra: { name: string; defaultPriceInput: string } = this.emptyExtra();
+  newExtra: { name: string; defaultPrice: number | null } = this.emptyExtra();
 
   constructor() {
     effect(() => {
@@ -69,8 +70,8 @@ export class CustomExtraManagerComponent implements OnInit {
 
   createExtra(): void {
     if (!this.newExtra.name.trim()) return;
-    const price = this.parsePrice(this.newExtra.defaultPriceInput);
-    if (price === null) return;
+    const price = this.newExtra.defaultPrice;
+    if (price === null || price <= 0) return;
     this.saving.set('new');
     const payload: CreateCustomExtraPayload = { name: this.newExtra.name.trim(), defaultPrice: price };
 
@@ -91,8 +92,8 @@ export class CustomExtraManagerComponent implements OnInit {
   saveExtra(extra: CustomExtra): void {
     const draft = this.drafts[extra.id];
     if (!draft) return;
-    const price = this.parsePrice(draft.defaultPrice);
-    if (price === null) return;
+    const price = draft.defaultPrice;
+    if (price === null || price <= 0) return;
     this.saving.set(extra.id);
     this.customExtraService.updateExtra(extra.id, {
       name: draft.name,
@@ -211,18 +212,18 @@ export class CustomExtraManagerComponent implements OnInit {
   }
 
   hasDraftChanges(extraId: number | 'new'): boolean {
-    if (extraId === 'new') return !!this.newExtra.name.trim() || !!this.newExtra.defaultPriceInput.trim();
+    if (extraId === 'new') return !!this.newExtra.name.trim() || this.newExtra.defaultPrice !== null;
     const original = (this.extrasSignal() ?? []).find((e) => e.id === extraId);
     const draft = this.drafts[extraId];
     if (!original || !draft) return false;
     return (
       draft.name !== original.name ||
-      this.parsePrice(draft.defaultPrice) !== this.toNumberOrNull(original.defaultPrice)
+      draft.defaultPrice !== Number(original.defaultPrice)
     );
   }
 
-  isValidDraftPrice(value: string | undefined | null): boolean {
-    return this.parsePrice(value ?? '') !== null;
+  isValidDraftPrice(value: number | null | undefined): boolean {
+    return value != null && value > 0;
   }
 
   resetDraft(extraId: number | 'new'): void {
@@ -241,25 +242,14 @@ export class CustomExtraManagerComponent implements OnInit {
     if (this.expandedInactiveId() === extraId) this.expandedInactiveId.set(null);
   }
 
-  private parsePrice(value: string): number | null {
-    const num = this.toNumberOrNull(value);
-    return num !== null && num > 0 ? num : null;
-  }
-
-  private toNumberOrNull(value: unknown): number | null {
-    if (value == null || value === '') return null;
-    const num = Number(value);
-    return isNaN(num) ? null : num;
-  }
-
   private toDraft(extra: CustomExtra): CustomExtraDraft {
     return {
       name: extra.name,
-      defaultPrice: String(extra.defaultPrice),
+      defaultPrice: Number(extra.defaultPrice),
     };
   }
 
-  private emptyExtra(): { name: string; defaultPriceInput: string } {
-    return { name: '', defaultPriceInput: '' };
+  private emptyExtra(): { name: string; defaultPrice: number | null } {
+    return { name: '', defaultPrice: null };
   }
 }

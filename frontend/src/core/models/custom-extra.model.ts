@@ -21,5 +21,5 @@ export interface UpdateCustomExtraPayload {
 
 export interface CustomExtraDraft {
   name: string;
-  defaultPrice: string;
+  defaultPrice: number | null;
 }

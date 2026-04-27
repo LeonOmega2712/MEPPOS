@@ -5,6 +5,7 @@ import { ConfirmDialogService } from '../../core/services/confirm-dialog.service
 import type { HasUnsavedChanges } from '../../core/guards/unsaved-changes.guard';
 import type { MenuCategory, MenuProduct } from '../../core/models';
 import { IconComponent } from '../../shared/components/icon';
+import { NumericInputDirective } from '../../shared/directives/numeric-input.directive';
 
 interface BillItem {
   productId: number;
@@ -15,7 +16,7 @@ interface BillItem {
 
 @Component({
   selector: 'app-bill-page',
-  imports: [IconComponent],
+  imports: [IconComponent, NumericInputDirective],
   templateUrl: './bill.html',
   styleUrl: './bill.css',
 })
@@ -108,19 +109,6 @@ export class BillPage implements OnInit, HasUnsavedChanges {
     const input = event.target as HTMLInputElement;
     const value = parseInt(input.value, 10);
     this.setQuantity(productId, isNaN(value) ? 0 : value);
-  }
-
-  preventNonIntegerInput(event: KeyboardEvent): void {
-    if (['-', '+', 'e', 'E', '.', ','].includes(event.key)) {
-      event.preventDefault();
-    }
-  }
-
-  preventDecimalPaste(event: ClipboardEvent): void {
-    const text = event.clipboardData?.getData('text') ?? '';
-    if (!/^\d+$/.test(text)) {
-      event.preventDefault();
-    }
   }
 
   hasUnsavedChanges(): boolean {

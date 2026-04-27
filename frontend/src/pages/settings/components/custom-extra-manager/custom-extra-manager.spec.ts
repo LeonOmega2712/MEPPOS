@@ -97,52 +97,27 @@ describe('CustomExtraManagerComponent', () => {
     });
   });
 
-  // ─── parsePrice (via hasDraftChanges) ────────────────────────────────────
-
-  describe('parsePrice() (private — tested through hasDraftChanges)', () => {
-    it('treats empty string as null (differs from stored 8 → changed)', () => {
-      extrasData.set([EXTRA_2]);
-      TestBed.flushEffects();
-      component.drafts[EXTRA_2.id].defaultPrice = '';
-      expect(component.hasDraftChanges(EXTRA_2.id)).toBe(true);
-    });
-
-    it('treats non-numeric input as null (differs from stored 8 → changed)', () => {
-      extrasData.set([EXTRA_2]);
-      TestBed.flushEffects();
-      component.drafts[EXTRA_2.id].defaultPrice = 'abc';
-      expect(component.hasDraftChanges(EXTRA_2.id)).toBe(true);
-    });
-
-    it('treats negative input as null (differs from stored 8 → changed)', () => {
-      extrasData.set([EXTRA_2]);
-      TestBed.flushEffects();
-      component.drafts[EXTRA_2.id].defaultPrice = '-5';
-      expect(component.hasDraftChanges(EXTRA_2.id)).toBe(true);
-    });
-  });
-
   // ─── hasDraftChanges ─────────────────────────────────────────────────────
 
   describe('hasDraftChanges()', () => {
     describe('for "new" extra', () => {
       it('returns false when name and price are empty', () => {
-        component.newExtra = { name: '', defaultPriceInput: '' };
+        component.newExtra = { name: '', defaultPrice: null };
         expect(component.hasDraftChanges('new')).toBe(false);
       });
 
       it('returns true when name is non-empty', () => {
-        component.newExtra = { name: 'Test', defaultPriceInput: '' };
+        component.newExtra = { name: 'Test', defaultPrice: null };
         expect(component.hasDraftChanges('new')).toBe(true);
       });
 
       it('returns true when price input is non-empty even if name is empty', () => {
-        component.newExtra = { name: '', defaultPriceInput: '10' };
+        component.newExtra = { name: '', defaultPrice: 10 };
         expect(component.hasDraftChanges('new')).toBe(true);
       });
 
       it('returns false for whitespace-only name', () => {
-        component.newExtra = { name: '   ', defaultPriceInput: '' };
+        component.newExtra = { name: '   ', defaultPrice: null };
         expect(component.hasDraftChanges('new')).toBe(false);
       });
     });
@@ -163,12 +138,12 @@ describe('CustomExtraManagerComponent', () => {
       });
 
       it('returns true when price has changed', () => {
-        component.drafts[EXTRA_1.id].defaultPrice = '20';
+        component.drafts[EXTRA_1.id].defaultPrice = 20;
         expect(component.hasDraftChanges(EXTRA_1.id)).toBe(true);
       });
 
       it('returns true when price is cleared (15 → null)', () => {
-        component.drafts[EXTRA_1.id].defaultPrice = '';
+        component.drafts[EXTRA_1.id].defaultPrice = null;
         expect(component.hasDraftChanges(EXTRA_1.id)).toBe(true);
       });
 
@@ -182,43 +157,43 @@ describe('CustomExtraManagerComponent', () => {
 
   describe('createExtra()', () => {
     it('is a no-op when name is empty', () => {
-      component.newExtra = { name: '', defaultPriceInput: '' };
+      component.newExtra = { name: '', defaultPrice: null };
       component.createExtra();
       expect(customExtraServiceMock.createExtra).not.toHaveBeenCalled();
     });
 
     it('is a no-op when name is whitespace-only', () => {
-      component.newExtra = { name: '   ', defaultPriceInput: '' };
+      component.newExtra = { name: '   ', defaultPrice: null };
       component.createExtra();
       expect(customExtraServiceMock.createExtra).not.toHaveBeenCalled();
     });
 
-    it('is a no-op when price input is empty', () => {
-      component.newExtra = { name: 'Sal', defaultPriceInput: '' };
+    it('is a no-op when price is null', () => {
+      component.newExtra = { name: 'Sal', defaultPrice: null };
       component.createExtra();
       expect(customExtraServiceMock.createExtra).not.toHaveBeenCalled();
     });
 
-    it('is a no-op when price input is invalid/non-numeric', () => {
-      component.newExtra = { name: 'Sal', defaultPriceInput: 'gratis' };
+    it('is a no-op when price is zero or negative', () => {
+      component.newExtra = { name: 'Sal', defaultPrice: 0 };
       component.createExtra();
       expect(customExtraServiceMock.createExtra).not.toHaveBeenCalled();
     });
 
     it('calls createExtra with trimmed name and defaultPrice', () => {
-      component.newExtra = { name: '  Sal  ', defaultPriceInput: '5.50' };
+      component.newExtra = { name: '  Sal  ', defaultPrice: 5.5 };
       component.createExtra();
       expect(customExtraServiceMock.createExtra).toHaveBeenCalledWith({ name: 'Sal', defaultPrice: 5.5 });
     });
 
     it('sets saving to "new" while the request is in-flight', () => {
-      component.newExtra = { name: 'Sal', defaultPriceInput: '3' };
+      component.newExtra = { name: 'Sal', defaultPrice: 3 };
       component.createExtra();
       expect(component.saving()).toBe('new');
     });
 
     it('resets form, saving, and calls refreshExtras on success', () => {
-      component.newExtra = { name: 'Sal', defaultPriceInput: '3' };
+      component.newExtra = { name: 'Sal', defaultPrice: 3 };
       component.createExtra();
 
       createExtraSubject.next({ ...EXTRA_1, name: 'Sal', defaultPrice: 3 });
@@ -226,13 +201,13 @@ describe('CustomExtraManagerComponent', () => {
 
       expect(component.saving()).toBeNull();
       expect(component.newExtra.name).toBe('');
-      expect(component.newExtra.defaultPriceInput).toBe('');
+      expect(component.newExtra.defaultPrice).toBeNull();
       expect(customExtraServiceMock.refreshExtras).toHaveBeenCalledTimes(1);
       expect(toastServiceMock.success).toHaveBeenCalledWith('Extra creado');
     });
 
     it('resets saving and shows error toast on failure', () => {
-      component.newExtra = { name: 'Sal', defaultPriceInput: '3' };
+      component.newExtra = { name: 'Sal', defaultPrice: 3 };
       component.createExtra();
 
       createExtraSubject.error(new Error('Network error'));
@@ -251,9 +226,9 @@ describe('CustomExtraManagerComponent', () => {
       TestBed.flushEffects();
     });
 
-    it('calls updateExtra with the correct id, name, and parsed price', () => {
+    it('calls updateExtra with the correct id, name, and price', () => {
       component.drafts[EXTRA_1.id].name = 'Aguacate Hass';
-      component.drafts[EXTRA_1.id].defaultPrice = '20';
+      component.drafts[EXTRA_1.id].defaultPrice = 20;
       component.saveExtra(EXTRA_1);
 
       expect(customExtraServiceMock.updateExtra).toHaveBeenCalledWith(EXTRA_1.id, {
@@ -262,21 +237,21 @@ describe('CustomExtraManagerComponent', () => {
       });
     });
 
-    it('is a no-op when price input is empty', () => {
-      component.drafts[EXTRA_1.id].defaultPrice = '';
+    it('is a no-op when price is null', () => {
+      component.drafts[EXTRA_1.id].defaultPrice = null;
       component.saveExtra(EXTRA_1);
 
       expect(customExtraServiceMock.updateExtra).not.toHaveBeenCalled();
     });
 
     it('sets saving to the extra id while in-flight', () => {
-      component.drafts[EXTRA_1.id].defaultPrice = '20';
+      component.drafts[EXTRA_1.id].defaultPrice = 20;
       component.saveExtra(EXTRA_1);
       expect(component.saving()).toBe(EXTRA_1.id);
     });
 
     it('resets saving and calls refreshExtras on success', () => {
-      component.drafts[EXTRA_1.id].defaultPrice = '20';
+      component.drafts[EXTRA_1.id].defaultPrice = 20;
       component.saveExtra(EXTRA_1);
       updateExtraSubject.next(EXTRA_1);
       updateExtraSubject.complete();
@@ -296,7 +271,7 @@ describe('CustomExtraManagerComponent', () => {
 
     it('returns false when "new" is expanded but form is empty', () => {
       component.expandedExtraId.set('new');
-      component.newExtra = { name: '', defaultPriceInput: '' };
+      component.newExtra = { name: '', defaultPrice: null };
       expect(component.hasUnsavedChanges()).toBe(false);
     });
 

@@ -51,8 +51,8 @@
               [value]="qty"
               min="1"
               step="1"
-              (keydown)="preventNonIntegerInput($event)"
-              (paste)="preventDecimalPaste($event)"
+              appNumericInput
+              mode="integer"
               (change)="onQuantityChange(product.id, $event)"
             />
             <button class="join-item btn btn-soft btn-sm btn-success border border-current" (click)="incrementProduct(product.id)">

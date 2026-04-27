@@ -12,11 +12,12 @@ import { CategoryService } from '../../../../core/services/category.service';
 import { ToastService } from '../../../../core/services/toast.service';
 import { ConfirmDialogService } from '../../../../core/services/confirm-dialog.service';
 import { IconComponent } from '../../../../shared/components/icon';
+import { CurrencyInputDirective } from '../../../../shared/directives/currency-input.directive';
 import type { Category, CategoryDraft, CreateCategoryPayload, UpdateCategoryPayload } from '../../../../core/models';
 
 @Component({
   selector: 'app-category-manager',
-  imports: [FormsModule, CdkDropList, CdkDrag, CdkDragHandle, CdkDragPlaceholder, IconComponent],
+  imports: [FormsModule, CdkDropList, CdkDrag, CdkDragHandle, CdkDragPlaceholder, IconComponent, CurrencyInputDirective],
   templateUrl: './category-manager.html',
   styleUrl: '../../../../shared/styles/manager.css',
 })
