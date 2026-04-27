@@ -70,7 +70,7 @@
             <label class="input w-full">
               <span class="label w-28 shrink-0">Precio base</span>
               <span>$</span>
-              <input type="number" min="0" step="0.01" placeholder="0.00" [(ngModel)]="drafts[category.id].basePrice" />
+              <input type="text" inputmode="decimal" placeholder="0.00" appCurrencyInput [(ngModel)]="drafts[category.id].basePrice" />
             </label>
 
             <label class="input w-full">
@@ -149,7 +149,7 @@
         <label class="input w-full">
           <span class="label w-28 shrink-0">Precio base</span>
           <span>$</span>
-          <input type="number" min="0" step="0.01" placeholder="0.00" [(ngModel)]="newCategory.basePrice" />
+          <input type="text" inputmode="decimal" placeholder="0.00" appCurrencyInput [(ngModel)]="newCategory.basePrice" />
         </label>
 
         <label class="input w-full">
