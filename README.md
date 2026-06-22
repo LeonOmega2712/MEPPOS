@@ -94,7 +94,7 @@ npm run e2e:report       # Show last E2E test report
 
 This project uses **Prisma ORM 7** with an adapter-based architecture:
 
-- `prisma/prisma.config.ts`: Centralized configuration (uses `@prisma/config`)
+- `prisma.config.ts`: Centralized configuration (uses `@prisma/config`)
 - `prisma/schema.prisma`: Data model definition
 - `DATABASE_URL` is managed in `prisma.config.ts` (not in `schema.prisma`)
 - Uses PostgreSQL driver (`pg` + `@prisma/adapter-pg`)
@@ -109,7 +109,7 @@ docker exec -it meppos-db psql -U postgres -d meppos_db
 ### Environment Variables (`backend/.env`)
 
 ```env
-# Transaction pooler URL (port 6543) — used by the app at runtime
+# Session pooler URL — used by the app at runtime (and Prisma Client)
 DATABASE_URL="postgresql://postgres:postgres@localhost:5432/meppos_db"
 
 # Direct connection URL (port 5432) — used by Prisma migrations only
