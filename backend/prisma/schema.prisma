@@ -29,6 +29,8 @@ model User {
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   customExtras CustomExtra[]
+  orders       Order[]
+  orderRounds  OrderRound[]
 
   @@index([active])
   @@map("users")
@@ -64,6 +66,8 @@ model Location {
   displayOrder Int       @default(0) @map("display_order")
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime? @updatedAt @map("updated_at")
+
+  orders Order[]
 
   @@index([displayOrder])
   @@index([active])
@@ -108,10 +112,95 @@ model Product {
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   // Relations
-  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  category   Category    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  orderItems OrderItem[]
 
   @@index([categoryId])
   @@index([displayOrder])
   @@index([active])
   @@map("products")
+}
+
+// ============================================
+// PHASE 2 — ORDERS
+// ============================================
+
+enum OrderStatus {
+  open
+  charged
+  cancelled
+}
+
+enum DiscountType {
+  fixed
+  percentage
+}
+
+model Order {
+  id             Int         @id @default(autoincrement())
+  locationId     Int?        @map("location_id")
+  barPosition    Int?        @map("bar_position")
+  takeoutNumber  Int?        @map("takeout_number")
+  status         OrderStatus @default(open)
+  ownerUserId    Int         @map("owner_user_id")
+  openedAt       DateTime    @default(now()) @map("opened_at")
+  closedAt       DateTime?   @map("closed_at")
+  notes          String?
+
+  location  Location?       @relation(fields: [locationId], references: [id])
+  owner     User            @relation(fields: [ownerUserId], references: [id])
+  rounds    OrderRound[]
+  discounts OrderDiscount[]
+
+  @@index([status])
+  @@index([ownerUserId])
+  @@index([openedAt])
+  @@map("orders")
+}
+
+model OrderRound {
+  id          Int      @id @default(autoincrement())
+  orderId     Int      @map("order_id")
+  roundNumber Int      @map("round_number")
+  userId      Int      @map("user_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  order Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user  User        @relation(fields: [userId], references: [id])
+  items OrderItem[]
+
+  @@index([orderId])
+  @@map("order_rounds")
+}
+
+model OrderItem {
+  id         Int     @id @default(autoincrement())
+  roundId    Int     @map("round_id")
+  productId  Int?    @map("product_id")
+  customName String? @db.VarChar(255) @map("custom_name")
+  unitPrice  Decimal @db.Decimal(10, 2) @map("unit_price")
+  quantity   Int     @default(1)
+  subtotal   Decimal @db.Decimal(10, 2)
+  notes      String?
+
+  round   OrderRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  product Product?   @relation(fields: [productId], references: [id])
+
+  @@index([roundId])
+  @@map("order_items")
+}
+
+model OrderDiscount {
+  id          Int          @id @default(autoincrement())
+  orderId     Int          @map("order_id")
+  description String       @db.VarChar(255)
+  type        DiscountType
+  value       Decimal      @db.Decimal(10, 2)
+  amount      Decimal      @db.Decimal(10, 2)
+  createdAt   DateTime     @default(now()) @map("created_at")
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("order_discounts")
 }
