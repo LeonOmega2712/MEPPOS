@@ -23,21 +23,26 @@
             [(ngModel)]="username"
             name="username"
             autocomplete="username"
+            enterkeyhint="next"
             [disabled]="loading()"
             required
+            (keydown.enter)="onUsernameEnter($event, passwordInput)"
           />
         </label>
 
         <label class="input w-full mb-6">
           <span class="label w-24 shrink-0">Contraseña</span>
           <input
+            #passwordInput
             type="password"
             data-testid="password-input"
             [(ngModel)]="password"
             name="password"
             autocomplete="current-password"
+            enterkeyhint="go"
             [disabled]="loading()"
             required
+            (keydown.enter)="onPasswordEnter($event)"
           />
         </label>
 

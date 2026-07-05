@@ -4,7 +4,8 @@
       "Bash(dir:*)",
       "Bash(powershell -Command:*)",
       "Bash(npx ng build:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(npm install *)"
     ]
   }
 }
