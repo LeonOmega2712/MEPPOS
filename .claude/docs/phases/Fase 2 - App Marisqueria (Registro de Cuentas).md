@@ -140,16 +140,21 @@ CREATE TABLE orders (
   location_id     INTEGER REFERENCES locations(id),
   bar_position    INTEGER,            -- solo para barra (consecutivo diario auto-asignado)
   takeout_number  INTEGER,            -- solo para para llevar (consecutivo diario)
-  order_type      VARCHAR(20) NOT NULL CHECK (order_type IN ('dine_in', 'bar', 'takeout')),
   status          VARCHAR(20) NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'charged', 'cancelled')),
   owner_user_id   INTEGER NOT NULL REFERENCES users(id),
   opened_at       TIMESTAMP DEFAULT NOW(),
   closed_at       TIMESTAMP,
-  notes           TEXT
+  notes           TEXT,
+  CONSTRAINT orders_service_type_check CHECK (
+    (location_id IS NOT NULL AND takeout_number IS NULL) OR
+    (location_id IS NULL AND takeout_number IS NOT NULL AND bar_position IS NULL)
+  )
 );
 ```
 
 > `bar_position` y `takeout_number` siguen el mismo patrón: el backend calcula el siguiente valor al crear la orden como `MAX(campo) + 1` filtrando por `opened_at >= inicio_del_día_local`, de modo que ambos contadores reinician a las 00:00 sin requerir cron.
+
+> **Nota de diseño:** no existe columna `order_type`. El tipo de servicio se deriva de datos ya presentes: `location_id` + `location.type` distingue mesa vs. barra, y `location_id IS NULL` significa para llevar. Agregar `order_type` sería redundante (viola DRY) y, para el valor `bar`, crearía una inconsistencia cross-table (`order_type='bar'` con una `location.type='table'`) que un CHECK de fila no puede impedir. El `CHECK` de arriba solo fuerza la exclusión mutua entre "tiene ubicación" y "es para llevar"; que `bar_position` corresponda a una ubicación de tipo `bar` se valida en la capa de aplicación (Zod + lógica de servicio), igual que la asignación de los consecutivos diarios.
 
 ### Tabla: `order_rounds`
 
