@@ -45,6 +45,17 @@ test.describe('Authentication', () => {
     await expect(page).toHaveURL(/\/bill/);
   });
 
+  test('redirects to /bill when submitting via Enter key', async ({ page }) => {
+    await setupApiMocks(page);
+    await page.goto('/');
+
+    await page.locator('[data-testid="username-input"]').fill('admin');
+    await page.locator('[data-testid="password-input"]').fill('password');
+    await page.locator('[data-testid="password-input"]').press('Enter');
+
+    await expect(page).toHaveURL(/\/bill/);
+  });
+
   test('does not show retry button on invalid credentials', async ({ page }) => {
     await setupLoginFailMocks(page);
     await page.goto('/');

@@ -148,6 +148,60 @@ describe('LoginPage', () => {
     });
   });
 
+  describe('Enter key submission', () => {
+    function mockEvent(): Event {
+      return { preventDefault: vi.fn() } as unknown as Event;
+    }
+
+    function mockPasswordInput(): HTMLInputElement {
+      return { focus: vi.fn() } as unknown as HTMLInputElement;
+    }
+
+    it('onPasswordEnter submits when both fields are set', () => {
+      component.username = 'admin';
+      component.password = 'password';
+      const event = mockEvent();
+
+      component.onPasswordEnter(event);
+
+      expect(event.preventDefault).toHaveBeenCalled();
+      expect(authServiceMock.login).toHaveBeenCalledTimes(1);
+    });
+
+    it('onUsernameEnter does nothing when username is empty', () => {
+      component.username = '';
+      component.password = '';
+      const passwordInput = mockPasswordInput();
+
+      component.onUsernameEnter(mockEvent(), passwordInput);
+
+      expect(authServiceMock.login).not.toHaveBeenCalled();
+      expect(passwordInput.focus).not.toHaveBeenCalled();
+    });
+
+    it('onUsernameEnter moves focus to password when password is empty', () => {
+      component.username = 'admin';
+      component.password = '';
+      const passwordInput = mockPasswordInput();
+
+      component.onUsernameEnter(mockEvent(), passwordInput);
+
+      expect(passwordInput.focus).toHaveBeenCalledTimes(1);
+      expect(authServiceMock.login).not.toHaveBeenCalled();
+    });
+
+    it('onUsernameEnter submits when both fields are set', () => {
+      component.username = 'admin';
+      component.password = 'password';
+      const passwordInput = mockPasswordInput();
+
+      component.onUsernameEnter(mockEvent(), passwordInput);
+
+      expect(passwordInput.focus).not.toHaveBeenCalled();
+      expect(authServiceMock.login).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('state reset on new submit', () => {
     it('clears previous error and retryable when submitting again', () => {
       submitForm();

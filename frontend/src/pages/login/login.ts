@@ -32,6 +32,21 @@ export class LoginPage {
 
   private hintTimer: ReturnType<typeof setTimeout> | null = null;
 
+  onUsernameEnter(event: Event, passwordInput: HTMLInputElement): void {
+    event.preventDefault();
+    if (!this.username) return;
+    if (!this.password) {
+      passwordInput.focus();
+      return;
+    }
+    this.onSubmit();
+  }
+
+  onPasswordEnter(event: Event): void {
+    event.preventDefault();
+    this.onSubmit();
+  }
+
   onSubmit(): void {
     if (!this.username || !this.password) return;
 
