@@ -6,6 +6,7 @@ import { authController } from '../controllers/auth.controller';
 import { userController } from '../controllers/user.controller';
 import { locationController } from '../controllers/location.controller';
 import { customExtraController } from '../controllers/custom-extra.controller';
+import { orderController } from '../controllers/order.controller';
 import { authenticate, authorize } from '../middleware/auth.middleware';
 
 const router = Router();
@@ -49,6 +50,15 @@ router.get('/extras', customExtraController.getAllExtras.bind(customExtraControl
 router.post('/extras', customExtraController.createExtra.bind(customExtraController));
 router.put('/extras/:id', customExtraController.updateExtra.bind(customExtraController));
 router.delete('/extras/:id', customExtraController.deleteExtra.bind(customExtraController));
+
+// Orders (available to any authenticated user — waiter or admin)
+router.get('/orders', orderController.listOrders.bind(orderController));
+router.get('/orders/:id', orderController.getOrderById.bind(orderController));
+router.post('/orders', orderController.createOrder.bind(orderController));
+router.post('/orders/:id/rounds', orderController.addRound.bind(orderController));
+router.put('/orders/:id/rounds/:roundId/items/:itemId', orderController.updateItem.bind(orderController));
+router.delete('/orders/:id/rounds/:roundId/items/:itemId', orderController.deleteItem.bind(orderController));
+router.post('/orders/:id/cancel', orderController.cancelOrder.bind(orderController));
 
 // ============================================
 // ADMIN-ONLY ROUTES
