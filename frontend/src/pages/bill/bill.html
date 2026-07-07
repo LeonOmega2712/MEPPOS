@@ -1,3 +1,76 @@
+@if (pickerOpen()) {
+<app-location-picker
+  class="flex-1 min-h-0"
+  (confirmed)="onLocationConfirmed($event)"
+  (back)="closePicker()" />
+} @else {
+
+<!-- Chips row: open orders + multi-purpose confirm/new-bill action -->
+<div class="flex items-center gap-2 px-3 sm:px-4 py-2 overflow-x-auto bg-base-200 header-shadow shrink-0" data-testid="order-chips">
+  @for (order of openOrders(); track order.id) {
+  <button
+    type="button"
+    class="btn btn-sm rounded-full whitespace-nowrap"
+    data-testid="order-chip"
+    [class.btn-primary]="chipColor(order) === 'primary'"
+    [class.btn-secondary]="chipColor(order) === 'secondary'"
+    [class.btn-accent]="chipColor(order) === 'accent'"
+    [class.btn-soft]="!isActiveChip(order)"
+    (click)="selectChip(order)">
+    {{ chipLabel(order) }}
+  </button>
+  }
+  @if (billItems().size > 0 || activeOrder() !== null) {
+  <button
+    type="button"
+    class="btn btn-soft btn-sm ms-auto"
+    [class.btn-success]="billItems().size > 0"
+    [class.btn-primary]="billItems().size === 0 && activeOrder() !== null"
+    data-testid="confirm-bill"
+    [attr.aria-label]="billItems().size > 0 ? 'Confirmar cuenta' : 'Nueva cuenta'"
+    (click)="billItems().size > 0 ? confirmBill() : selectNewChip()">
+    @if (billItems().size > 0) {
+    <app-icon name="clipboard-document-check" sizeClass="size-4" />
+    } @else {
+    Nuevo
+    <app-icon name="clipboard-document-list" sizeClass="size-4" />
+    }
+  </button>
+  }
+</div>
+
+@if (activeOrder(); as order) {
+<div class="flex items-center justify-between px-3 sm:px-4 py-2 bg-base-200 border-b border-base-300 shrink-0">
+  <div class="text-sm">
+    <span class="font-bold">{{ chipLabel(order) }}</span>
+    @if (existingItems().length > 0) {
+    <span class="text-base-content/60"> · {{ existingItems().length }} items enviados</span>
+    }
+  </div>
+  <button class="btn btn-soft btn-error btn-xs" data-testid="cancel-order" (click)="cancelActiveOrder()">
+    Cancelar cuenta
+  </button>
+</div>
+@if (existingItems().length > 0) {
+<div class="px-3 sm:px-4 py-2 border-b border-base-300 shrink-0">
+  <div class="divide-y divide-base-300">
+    @for (item of existingItems(); track item.id) {
+    <div class="flex items-center gap-2 text-sm py-1.5">
+      <span class="flex-1 truncate">{{ item.product?.name ?? item.customName }}</span>
+      <button class="btn btn-soft btn-xs btn-warning" (click)="updateExistingItemQuantity(item.id, item.roundId, item.quantity - 1)">-</button>
+      <span class="w-6 text-center font-bold">{{ item.quantity }}</span>
+      <button class="btn btn-soft btn-xs btn-success" (click)="updateExistingItemQuantity(item.id, item.roundId, item.quantity + 1)">+</button>
+      <span class="badge badge-success badge-sm font-bold w-16 justify-end">${{ item.subtotal.toFixed(2) }}</span>
+      <button class="btn btn-soft btn-xs btn-error" aria-label="Eliminar" (click)="deleteExistingItem(item.id, item.roundId)">
+        <app-icon name="trash" sizeClass="size-3" />
+      </button>
+    </div>
+    }
+  </div>
+</div>
+}
+}
+
 <!-- Bill content -->
 <div class="flex-1 overflow-y-auto container mx-auto p-4 bill-content">
   @if (loading()) {
@@ -90,7 +163,9 @@
       }
     </div>
     <div class="flex items-center justify-end flex-1">
-      <span data-testid="bill-total" class="badge badge-lg badge-success font-bold">
+      <span
+        data-testid="bill-total"
+        class="badge badge-lg badge-success font-bold">
         <app-icon name="currency-dollar" />
         {{ totalPrice().toFixed(2) }}
       </span>
@@ -133,3 +208,4 @@
     </div>
   </div>
 </footer>
+}

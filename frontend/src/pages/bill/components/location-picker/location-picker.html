@@ -1,0 +1,78 @@
+<div class="flex flex-col h-full">
+  <div class="flex items-center gap-2 p-3 sm:p-4 border-b border-base-300 shrink-0">
+    <button class="btn btn-ghost btn-sm btn-circle" aria-label="Volver" (click)="goBack()">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+      </svg>
+    </button>
+    <h2 class="text-lg font-bold">Asignar lugar</h2>
+  </div>
+
+  <div class="flex-1 overflow-y-auto p-3 sm:p-4 container mx-auto">
+    @if (loading()) {
+    <div class="flex justify-center py-12">
+      <span class="loading loading-spinner loading-lg"></span>
+    </div>
+    } @else {
+    <div class="grid grid-cols-[1fr_auto] gap-4 mb-4">
+      <div class="bg-base-200 shadow-sm rounded-box p-3">
+        <div class="join join-vertical sm:join-horizontal flex-wrap w-full">
+          @for (table of tables(); track table.id) {
+          <button
+            type="button"
+            class="join-item btn btn-primary btn-soft border border-current w-full"
+            data-testid="location-option"
+            [class.btn-active]="isSelected(table)"
+            [disabled]="isOccupied(table)"
+            (click)="selectLocation(table)">
+            {{ table.name }}
+          </button>
+          }
+        </div>
+      </div>
+
+      @if (bars().length > 0) {
+      <div class="bg-base-200 shadow-sm rounded-box p-3 w-24 sm:w-32 flex flex-col">
+        <div class="flex-1 flex flex-col gap-2">
+          @for (bar of bars(); track bar.id) {
+          <button
+            type="button"
+            class="btn btn-secondary btn-soft border border-current flex-1"
+            data-testid="location-option"
+            [class.btn-active]="isSelected(bar)"
+            (click)="selectLocation(bar)">
+            {{ bar.name }}
+          </button>
+          }
+        </div>
+      </div>
+      }
+    </div>
+
+    <div class="bg-base-200 shadow-sm rounded-box p-3">
+      <button
+        type="button"
+        class="btn btn-accent btn-soft border border-current btn-block"
+        data-testid="takeout-option"
+        [class.btn-active]="isTakeoutSelected()"
+        (click)="selectTakeout()">
+        Para llevar
+        @if (folioLabel) {
+        <span class="text-sm opacity-70 ml-2">· {{ folioLabel }}</span>
+        }
+      </button>
+    </div>
+    }
+  </div>
+
+  <div class="p-3 sm:p-4 border-t border-base-300 shrink-0">
+    <button
+      type="button"
+      class="btn btn-soft btn-success btn-block"
+      data-testid="confirm-location"
+      [disabled]="!selected()"
+      (click)="confirm()">
+      {{ confirmLabel() }}
+    </button>
+  </div>
+</div>
