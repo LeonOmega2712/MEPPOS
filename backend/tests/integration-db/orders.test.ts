@@ -298,6 +298,35 @@ describe('DELETE /api/orders/:id/rounds/:roundId/items/:itemId', () => {
   });
 });
 
+describe('DELETE /api/orders/:id/rounds/:roundId', () => {
+  it('removes the round and cascades to its items', async () => {
+    const { table } = await seedLocations();
+    const order = await api.post('/api/orders', { locationId: table.id });
+    const orderId = order.body.data.id;
+    const round = await api.post(`/api/orders/${orderId}/rounds`, {
+      items: [{ customName: 'Cerveza', unitPrice: 30, quantity: 1 }],
+    });
+    const roundId = round.body.data.id;
+    const item = round.body.data.items[0];
+
+    const res = await api.delete(`/api/orders/${orderId}/rounds/${roundId}`);
+    expect(res.status).toBe(200);
+
+    const dbRound = await prisma.orderRound.findUnique({ where: { id: roundId } });
+    expect(dbRound).toBeNull();
+    const dbItem = await prisma.orderItem.findUnique({ where: { id: item.id } });
+    expect(dbItem).toBeNull();
+  });
+
+  it('returns 404 when the round does not belong to the order', async () => {
+    const { table } = await seedLocations();
+    const order = await api.post('/api/orders', { locationId: table.id });
+
+    const res = await api.delete(`/api/orders/${order.body.data.id}/rounds/999999`);
+    expect(res.status).toBe(404);
+  });
+});
+
 // ----- CANCEL -----
 
 describe('POST /api/orders/:id/cancel', () => {

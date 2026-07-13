@@ -81,7 +81,7 @@
               [disabled]="saving() === extra.id"
               (click)="deactivateExtra(extra)"
             >
-              <app-icon name="archive-down" />
+              <app-icon name="archive-box-arrow-down" />
             </button>
           </div>
         </div>
@@ -177,7 +177,7 @@
                     @if (saving() === extra.id) {
                       <span class="loading loading-spinner loading-sm"></span>
                     } @else {
-                      <app-icon name="upload" />
+                      <app-icon name="arrow-up-tray" />
                     }
                   </button>
                 </div>

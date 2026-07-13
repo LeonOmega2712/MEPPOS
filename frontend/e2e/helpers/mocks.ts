@@ -303,7 +303,7 @@ export async function setupSettingsMocks(page: Page): Promise<void> {
 
 // ─── Orders (Cuenta / bill page) mocks ───────────────────────────────────────
 
-type MockOrderItem = {
+export type MockOrderItem = {
   id: number;
   roundId: number;
   productId: number | null;
@@ -314,7 +314,7 @@ type MockOrderItem = {
   notes: string | null;
 };
 
-type MockOrderRound = {
+export type MockOrderRound = {
   id: number;
   orderId: number;
   roundNumber: number;
@@ -323,7 +323,7 @@ type MockOrderRound = {
   items: MockOrderItem[];
 };
 
-type MockOrder = {
+export type MockOrder = {
   id: number;
   locationId: number | null;
   barPosition: number | null;
@@ -334,6 +334,7 @@ type MockOrder = {
   closedAt: string | null;
   notes: string | null;
   location: MockLocation | null;
+  owner: { id: number; displayName: string };
   rounds: MockOrderRound[];
   discounts: [];
 };
@@ -354,9 +355,16 @@ function serializeOrder(order: MockOrder) {
 // item edit/delete, cancel). Optionally pre-seeds `locations` so the location
 // picker has tables/bars to assign — pass the same array used for
 // `/api/locations` mocking (see `setupSettingsMocks`) when composing both.
-export async function setupOrdersMocks(page: Page, locations: MockLocation[] = []): Promise<void> {
-  const orders: MockOrder[] = [];
-  let nextOrderId = 1;
+// `seedOrders` pre-populates already-open orders (e.g. owned by a different
+// waiter) so tests can exercise the mine/all toggle and the non-owner banner
+// without a second login.
+export async function setupOrdersMocks(
+  page: Page,
+  locations: MockLocation[] = [],
+  seedOrders: MockOrder[] = [],
+): Promise<void> {
+  const orders: MockOrder[] = [...seedOrders];
+  let nextOrderId = (seedOrders.reduce((max, o) => Math.max(max, o.id), 0) || 0) + 1;
   let nextRoundId = 1;
   let nextItemId = 1;
 
@@ -391,11 +399,12 @@ export async function setupOrdersMocks(page: Page, locations: MockLocation[] = [
         barPosition: location?.type === 'bar' ? orders.length + 1 : null,
         takeoutNumber: !body.locationId ? orders.length + 1 : null,
         status: 'open',
-        ownerUserId: 1,
+        ownerUserId: mockUser.id,
         openedAt: new Date().toISOString(),
         closedAt: null,
         notes: body.notes ?? null,
         location,
+        owner: { id: mockUser.id, displayName: mockUser.displayName },
         rounds: [],
         discounts: [],
       };
@@ -472,6 +481,19 @@ export async function setupOrdersMocks(page: Page, locations: MockLocation[] = [
       return route.fulfill({ status: 200, json: { success: true, message: 'Item deleted successfully' } });
     }
     return route.fallback();
+  });
+
+  await page.route(new RegExp(`${API_BASE}/orders/(\\d+)/rounds/(\\d+)$`), async (route) => {
+    if (route.request().method() !== 'DELETE') return route.fallback();
+    const match = route.request().url().match(/orders\/(\d+)\/rounds\/(\d+)$/);
+    const [, orderIdStr, roundIdStr] = match ?? [];
+    const order = orders.find((o) => o.id === Number(orderIdStr));
+    const round = order?.rounds.find((r) => r.id === Number(roundIdStr));
+    if (!order || !round) {
+      return route.fulfill({ status: 404, json: { success: false, error: 'Round not found for this order' } });
+    }
+    order.rounds = order.rounds.filter((r) => r.id !== round.id);
+    return route.fulfill({ status: 200, json: { success: true, message: 'Round deleted successfully' } });
   });
 
   await page.route(new RegExp(`${API_BASE}/orders/(\\d+)/cancel$`), async (route) => {

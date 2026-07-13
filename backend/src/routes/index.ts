@@ -58,6 +58,7 @@ router.post('/orders', orderController.createOrder.bind(orderController));
 router.post('/orders/:id/rounds', orderController.addRound.bind(orderController));
 router.put('/orders/:id/rounds/:roundId/items/:itemId', orderController.updateItem.bind(orderController));
 router.delete('/orders/:id/rounds/:roundId/items/:itemId', orderController.deleteItem.bind(orderController));
+router.delete('/orders/:id/rounds/:roundId', orderController.deleteRound.bind(orderController));
 router.post('/orders/:id/cancel', orderController.cancelOrder.bind(orderController));
 
 // ============================================

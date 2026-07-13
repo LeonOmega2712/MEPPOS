@@ -132,7 +132,7 @@ export class LocationManagerComponent implements OnInit {
     this.locationService.deleteLocation(location.id).subscribe({
       next: () => {
         this.saving.set(null);
-        this.clearDraftAndCollapse(location.id);
+        this.resetDraftAndCollapse(location.id);
         this.toastService.success('Ubicación desactivada');
         this.locationService.refreshLocations();
       },
@@ -170,7 +170,7 @@ export class LocationManagerComponent implements OnInit {
     this.locationService.deleteLocation(location.id, true).subscribe({
       next: () => {
         this.saving.set(null);
-        this.clearDraftAndCollapse(location.id);
+        this.deleteDraftAndCollapse(location.id);
         this.toastService.success('Ubicación eliminada permanentemente');
         this.locationService.refreshLocations();
       },
@@ -260,7 +260,20 @@ export class LocationManagerComponent implements OnInit {
     if (original) this.drafts[locationId] = this.toDraft(original);
   }
 
-  private clearDraftAndCollapse(locationId: number): void {
+  /**
+   * Collapses the location's expanded panel after deactivating it and resets its draft to the
+   * saved values (rather than deleting it) so hasDraftChanges() reports clean and switching rows
+   * doesn't warn about unsaved changes. Deleting it would crash the active-location template on
+   * the render that happens before refreshLocations() resolves and the location is still bound.
+   */
+  private resetDraftAndCollapse(locationId: number): void {
+    this.resetDraft(locationId);
+    if (this.expandedLocationId() === locationId) this.expandedLocationId.set(null);
+    if (this.expandedInactiveId() === locationId) this.expandedInactiveId.set(null);
+  }
+
+  /** Collapses and drops the draft entirely for a permanently deleted location (the inactive-list template never reads drafts, so this is safe). */
+  private deleteDraftAndCollapse(locationId: number): void {
     delete this.drafts[locationId];
     if (this.expandedLocationId() === locationId) this.expandedLocationId.set(null);
     if (this.expandedInactiveId() === locationId) this.expandedInactiveId.set(null);

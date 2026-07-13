@@ -232,7 +232,7 @@ export class UserManagerComponent implements OnInit {
     this.userService.deleteUser(user.id).subscribe({
       next: () => {
         this.saving.set(null);
-        this.clearDraftAndCollapse(user.id);
+        this.resetDraftAndCollapse(user.id);
         this.toastService.success('Usuario desactivado');
         this.userService.refreshUsers();
       },
@@ -270,7 +270,7 @@ export class UserManagerComponent implements OnInit {
     this.userService.deleteUser(user.id, true).subscribe({
       next: () => {
         this.saving.set(null);
-        this.clearDraftAndCollapse(user.id);
+        this.deleteDraftAndCollapse(user.id);
         this.toastService.success('Usuario eliminado permanentemente');
         this.userService.refreshUsers();
       },
@@ -298,7 +298,20 @@ export class UserManagerComponent implements OnInit {
     this.newUser = this.emptyUser();
   }
 
-  private clearDraftAndCollapse(userId: number): void {
+  /**
+   * Collapses the user's expanded panel after deactivating it and resets its draft to the saved
+   * values (rather than deleting it) so hasDraftChanges() reports clean and switching rows doesn't
+   * warn about unsaved changes. Deleting it would crash the active-user template on the render
+   * that happens before refreshUsers() resolves and the user is still bound.
+   */
+  private resetDraftAndCollapse(userId: number): void {
+    this.resetDraft(userId);
+    if (this.expandedUserId() === userId) this.expandedUserId.set(null);
+    if (this.expandedInactiveId() === userId) this.expandedInactiveId.set(null);
+  }
+
+  /** Collapses and drops the draft entirely for a permanently deleted user (the inactive-list template never reads drafts, so this is safe). */
+  private deleteDraftAndCollapse(userId: number): void {
     delete this.drafts[userId];
     if (this.expandedUserId() === userId) this.expandedUserId.set(null);
     if (this.expandedInactiveId() === userId) this.expandedInactiveId.set(null);

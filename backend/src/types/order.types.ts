@@ -55,6 +55,11 @@ export const OrderIdSchema = z.object({
   id: z.coerce.number().int().positive(),
 });
 
+export const OrderRoundIdSchema = z.object({
+  id: z.coerce.number().int().positive(),
+  roundId: z.coerce.number().int().positive(),
+});
+
 export const OrderItemIdSchema = z.object({
   id: z.coerce.number().int().positive(),
   roundId: z.coerce.number().int().positive(),
@@ -67,4 +72,5 @@ export type AddRoundDTO = z.infer<typeof AddRoundSchema>;
 export type UpdateOrderItemDTO = z.infer<typeof UpdateOrderItemSchema>;
 export type ListOrdersQueryDTO = z.infer<typeof ListOrdersQuerySchema>;
 export type OrderIdDTO = z.infer<typeof OrderIdSchema>;
+export type OrderRoundIdDTO = z.infer<typeof OrderRoundIdSchema>;
 export type OrderItemIdDTO = z.infer<typeof OrderItemIdSchema>;

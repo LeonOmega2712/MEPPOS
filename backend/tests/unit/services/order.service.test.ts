@@ -18,9 +18,11 @@ vi.mock('../../../src/lib/prisma', () => {
       aggregate: vi.fn(),
       create: vi.fn(),
       findFirst: vi.fn(),
+      delete: vi.fn(),
     },
     orderItem: {
       findFirst: vi.fn(),
+      count: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
     },
@@ -168,10 +170,59 @@ describe('OrderService item mutations', () => {
     expect(prismaMock.orderItem.delete).not.toHaveBeenCalled();
   });
 
+  it('deleteItem deletes only the item when other items remain in the round', async () => {
+    prismaMock.order.findUnique.mockResolvedValue({ status: 'open' });
+    prismaMock.orderRound.findFirst.mockResolvedValue({ id: 2 });
+    prismaMock.orderItem.findFirst.mockResolvedValue({ id: 3 });
+    prismaMock.orderItem.count.mockResolvedValue(2);
+
+    await orderService.deleteItem(1, 2, 3);
+
+    expect(prismaMock.orderItem.delete).toHaveBeenCalledWith({ where: { id: 3 } });
+    expect(prismaMock.orderRound.delete).not.toHaveBeenCalled();
+  });
+
+  it('deleteItem deletes the round instead when it is the round\'s only item', async () => {
+    prismaMock.order.findUnique.mockResolvedValue({ status: 'open' });
+    prismaMock.orderRound.findFirst.mockResolvedValue({ id: 2 });
+    prismaMock.orderItem.findFirst.mockResolvedValue({ id: 3 });
+    prismaMock.orderItem.count.mockResolvedValue(1);
+
+    await orderService.deleteItem(1, 2, 3);
+
+    expect(prismaMock.orderRound.delete).toHaveBeenCalledWith({ where: { id: 2 } });
+    expect(prismaMock.orderItem.delete).not.toHaveBeenCalled();
+  });
+
   it('rejects mutations on a non-open order', async () => {
     prismaMock.order.findUnique.mockResolvedValue({ status: 'charged' });
 
     await expect(orderService.updateItem(1, 2, 3, { quantity: 2 })).rejects.toThrow(ORDER_ERRORS.ORDER_NOT_OPEN);
+  });
+
+  it('deleteRound deletes the round when it belongs to the order', async () => {
+    prismaMock.order.findUnique.mockResolvedValue({ status: 'open' });
+    prismaMock.orderRound.findFirst.mockResolvedValue({ id: 2 });
+    prismaMock.orderRound.delete.mockResolvedValue({ id: 2 });
+
+    await orderService.deleteRound(1, 2);
+
+    expect(prismaMock.orderRound.delete).toHaveBeenCalledWith({ where: { id: 2 } });
+  });
+
+  it('deleteRound throws ROUND_NOT_FOUND when the round does not belong to the order', async () => {
+    prismaMock.order.findUnique.mockResolvedValue({ status: 'open' });
+    prismaMock.orderRound.findFirst.mockResolvedValue(null);
+
+    await expect(orderService.deleteRound(1, 2)).rejects.toThrow(ORDER_ERRORS.ROUND_NOT_FOUND);
+    expect(prismaMock.orderRound.delete).not.toHaveBeenCalled();
+  });
+
+  it('deleteRound throws ORDER_NOT_OPEN when the order is not open', async () => {
+    prismaMock.order.findUnique.mockResolvedValue({ status: 'charged' });
+
+    await expect(orderService.deleteRound(1, 2)).rejects.toThrow(ORDER_ERRORS.ORDER_NOT_OPEN);
+    expect(prismaMock.orderRound.delete).not.toHaveBeenCalled();
   });
 });
 

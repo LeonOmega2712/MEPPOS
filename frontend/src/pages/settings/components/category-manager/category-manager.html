@@ -112,7 +112,7 @@
                 [disabled]="saving() === category.id"
                 (click)="deactivateCategory(category)"
               >
-                <app-icon name="archive-down" />
+                <app-icon name="archive-box-arrow-down" />
               </button>
             </div>
           </div>
@@ -235,7 +235,7 @@
                     @if (saving() === category.id) {
                       <span class="loading loading-spinner loading-sm"></span>
                     } @else {
-                      <app-icon name="upload" />
+                      <app-icon name="arrow-up-tray" />
                     }
                   </button>
                 </div>

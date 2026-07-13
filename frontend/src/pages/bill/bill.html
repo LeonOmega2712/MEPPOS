@@ -7,7 +7,47 @@
 
 <!-- Chips row: open orders + multi-purpose confirm/new-bill action -->
 <div class="flex items-center gap-2 px-3 sm:px-4 py-2 overflow-x-auto bg-base-200 header-shadow shrink-0" data-testid="order-chips">
-  @for (order of openOrders(); track order.id) {
+  <button
+    type="button"
+    class="btn btn-accent btn-sm rounded-full whitespace-nowrap gap-1"
+    [class.max-sm:btn-circle]="activeOrder() !== null"
+    [class.btn-soft]="activeOrder() !== null"
+    [class.border]="activeOrder() !== null"
+    [class.border-accent]="activeOrder() !== null"
+    data-testid="new-bill"
+    aria-label="Nueva cuenta"
+    (click)="selectNewChip()">
+    <span [class.max-sm:hidden]="activeOrder() !== null">Nuevo</span>
+    <app-icon name="clipboard-document-list" sizeClass="size-4" />
+  </button>
+  <button
+    type="button"
+    class="btn btn-sm btn-circle transition-colors duration-300"
+    [class.btn-soft]="refreshState() !== 'success' || refreshSuccessSoft()"
+    [class.btn-success]="refreshState() === 'success'"
+    [class.border]="refreshState() === 'success'"
+    [class.border-success]="refreshState() === 'success'"
+    aria-label="Refrescar cuentas"
+    data-testid="refresh-orders"
+    (click)="refresh()">
+    @if (refreshState() === 'success') {
+    <app-icon name="check-circle" sizeClass="size-4" />
+    } @else {
+    <app-icon name="arrow-path" sizeClass="size-4" [class.animate-spin]="refreshState() === 'spinning'" />
+    }
+  </button>
+  <button
+    type="button"
+    class="btn btn-accent border border-accent btn-sm rounded-full whitespace-nowrap gap-1 max-sm:btn-circle sm:w-21 sm:px-3 sm:justify-between"
+    data-testid="toggle-mine"
+    [class.btn-soft]="!showMine()"
+    [attr.aria-label]="showMine() ? 'Mostrar todas las cuentas' : 'Mostrar solo mis cuentas'"
+    (click)="toggleMine()">
+    <span class="max-sm:hidden sm:flex-1 sm:text-left sm:truncate">{{ showMine() ? 'Mías' : 'Todas' }}</span>
+    <app-icon name="funnel" sizeClass="size-4" class="shrink-0" />
+  </button>
+  <div class="divider divider-horizontal mx-0 my-0 h-6 self-center"></div>
+  @for (order of visibleOrders(); track order.id) {
   <button
     type="button"
     class="btn btn-sm rounded-full whitespace-nowrap"
@@ -16,59 +56,34 @@
     [class.btn-secondary]="chipColor(order) === 'secondary'"
     [class.btn-accent]="chipColor(order) === 'accent'"
     [class.btn-soft]="!isActiveChip(order)"
+    [class.border]="isOwner(order)"
+    [class.border-primary]="isOwner(order) && chipColor(order) === 'primary'"
+    [class.border-secondary]="isOwner(order) && chipColor(order) === 'secondary'"
+    [class.border-accent]="isOwner(order) && chipColor(order) === 'accent'"
+    [title]="ownerLabel(order) + ' · ' + openedAtLabel(order)"
     (click)="selectChip(order)">
     {{ chipLabel(order) }}
-  </button>
-  }
-  @if (billItems().size > 0 || activeOrder() !== null) {
-  <button
-    type="button"
-    class="btn btn-soft btn-sm ms-auto"
-    [class.btn-success]="billItems().size > 0"
-    [class.btn-primary]="billItems().size === 0 && activeOrder() !== null"
-    data-testid="confirm-bill"
-    [attr.aria-label]="billItems().size > 0 ? 'Confirmar cuenta' : 'Nueva cuenta'"
-    (click)="billItems().size > 0 ? confirmBill() : selectNewChip()">
-    @if (billItems().size > 0) {
-    <app-icon name="clipboard-document-check" sizeClass="size-4" />
-    } @else {
-    Nuevo
-    <app-icon name="clipboard-document-list" sizeClass="size-4" />
-    }
   </button>
   }
 </div>
 
 @if (activeOrder(); as order) {
-<div class="flex items-center justify-between px-3 sm:px-4 py-2 bg-base-200 border-b border-base-300 shrink-0">
-  <div class="text-sm">
-    <span class="font-bold">{{ chipLabel(order) }}</span>
-    @if (existingItems().length > 0) {
-    <span class="text-base-content/60"> · {{ existingItems().length }} items enviados</span>
-    }
-  </div>
-  <button class="btn btn-soft btn-error btn-xs" data-testid="cancel-order" (click)="cancelActiveOrder()">
-    Cancelar cuenta
-  </button>
+<div class="flex items-center px-3 sm:px-4 py-2 bg-base-200 border-b border-base-300 shrink-0 text-sm">
+  <span
+    class="badge badge-sm font-bold gap-1"
+    data-testid="order-owner-badge"
+    [class.badge-primary]="isOwner(order)"
+    [class.badge-warning]="!isOwner(order)">
+    <app-icon name="user-circle" sizeClass="size-3.5" />
+    {{ ownerLabel(order) }}
+  </span>
+  <span class="text-base-content/60 ml-2">{{ openedAtLabel(order) }}</span>
+  @if (existingRounds().length > 0) {
+  <span class="text-base-content/60 ml-1" data-testid="round-count">
+    · {{ existingRounds().length }} {{ existingRounds().length === 1 ? 'ronda' : 'rondas' }}
+  </span>
+  }
 </div>
-@if (existingItems().length > 0) {
-<div class="px-3 sm:px-4 py-2 border-b border-base-300 shrink-0">
-  <div class="divide-y divide-base-300">
-    @for (item of existingItems(); track item.id) {
-    <div class="flex items-center gap-2 text-sm py-1.5">
-      <span class="flex-1 truncate">{{ item.product?.name ?? item.customName }}</span>
-      <button class="btn btn-soft btn-xs btn-warning" (click)="updateExistingItemQuantity(item.id, item.roundId, item.quantity - 1)">-</button>
-      <span class="w-6 text-center font-bold">{{ item.quantity }}</span>
-      <button class="btn btn-soft btn-xs btn-success" (click)="updateExistingItemQuantity(item.id, item.roundId, item.quantity + 1)">+</button>
-      <span class="badge badge-success badge-sm font-bold w-16 justify-end">${{ item.subtotal.toFixed(2) }}</span>
-      <button class="btn btn-soft btn-xs btn-error" aria-label="Eliminar" (click)="deleteExistingItem(item.id, item.roundId)">
-        <app-icon name="trash" sizeClass="size-3" />
-      </button>
-    </div>
-    }
-  </div>
-</div>
-}
 }
 
 <!-- Bill content -->
@@ -157,9 +172,19 @@
     </div>
     <div class="flex items-center justify-center">
       @if (totalItems() > 0) {
+      @if (billItems().size > 0 && !footerExpanded()) {
+      <span class="aura text-success -my-0.5">
+        <span class="badge badge-soft badge-success border border-success">
+          <span class="collapse-arrow-toggle"
+            [class.expanded]="footerExpanded()">
+          </span>
+        </span>
+      </span>
+      } @else {
       <span class="collapse-arrow-toggle"
         [class.expanded]="footerExpanded()">
       </span>
+      }
       }
     </div>
     <div class="flex items-center justify-end flex-1">
@@ -177,31 +202,180 @@
     <div class="container mx-auto flex flex-col min-h-0 flex-1">
       <!-- Persistent header -->
       <div class="shrink-0 pt-3 sm:pt-4">
-        <div class="flex items-center text-sm font-bold text-base-content pb-2 border-b border-base-300 px-3 sm:px-4">
+        <div class="flex items-center font-bold text-base-content pb-2 border-b border-base-300 px-3 sm:px-4">
           <span class="w-8 shrink-0 flex justify-center"><app-icon name="hashtag" sizeClass="size-4" /></span>
           <span class="flex-1 ml-2">Producto</span>
           <span class="whitespace-nowrap ml-4 min-w-20 text-right">Total</span>
         </div>
       </div>
       <!-- Isolated scrollable items list -->
-      <div class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-3 sm:px-4">
-        <div class="divide-y divide-base-300">
-          @for (item of billItemsList(); track item.productId) {
-          <div class="flex items-center text-sm py-2 cursor-pointer active:bg-base-300 transition-colors" (click)="scrollToProduct(item.productId)">
-            <span class="badge badge-primary badge-sm font-bold w-8 shrink-0 justify-center">{{ item.quantity }}</span>
-            <span class="font-medium truncate flex-1 ml-2">{{ item.productName }}</span>
-            <span class="badge badge-success badge-sm font-bold ml-4 justify-end">
-              ${{ (item.quantity * item.unitPrice).toFixed(2) }}
+      <div #footerItemsList class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-3 sm:px-4">
+        @for (round of existingRounds(); track round.id; let i = $index) {
+        @if (i > 0) {
+        <div class="divider my-1"></div>
+        }
+        <div class="mb-2" data-testid="round-group">
+          <div class="flex items-center justify-between font-semibold text-base-content/60 py-1" data-testid="round-header">
+            <span class="flex items-center gap-1">
+              <span class="badge badge-primary font-bold mr-1">
+                <app-icon name="queue-list" sizeClass="size-4" />
+                {{ round.itemCount }}
+              </span>
+              Ronda {{ round.roundNumber }}
             </span>
+            <div class="flex items-center gap-2">
+              <span data-testid="round-subtotal">${{ round.subtotal.toFixed(2) }}</span>
+              <div class="divider divider-horizontal mx-0 my-0 h-6 self-center"></div>
+              <button
+                type="button"
+                class="btn btn-soft"
+                [class.btn-success]="isRoundEditing(round.id)"
+                [class.btn-warning]="!isRoundEditing(round.id)"
+                [attr.aria-label]="isRoundEditing(round.id) ? 'Confirmar cambios y ocultar editor de cantidades' : 'Editar cantidades de la ronda'"
+                (click)="toggleRoundEdit(round)">
+                @if (isRoundEditing(round.id)) {
+                <app-icon name="check-circle" sizeClass="size-4" />
+                } @else {
+                <app-icon name="pencil" sizeClass="size-4" />
+                }
+              </button>
+              @if (isRoundEditing(round.id)) {
+              <button
+                type="button"
+                class="btn btn-warning btn-soft"
+                aria-label="Cancelar edición de la ronda"
+                (click)="cancelRoundEdit(round.id)">
+                <app-icon name="backspace" sizeClass="size-4" />
+              </button>
+              } @else {
+              <button
+                type="button"
+                class="btn btn-error btn-soft"
+                aria-label="Eliminar ronda"
+                (click)="deleteRound(round)">
+                <app-icon name="trash" sizeClass="size-4" />
+              </button>
+              }
+            </div>
           </div>
-          }
+          <div class="divide-y divide-base-300">
+            @for (item of round.items; track item.id) {
+            @if (isRoundEditing(round.id)) {
+            <div class="flex items-center gap-2 py-1.5">
+              <span class="font-medium flex-1 truncate" [class.opacity-50]="item.quantity === 0">
+                {{ item.product?.name ?? item.customName }}
+                @if (item.quantity === 0) {
+                <span class="badge badge-error badge-sm ml-1">Se eliminará</span>
+                }
+              </span>
+              <div class="join">
+                <button
+                  class="join-item btn btn-xs btn-soft border border-current"
+                  [class.btn-error]="item.quantity <= 1"
+                  [class.btn-warning]="item.quantity > 1"
+                  [disabled]="item.quantity === 0"
+                  [attr.aria-label]="item.quantity <= 1 ? 'Eliminar' : 'Disminuir cantidad'"
+                  (click)="previewExistingItemQuantity(item.id, item.roundId, item.originalQuantity, item.quantity - 1)">
+                  @if (item.quantity <= 1) {
+                  <app-icon name="trash" sizeClass="size-4" />
+                  } @else {
+                  <app-icon name="minus-circle" sizeClass="size-4" />
+                  }
+                </button>
+                <input
+                  type="number"
+                  class="join-item input input-xs quantity-input w-12 min-w-0 text-center"
+                  [value]="item.quantity"
+                  min="0"
+                  step="1"
+                  appNumericInput
+                  mode="integer"
+                  (change)="onExistingItemQuantityChange(item, $event)"
+                />
+                <button
+                  class="join-item btn btn-xs btn-soft btn-success border border-current"
+                  aria-label="Aumentar cantidad"
+                  (click)="previewExistingItemQuantity(item.id, item.roundId, item.originalQuantity, item.quantity + 1)">
+                  <app-icon name="plus-circle" sizeClass="size-4" />
+                </button>
+              </div>
+            </div>
+            } @else {
+            <div
+              class="flex items-center py-2 transition-colors"
+              [class.cursor-pointer]="item.productId !== null"
+              [class.active:bg-base-300]="item.productId !== null"
+              (click)="scrollToProduct(item.productId)">
+              <span class="badge badge-primary font-bold w-8 shrink-0 justify-center">{{ item.quantity }}</span>
+              <span class="font-medium truncate flex-1 ml-2">{{ item.product?.name ?? item.customName }}</span>
+              <span class="badge badge-success font-bold ml-4 justify-end">${{ item.subtotal.toFixed(2) }}</span>
+            </div>
+            }
+            }
+          </div>
         </div>
+        }
+        @if (billItemsList().length > 0) {
+        @if (existingRounds().length > 0) {
+        <div class="divider my-1"></div>
+        }
+        <div class="mb-2">
+          <div class="flex items-center justify-between font-semibold text-base-content/60 py-1">
+            <span class="flex items-center gap-1">
+              <span class="badge badge-primary font-bold">
+                <app-icon name="queue-list" sizeClass="size-4" />
+                {{ draftItemCount() }}
+              </span>
+              · Ronda nueva
+            </span>
+            <span data-testid="draft-subtotal">${{ draftSubtotal().toFixed(2) }}</span>
+          </div>
+          <div class="divide-y divide-base-300">
+            @for (item of billItemsList(); track item.productId) {
+            <div class="flex items-center py-2 cursor-pointer active:bg-base-300 transition-colors" (click)="scrollToProduct(item.productId)">
+              <span class="badge badge-primary font-bold w-8 shrink-0 justify-center">{{ item.quantity }}</span>
+              <span class="font-medium truncate flex-1 ml-2">{{ item.productName }}</span>
+              <span class="badge badge-success font-bold ml-4 justify-end">
+                ${{ (item.quantity * item.unitPrice).toFixed(2) }}
+              </span>
+            </div>
+            }
+          </div>
+        </div>
+        }
       </div>
-      <!-- Persistent trash button -->
+      <!-- Persistent action row: confirm (left, fills remaining space) + clear + cancel (right) -->
       <div class="shrink-0 pb-1">
-        <div class="pt-1 flex justify-end border-t border-base-300 px-3 sm:px-4">
-          <button class="btn btn-soft btn-error" aria-label="Limpiar cuenta" (click)="clearBill()">
-            <app-icon name="trash" />
+        <div class="pt-1 flex items-center gap-2 border-t border-base-300 px-3 sm:px-4">
+          @if (billItems().size > 0) {
+          <span class="aura text-success flex-1">
+            <button
+              type="button"
+              class="btn btn-soft btn-success border border-success w-full"
+              data-testid="confirm-bill"
+              [attr.aria-label]="confirmLabel()"
+              (click)="confirmBill()">
+              {{ confirmLabel() }}
+              <app-icon name="clipboard-document-check" sizeClass="size-4" />
+            </button>
+          </span>
+          }
+          <button
+            type="button"
+            class="btn btn-soft btn-warning ms-auto"
+            [disabled]="billItems().size === 0"
+            [attr.aria-label]="clearLabel()"
+            (click)="clearBill()">
+            <app-icon name="backspace" />
+          </button>
+          <button
+            type="button"
+            class="btn btn-soft btn-error"
+            data-testid="cancel-order"
+            [disabled]="activeOrder() === null"
+            aria-label="Cancelar cuenta"
+            (click)="cancelActiveOrder()">
+            <app-icon name="trash" sizeClass="size-4" />
           </button>
         </div>
       </div>

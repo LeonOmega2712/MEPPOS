@@ -41,7 +41,7 @@ export class OrderService {
       include: {
         location: true,
         owner: { select: { id: true, displayName: true } },
-        rounds: { include: { items: true } },
+        rounds: { include: { items: { orderBy: { id: 'asc' } } } },
         discounts: true,
       },
       orderBy: { openedAt: 'desc' },
@@ -56,7 +56,10 @@ export class OrderService {
         owner: { select: { id: true, displayName: true } },
         rounds: {
           orderBy: { roundNumber: 'asc' },
-          include: { items: { include: { product: true } }, user: { select: { id: true, displayName: true } } },
+          include: {
+            items: { orderBy: { id: 'asc' }, include: { product: true } },
+            user: { select: { id: true, displayName: true } },
+          },
         },
         discounts: true,
       },
@@ -168,16 +171,35 @@ export class OrderService {
 
   async deleteItem(orderId: number, roundId: number, itemId: number) {
     await this.assertOpenOrderRoundItem(orderId, roundId, itemId);
-    await prisma.orderItem.delete({ where: { id: itemId } });
+
+    await prisma.$transaction(async (tx) => {
+      const itemCount = await tx.orderItem.count({ where: { roundId } });
+      if (itemCount === 1) {
+        // Deleting the round's only item would leave it empty — remove the round too (cascades to the item).
+        await tx.orderRound.delete({ where: { id: roundId } });
+        return;
+      }
+      await tx.orderItem.delete({ where: { id: itemId } });
+    });
   }
 
-  private async assertOpenOrderRoundItem(orderId: number, roundId: number, itemId: number): Promise<void> {
+  async deleteRound(orderId: number, roundId: number) {
+    await this.assertOpenOrderRound(orderId, roundId);
+    // Cascades to the round's items (OrderItem.round has onDelete: Cascade).
+    await prisma.orderRound.delete({ where: { id: roundId } });
+  }
+
+  private async assertOpenOrderRound(orderId: number, roundId: number): Promise<void> {
     const order = await prisma.order.findUnique({ where: { id: orderId }, select: { status: true } });
     if (!order) throw new Error(ORDER_ERRORS.ORDER_NOT_FOUND);
     if (order.status !== 'open') throw new Error(ORDER_ERRORS.ORDER_NOT_OPEN);
 
     const round = await prisma.orderRound.findFirst({ where: { id: roundId, orderId }, select: { id: true } });
     if (!round) throw new Error(ORDER_ERRORS.ROUND_NOT_FOUND);
+  }
+
+  private async assertOpenOrderRoundItem(orderId: number, roundId: number, itemId: number): Promise<void> {
+    await this.assertOpenOrderRound(orderId, roundId);
 
     const item = await prisma.orderItem.findFirst({ where: { id: itemId, roundId }, select: { id: true } });
     if (!item) throw new Error(ORDER_ERRORS.ITEM_NOT_FOUND);

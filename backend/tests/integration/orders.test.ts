@@ -17,6 +17,7 @@ vi.mock('../../src/services/order.service', async () => {
       addRound: vi.fn(),
       updateItem: vi.fn(),
       deleteItem: vi.fn(),
+      deleteRound: vi.fn(),
       cancelOrder: vi.fn(),
       computeOrderTotal: actual.orderService.computeOrderTotal.bind(actual.orderService),
     },
@@ -324,6 +325,48 @@ describe('DELETE /api/orders/:id/rounds/:roundId/items/:itemId', () => {
 
     const res = await request(app)
       .delete('/api/orders/1/rounds/2/items/10')
+      .set('Authorization', `Bearer ${waiterToken}`);
+
+    expect(res.status).toBe(409);
+    expect(res.body.error).toBe(ORDER_ERRORS.ORDER_NOT_OPEN);
+  });
+});
+
+// ─── DELETE /orders/:id/rounds/:roundId ────────────────────────────────────────
+
+describe('DELETE /api/orders/:id/rounds/:roundId', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+  });
+
+  it('deletes a round', async () => {
+    vi.mocked(orderService.deleteRound).mockResolvedValue(undefined as any);
+
+    const res = await request(app)
+      .delete('/api/orders/1/rounds/2')
+      .set('Authorization', `Bearer ${waiterToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.message).toBe('Round deleted successfully');
+    expect(orderService.deleteRound).toHaveBeenCalledWith(1, 2);
+  });
+
+  it('returns 404 when the round does not belong to the order', async () => {
+    vi.mocked(orderService.deleteRound).mockRejectedValue(new Error(ORDER_ERRORS.ROUND_NOT_FOUND));
+
+    const res = await request(app)
+      .delete('/api/orders/1/rounds/2')
+      .set('Authorization', `Bearer ${waiterToken}`);
+
+    expect(res.status).toBe(404);
+    expect(res.body.error).toBe(ORDER_ERRORS.ROUND_NOT_FOUND);
+  });
+
+  it('returns 409 when the order is not open', async () => {
+    vi.mocked(orderService.deleteRound).mockRejectedValue(new Error(ORDER_ERRORS.ORDER_NOT_OPEN));
+
+    const res = await request(app)
+      .delete('/api/orders/1/rounds/2')
       .set('Authorization', `Bearer ${waiterToken}`);
 
     expect(res.status).toBe(409);

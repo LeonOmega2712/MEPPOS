@@ -39,15 +39,15 @@
   left: 50%;
   width: 0.5rem;
   height: 0.5rem;
-  transform-origin: 75% 75%;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
   transform: translate(-50%, -50%) rotate(225deg);
-  box-shadow: 2px 2px;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   pointer-events: none;
 }
 
 .collapse-arrow-toggle.expanded::after {
-  transform: translate(-50%, -100%) rotate(45deg);
+  transform: translate(-50%, -50%) rotate(45deg);
 }
 
 .detail-panel {

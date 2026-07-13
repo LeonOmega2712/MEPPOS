@@ -1,10 +1,12 @@
-import { Component, computed, ElementRef, inject, OnInit, signal, viewChildren } from '@angular/core';
+import { Component, computed, ElementRef, inject, OnInit, signal, viewChild, viewChildren } from '@angular/core';
+import { forkJoin, type Observable } from 'rxjs';
 import { MenuService } from '../../core/services/menu.service';
 import { SplashService } from '../../core/services/splash.service';
 import { ConfirmDialogService } from '../../core/services/confirm-dialog.service';
 import { ToastService } from '../../core/services/toast.service';
 import { OrderService } from '../../core/services/order.service';
 import { LocationService } from '../../core/services/location.service';
+import { AuthService } from '../../core/services/auth.service';
 import type { HasUnsavedChanges } from '../../core/guards/unsaved-changes.guard';
 import type { MenuCategory, MenuProduct, Order, OrderItemInput } from '../../core/models';
 import { IconComponent } from '../../shared/components/icon';
@@ -31,14 +33,18 @@ export class BillPage implements OnInit, HasUnsavedChanges {
   private readonly toastService = inject(ToastService);
   private readonly orderService = inject(OrderService);
   private readonly locationService = inject(LocationService);
+  private readonly authService = inject(AuthService);
 
   private readonly productCards = viewChildren<ElementRef>('productCard');
+  private readonly footerItemsList = viewChild<ElementRef>('footerItemsList');
 
   categories = signal<MenuCategory[]>([]);
   loading = signal(true);
   error = signal<string | null>(null);
   billItems = signal<Map<number, BillItem>>(new Map());
   footerExpanded = signal(false);
+  /** Round IDs whose quantity editors are currently revealed (sent rounds are collapsed by default). */
+  editingRounds = signal<Set<number>>(new Set());
 
   /** Order currently loaded from a chip; null means the cart has no place assigned yet. */
   activeOrder = signal<Order | null>(null);
@@ -49,24 +55,67 @@ export class BillPage implements OnInit, HasUnsavedChanges {
   sendingRound = signal(false);
 
   readonly openOrders = this.orderService.openOrders;
+  readonly openOrdersRevalidating = this.orderService.openOrdersRevalidating;
+  /** Drives the refresh button: spins for at least one full rotation, then shows a check before returning to idle. */
+  refreshState = signal<'idle' | 'spinning' | 'success'>('idle');
+  /** Starts false so success flashes solid, then true a moment later so it settles into soft. */
+  refreshSuccessSoft = signal(false);
+  private refreshStartedAt = 0;
+
+  /** When true, the chips row only shows orders owned by the current user. */
+  showMine = signal(false);
 
   billItemsList = computed(() => [...this.billItems().values()]);
 
-  // TODO: this list (sent/persisted items) and the footer's billItemsList (draft/unsent
-  // items) render as two separate blocks on screen; consider unifying into one list with
-  // a sent/draft badge per item instead of two visually similar item lists.
-  existingItems = computed(() => {
+  draftSubtotal = computed(() =>
+    this.billItemsList().reduce((sum, item) => sum + item.unitPrice * item.quantity, 0)
+  );
+
+  draftItemCount = computed(() =>
+    this.billItemsList().reduce((sum, item) => sum + item.quantity, 0)
+  );
+
+  visibleOrders = computed(() => {
+    const orders = this.openOrders() ?? [];
+    if (!this.showMine()) return orders;
+    const userId = this.authService.user()?.id;
+    return orders.filter((order) => order.ownerUserId === userId);
+  });
+
+  /** Round IDs mapped to itemId → not-yet-saved quantity, buffered while a round is being edited. */
+  pendingRoundEdits = signal<Map<number, Map<number, number>>>(new Map());
+
+  /** Sent items grouped by round, each with its own subtotal, for the active-order detail. Quantities reflect any unsaved edits still pending confirmation. */
+  existingRounds = computed(() => {
     const order = this.activeOrder();
     if (!order) return [];
-    return order.rounds.flatMap((round) =>
-      round.items.map((item) => ({
-        ...item,
-        roundId: round.id,
-        unitPrice: Number(item.unitPrice),
-        subtotal: Number(item.subtotal),
-      }))
-    );
+    const pendingByRound = this.pendingRoundEdits();
+    return order.rounds.map((round) => {
+      const pending = pendingByRound.get(round.id);
+      const items = round.items.map((item) => {
+        const unitPrice = Number(item.unitPrice);
+        const originalQuantity = item.quantity;
+        const quantity = pending?.get(item.id) ?? originalQuantity;
+        return {
+          ...item,
+          roundId: round.id,
+          unitPrice,
+          quantity,
+          originalQuantity,
+          subtotal: unitPrice * quantity,
+        };
+      });
+      return {
+        id: round.id,
+        roundNumber: round.roundNumber,
+        items,
+        itemCount: items.reduce((sum, item) => sum + item.quantity, 0),
+        subtotal: items.reduce((sum, item) => sum + item.subtotal, 0),
+      };
+    });
   });
+
+  existingItems = computed(() => this.existingRounds().flatMap((round) => round.items));
 
   totalItems = computed(() => {
     let count = 0;
@@ -89,6 +138,14 @@ export class BillPage implements OnInit, HasUnsavedChanges {
     }
     return total;
   });
+
+  confirmLabel = computed(() =>
+    this.activeOrder() === null ? 'Confirmar cuenta nueva' : 'Confirmar ronda nueva'
+  );
+
+  clearLabel = computed(() =>
+    this.activeOrder() === null ? 'Limpiar cuenta' : 'Limpiar ronda'
+  );
 
   ngOnInit(): void {
     this.orderService.ensureOpenOrders();
@@ -122,6 +179,48 @@ export class BillPage implements OnInit, HasUnsavedChanges {
     return this.activeOrder()?.id === order.id;
   }
 
+  isOwner(order: Order): boolean {
+    return order.ownerUserId === this.authService.user()?.id;
+  }
+
+  ownerLabel(order: Order): string {
+    return order.owner?.displayName ?? 'Otro mesero';
+  }
+
+  openedAtLabel(order: Order): string {
+    return new Date(order.openedAt).toLocaleTimeString('es', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  }
+
+  toggleMine(): void {
+    this.showMine.update((v) => !v);
+  }
+
+  refresh(): void {
+    if (this.refreshState() !== 'idle') return;
+    this.refreshState.set('spinning');
+    this.refreshStartedAt = Date.now();
+    this.orderService.refreshOpenOrders().subscribe({
+      next: () => this.onRefreshSettled(),
+      error: () => this.onRefreshSettled(),
+    });
+  }
+
+  private onRefreshSettled(): void {
+    const remaining = Math.max(0, 1000 - (Date.now() - this.refreshStartedAt));
+    setTimeout(() => {
+      this.refreshState.set('success');
+      this.refreshSuccessSoft.set(false);
+      setTimeout(() => this.refreshSuccessSoft.set(true), 500);
+      setTimeout(() => {
+        this.refreshState.set('idle');
+        this.refreshSuccessSoft.set(false);
+      }, 1000);
+    }, remaining);
+  }
+
   chipColor(order: Order): 'primary' | 'secondary' | 'accent' {
     if (!order.location) return 'accent';
     return order.location.type === 'bar' ? 'secondary' : 'primary';
@@ -140,23 +239,31 @@ export class BillPage implements OnInit, HasUnsavedChanges {
     this.activeOrder.set(null);
     this.billItems.set(new Map());
     this.footerExpanded.set(false);
+    this.editingRounds.set(new Set());
+    this.pendingRoundEdits.set(new Map());
   }
 
   private async confirmSwitchAway(): Promise<boolean> {
-    if (this.billItems().size === 0) return true;
+    if (this.billItems().size === 0 && this.pendingRoundEdits().size === 0) return true;
     return this.confirmDialogService.confirm({
-      message: 'Hay productos sin enviar en la cuenta actual. ¿Desea descartarlos?',
+      message: 'Hay cambios sin guardar en la cuenta actual. ¿Desea descartarlos?',
       confirmText: 'Descartar',
     });
   }
 
   private loadOrder(orderId: number): void {
+    const isSameOrder = this.activeOrder()?.id === orderId;
     const token = ++this.orderLoadToken;
     this.orderService.getOrderById(orderId).subscribe({
       next: (order) => {
         if (token !== this.orderLoadToken) return;
         this.activeOrder.set(order);
         this.billItems.set(new Map());
+        if (!isSameOrder) {
+          this.editingRounds.set(new Set());
+          this.pendingRoundEdits.set(new Map());
+          this.footerExpanded.set(true);
+        }
       },
       error: () => {
         if (token !== this.orderLoadToken) return;
@@ -176,6 +283,16 @@ export class BillPage implements OnInit, HasUnsavedChanges {
       quantity: 1,
     });
     this.billItems.set(updated);
+    this.scrollFooterListToBottom();
+  }
+
+  /** Keeps the footer's item list scrolled to the newest (last-added) draft item. */
+  private scrollFooterListToBottom(): void {
+    const el = this.footerItemsList()?.nativeElement as HTMLElement | undefined;
+    if (!el) return;
+    requestAnimationFrame(() => {
+      el.scrollTop = el.scrollHeight;
+    });
   }
 
   incrementProduct(productId: number): void {
@@ -210,26 +327,63 @@ export class BillPage implements OnInit, HasUnsavedChanges {
     this.setQuantity(productId, isNaN(value) ? 0 : value);
   }
 
-  updateExistingItemQuantity(itemId: number, roundId: number, quantity: number): void {
-    const order = this.activeOrder();
-    if (!order || quantity < 1) return;
-    this.orderService.updateItem(order.id, roundId, itemId, { quantity }).subscribe({
-      next: () => this.loadOrder(order.id),
-      error: () => this.toastService.error('Error al actualizar el producto'),
-    });
+  /** Buffers a quantity change for a sent item locally; nothing is sent to the backend until the round edit is confirmed. */
+  private setPendingItemQuantity(roundId: number, itemId: number, originalQuantity: number, quantity: number): void {
+    const clamped = Math.max(Math.floor(quantity), 0);
+    const updatedRounds = new Map(this.pendingRoundEdits());
+    const roundEdits = new Map(updatedRounds.get(roundId) ?? []);
+    if (clamped === originalQuantity) {
+      roundEdits.delete(itemId);
+    } else {
+      roundEdits.set(itemId, clamped);
+    }
+    if (roundEdits.size === 0) {
+      updatedRounds.delete(roundId);
+    } else {
+      updatedRounds.set(roundId, roundEdits);
+    }
+    this.pendingRoundEdits.set(updatedRounds);
   }
 
-  deleteExistingItem(itemId: number, roundId: number): void {
+  /** Previews a quantity change (from the join's +/- buttons) for a sent item; a quantity of 0 marks it for removal. */
+  previewExistingItemQuantity(itemId: number, roundId: number, originalQuantity: number, quantity: number): void {
+    this.setPendingItemQuantity(roundId, itemId, originalQuantity, quantity);
+  }
+
+  /** Mirrors previewExistingItemQuantity for manual entry: below 1 marks the item for removal, same as the join's minus button. */
+  onExistingItemQuantityChange(
+    item: { id: number; roundId: number; originalQuantity: number },
+    event: Event
+  ): void {
+    const input = event.target as HTMLInputElement;
+    const parsed = parseInt(input.value, 10);
+    const quantity = isNaN(parsed) ? 0 : parsed;
+    this.setPendingItemQuantity(item.roundId, item.id, item.originalQuantity, quantity);
+  }
+
+  async deleteRound(round: { id: number; items: unknown[]; subtotal: number }): Promise<void> {
     const order = this.activeOrder();
     if (!order) return;
-    this.orderService.deleteItem(order.id, roundId, itemId).subscribe({
+
+    if (round.items.length > 0) {
+      const total = round.subtotal.toFixed(2);
+      const confirmed = await this.confirmDialogService.confirm({
+        title: 'Eliminar ronda',
+        message: `Esta acción no se puede deshacer. Escriba el total de la ronda (${total}) para confirmar:`,
+        confirmText: 'Eliminar ronda',
+        requireInput: total,
+      });
+      if (!confirmed) return;
+    }
+
+    this.orderService.deleteRound(order.id, round.id).subscribe({
       next: () => this.loadOrder(order.id),
-      error: () => this.toastService.error('Error al eliminar el producto'),
+      error: () => this.toastService.error('Error al eliminar la ronda'),
     });
   }
 
   hasUnsavedChanges(): boolean {
-    return this.billItems().size > 0;
+    return this.billItems().size > 0 || this.pendingRoundEdits().size > 0;
   }
 
   deactivateMessage(): string {
@@ -245,7 +399,130 @@ export class BillPage implements OnInit, HasUnsavedChanges {
     this.footerExpanded.update((v) => !v);
   }
 
-  scrollToProduct(productId: number): void {
+  isRoundEditing(roundId: number): boolean {
+    return this.editingRounds().has(roundId);
+  }
+
+  private openRoundEdit(roundId: number): void {
+    const updated = new Set(this.editingRounds());
+    updated.add(roundId);
+    this.editingRounds.set(updated);
+  }
+
+  private closeRoundEdit(roundId: number): void {
+    const updated = new Set(this.editingRounds());
+    updated.delete(roundId);
+    this.editingRounds.set(updated);
+  }
+
+  private clearPendingRoundEdits(roundId: number): void {
+    const updated = new Map(this.pendingRoundEdits());
+    updated.delete(roundId);
+    this.pendingRoundEdits.set(updated);
+  }
+
+  /** Toggles a round's quantity editor. Opening starts a local edit session; closing with unsaved changes asks for confirmation, showing a previous-vs-new summary, before saving anything. */
+  async toggleRoundEdit(round: {
+    id: number;
+    items: Array<{
+      id: number;
+      quantity: number;
+      originalQuantity: number;
+      product?: { name: string } | null;
+      customName: string | null;
+    }>;
+  }): Promise<void> {
+    if (!this.isRoundEditing(round.id)) {
+      this.openRoundEdit(round.id);
+      return;
+    }
+
+    const pending = this.pendingRoundEdits().get(round.id);
+    if (!pending || pending.size === 0) {
+      this.closeRoundEdit(round.id);
+      return;
+    }
+
+    const changes = round.items
+      .filter((item) => pending.has(item.id))
+      .map((item) => ({ id: item.id, newQuantity: pending.get(item.id)!, item }));
+
+    const willDeleteRound = round.items.every(
+      (item) => (pending.get(item.id) ?? item.originalQuantity) === 0
+    );
+
+    const summaryLines = changes.map(({ item, newQuantity }) => ({
+      label: item.product?.name ?? item.customName ?? 'Producto',
+      detail: newQuantity === 0 ? `${item.originalQuantity} → se elimina` : `${item.originalQuantity} → ${newQuantity}`,
+    }));
+
+    const confirmed = await this.confirmDialogService.confirm({
+      title: 'Confirmar cambios de la ronda',
+      message: willDeleteRound
+        ? 'Se eliminarán todos los productos de la ronda, por lo que la ronda también se eliminará. ¿Desea continuar?'
+        : '¿Desea guardar los siguientes cambios en la ronda?',
+      confirmText: 'Guardar cambios',
+      summaryLines,
+    });
+    if (!confirmed) return;
+
+    this.applyRoundEdits(
+      round.id,
+      changes.map(({ id, newQuantity }) => ({ id, newQuantity })),
+      willDeleteRound
+    );
+  }
+
+  private applyRoundEdits(
+    roundId: number,
+    changes: { id: number; newQuantity: number }[],
+    willDeleteRound: boolean
+  ): void {
+    const order = this.activeOrder();
+    if (!order) return;
+
+    const request$: Observable<unknown> = willDeleteRound
+      ? this.orderService.deleteRound(order.id, roundId)
+      : forkJoin(
+          changes.map(
+            ({ id, newQuantity }): Observable<unknown> =>
+              newQuantity === 0
+                ? this.orderService.deleteItem(order.id, roundId, id)
+                : this.orderService.updateItem(order.id, roundId, id, { quantity: newQuantity })
+          )
+        );
+
+    request$.subscribe({
+      next: () => {
+        this.clearPendingRoundEdits(roundId);
+        this.closeRoundEdit(roundId);
+        this.loadOrder(order.id);
+      },
+      error: () => this.toastService.error('Error al guardar los cambios de la ronda'),
+    });
+  }
+
+  /** Cancels a round's edit session, discarding any unsaved quantity changes. */
+  async cancelRoundEdit(roundId: number): Promise<void> {
+    const pending = this.pendingRoundEdits().get(roundId);
+    if (!pending || pending.size === 0) {
+      this.closeRoundEdit(roundId);
+      return;
+    }
+
+    const confirmed = await this.confirmDialogService.confirm({
+      title: 'Cancelar edición de ronda',
+      message: '¿Desea cancelar los cambios realizados en la ronda?',
+      confirmText: 'Descartar cambios',
+    });
+    if (!confirmed) return;
+
+    this.clearPendingRoundEdits(roundId);
+    this.closeRoundEdit(roundId);
+  }
+
+  scrollToProduct(productId: number | null): void {
+    if (productId === null) return;
     const el = this.productCards().find(
       (ref) => ref.nativeElement.id === `product-${productId}`
     )?.nativeElement as HTMLElement | undefined;
@@ -258,8 +535,10 @@ export class BillPage implements OnInit, HasUnsavedChanges {
   }
 
   async clearBill(): Promise<void> {
+    const target = this.activeOrder() === null ? 'cuenta nueva' : 'ronda nueva';
     const confirmed = await this.confirmDialogService.confirm({
-      message: '¿Desea limpiar todos los productos de la cuenta actual?',
+      title: `Limpiar ${target}`,
+      message: `¿Desea limpiar todos los productos de la ${target}?`,
       confirmText: 'Limpiar',
     });
     if (!confirmed) return;
@@ -346,10 +625,12 @@ export class BillPage implements OnInit, HasUnsavedChanges {
   async cancelActiveOrder(): Promise<void> {
     const order = this.activeOrder();
     if (!order) return;
+    const total = this.totalPrice().toFixed(2);
     const confirmed = await this.confirmDialogService.confirm({
       title: 'Cancelar cuenta',
-      message: '¿Desea cancelar esta cuenta? Esta acción no se puede deshacer.',
+      message: `Esta acción no se puede deshacer. Escriba el total actual (${total}) para confirmar:`,
       confirmText: 'Cancelar cuenta',
+      requireInput: total,
     });
     if (!confirmed) return;
     this.orderService.cancelOrder(order.id).subscribe({

@@ -6,6 +6,7 @@ import {
   ListOrdersQuerySchema,
   OrderIdSchema,
   OrderItemIdSchema,
+  OrderRoundIdSchema,
   UpdateOrderItemSchema,
 } from '../types/order.types';
 import { isZodError } from '../lib/error';
@@ -149,6 +150,22 @@ export class OrderController {
     } catch (error) {
       if (handleDomainError(error, res, 'Error deleting item:')) return;
       res.status(500).json({ success: false, error: 'Failed to delete item' });
+    }
+  }
+
+  async deleteRound(req: Request, res: Response): Promise<void> {
+    const paramsResult = OrderRoundIdSchema.safeParse(req.params);
+    if (!paramsResult.success) {
+      res.status(400).json({ success: false, error: 'Invalid order or round ID' });
+      return;
+    }
+    try {
+      const { id, roundId } = paramsResult.data;
+      await orderService.deleteRound(id, roundId);
+      res.json({ success: true, message: 'Round deleted successfully' });
+    } catch (error) {
+      if (handleDomainError(error, res, 'Error deleting round:')) return;
+      res.status(500).json({ success: false, error: 'Failed to delete round' });
     }
   }
 

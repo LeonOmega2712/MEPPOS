@@ -34,8 +34,8 @@ export class OrderService {
     this.openOrdersCache.ensureLoaded();
   }
 
-  refreshOpenOrders(): void {
-    this.openOrdersCache.refreshInBackground();
+  refreshOpenOrders(): Observable<Order[]> {
+    return this.openOrdersCache.refresh();
   }
 
   getOrderById(id: number): Observable<Order> {
@@ -70,6 +70,12 @@ export class OrderService {
   deleteItem(orderId: number, roundId: number, itemId: number): Observable<void> {
     return this.http
       .delete<ApiResponse<void>>(`${this.ordersUrl}/${orderId}/rounds/${roundId}/items/${itemId}`)
+      .pipe(map(() => undefined));
+  }
+
+  deleteRound(orderId: number, roundId: number): Observable<void> {
+    return this.http
+      .delete<ApiResponse<void>>(`${this.ordersUrl}/${orderId}/rounds/${roundId}`)
       .pipe(map(() => undefined));
   }
 
