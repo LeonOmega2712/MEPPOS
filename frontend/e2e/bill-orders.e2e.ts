@@ -187,3 +187,44 @@ test('manual refresh button reloads open orders', async ({ page }) => {
   await page.locator('[data-testid="refresh-orders"]').click();
   await expect(page.locator('[data-testid="order-chip"]')).toHaveCount(1);
 });
+
+test('checkout button appears in the empty-cart slot and is disabled', async ({ page }) => {
+  const mine = seedOrder({ id: 106, locationId: 1, location: LOCATIONS[0] });
+  await setupApiMocks(page);
+  await setupOrdersMocks(page, LOCATIONS, [mine]);
+  await login(page);
+
+  await page.locator('[data-testid="order-chip"]', { hasText: 'Mesa 1' }).click();
+
+  // No draft items yet: the checkout slot shows "Cobrar", disabled.
+  await expect(page.locator('[data-testid="checkout-order"]')).toBeVisible();
+  await expect(page.locator('[data-testid="checkout-order"]')).toBeDisabled();
+  await expect(page.locator('[data-testid="confirm-bill"]')).toHaveCount(0);
+
+  // Adding a draft item swaps the slot back to "Confirmar ronda nueva".
+  await page.locator('#product-1').click();
+  await expect(page.locator('[data-testid="confirm-bill"]')).toBeVisible();
+  await expect(page.locator('[data-testid="checkout-order"]')).toHaveCount(0);
+});
+
+test('detects an order assigned to the current user after 30s of polling', async ({ page }) => {
+  await setupApiMocks(page);
+  await setupOrdersMocks(page, LOCATIONS);
+  await page.clock.install();
+  await login(page);
+
+  await expect(page.locator('[data-testid="order-chip"]')).toHaveCount(0);
+
+  const assigned = seedOrder({ id: 200, locationId: 1, location: LOCATIONS[0] });
+  await page.route('http://localhost:3000/api/orders', async (route) => {
+    if (route.request().method() !== 'GET') return route.fallback();
+    return route.fulfill({
+      status: 200,
+      json: { success: true, data: [{ ...assigned, subtotal: 0, discountTotal: 0, total: 0 }], count: 1 },
+    });
+  });
+
+  await page.clock.fastForward('00:30');
+
+  await expect(page.locator('[data-testid="order-chip"]')).toHaveCount(1);
+});

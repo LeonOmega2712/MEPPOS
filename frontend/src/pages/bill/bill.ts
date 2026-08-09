@@ -1,4 +1,4 @@
-import { Component, computed, ElementRef, inject, OnInit, signal, viewChild, viewChildren } from '@angular/core';
+import { Component, computed, DestroyRef, effect, ElementRef, inject, OnInit, signal, viewChild, viewChildren } from '@angular/core';
 import { forkJoin, type Observable } from 'rxjs';
 import { MenuService } from '../../core/services/menu.service';
 import { SplashService } from '../../core/services/splash.service';
@@ -64,6 +64,25 @@ export class BillPage implements OnInit, HasUnsavedChanges {
 
   /** When true, the chips row only shows orders owned by the current user. */
   showMine = signal(false);
+
+  private static readonly POLL_INTERVAL_MS = 30_000;
+  private pollTimer: ReturnType<typeof setInterval> | null = null;
+  /** orderId -> ownerUserId as of the last observed openOrders() snapshot; null until the first load. */
+  private knownOrderOwners: Map<number, number> | null = null;
+  /** Orders created in this session, so their own creator isn't notified about them. */
+  private readonly selfCreatedOrderIds = new Set<number>();
+  private readonly onVisibilityChange = (): void => this.handleVisibilityChange();
+
+  constructor() {
+    effect(() => this.detectOwnerAssignments(this.openOrders() ?? []));
+
+    this.startPolling();
+    document.addEventListener('visibilitychange', this.onVisibilityChange);
+    inject(DestroyRef).onDestroy(() => {
+      this.stopPolling();
+      document.removeEventListener('visibilitychange', this.onVisibilityChange);
+    });
+  }
 
   billItemsList = computed(() => [...this.billItems().values()]);
 
@@ -219,6 +238,48 @@ export class BillPage implements OnInit, HasUnsavedChanges {
         this.refreshSuccessSoft.set(false);
       }, 1000);
     }, remaining);
+  }
+
+  private startPolling(): void {
+    if (this.pollTimer !== null || document.hidden) return;
+    this.pollTimer = setInterval(() => this.pollOpenOrders(), BillPage.POLL_INTERVAL_MS);
+  }
+
+  private stopPolling(): void {
+    if (this.pollTimer === null) return;
+    clearInterval(this.pollTimer);
+    this.pollTimer = null;
+  }
+
+  private pollOpenOrders(): void {
+    this.orderService.refreshOpenOrders().subscribe({ error: () => {} });
+  }
+
+  private handleVisibilityChange(): void {
+    if (document.hidden) {
+      this.stopPolling();
+      return;
+    }
+    this.pollOpenOrders();
+    this.startPolling();
+  }
+
+  /** Compares the latest openOrders() snapshot against the previous one and toasts when an order lands on the current user. */
+  private detectOwnerAssignments(orders: Order[]): void {
+    const previous = this.knownOrderOwners;
+    const current = new Map(orders.map((order) => [order.id, order.ownerUserId]));
+    this.knownOrderOwners = current;
+    if (previous === null) return;
+
+    const userId = this.authService.user()?.id;
+    if (userId === undefined) return;
+
+    for (const order of orders) {
+      if (order.ownerUserId !== userId) continue;
+      if (this.selfCreatedOrderIds.has(order.id)) continue;
+      if (previous.get(order.id) === userId) continue;
+      this.toastService.info(`Se te asignó la cuenta ${this.chipLabel(order)}`);
+    }
   }
 
   chipColor(order: Order): 'primary' | 'secondary' | 'accent' {
@@ -578,6 +639,7 @@ export class BillPage implements OnInit, HasUnsavedChanges {
     const locationId = 'locationId' in selection ? selection.locationId : undefined;
     this.orderService.createOrder({ locationId }).subscribe({
       next: (order) => {
+        this.selfCreatedOrderIds.add(order.id);
         this.orderService.addRound(order.id, { items: this.cartToRoundItems() }).subscribe({
           next: () => {
             this.confirming.set(false);

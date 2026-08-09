@@ -2,7 +2,7 @@ import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { signal } from '@angular/core';
 import { of } from 'rxjs';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { BillPage } from './bill';
 import { MenuService } from '../../core/services/menu.service';
 import { SplashService } from '../../core/services/splash.service';
@@ -43,8 +43,11 @@ describe('BillPage', () => {
   let component: BillPage;
   let orderServiceMock: any;
   let authServiceMock: any;
+  let toastServiceMock: any;
 
   beforeEach(async () => {
+    toastServiceMock = { success: vi.fn(), error: vi.fn(), warning: vi.fn(), info: vi.fn() };
+
     orderServiceMock = {
       openOrders: signal<Order[] | null>([]),
       openOrdersLoading: signal(false),
@@ -57,6 +60,7 @@ describe('BillPage', () => {
       addRound: vi.fn(),
       updateItem: vi.fn(),
       deleteItem: vi.fn(),
+      deleteRound: vi.fn(),
       cancelOrder: vi.fn(),
     };
 
@@ -69,7 +73,7 @@ describe('BillPage', () => {
         { provide: MenuService, useValue: { getMenu: () => of([]) } },
         { provide: SplashService, useValue: { contentReady: vi.fn() } },
         { provide: ConfirmDialogService, useValue: { confirm: vi.fn().mockResolvedValue(true) } },
-        { provide: ToastService, useValue: { success: vi.fn(), error: vi.fn(), warning: vi.fn(), info: vi.fn() } },
+        { provide: ToastService, useValue: toastServiceMock },
         { provide: OrderService, useValue: orderServiceMock },
         { provide: LocationService, useValue: { locations: signal([]), locationsLoading: signal(false), ensureLocations: vi.fn(), refreshLocations: vi.fn() } },
         { provide: AuthService, useValue: authServiceMock },
@@ -184,6 +188,116 @@ describe('BillPage', () => {
 
     it('returns an empty list when there is no active order', () => {
       expect(component.existingRounds()).toEqual([]);
+    });
+  });
+
+  describe('polling', () => {
+    let pollFixture: ComponentFixture<BillPage>;
+
+    beforeEach(() => {
+      // Stops the outer instance's real-timer interval so it doesn't leak into these fake-timer tests.
+      fixture.destroy();
+      vi.useFakeTimers();
+      pollFixture = TestBed.createComponent(BillPage);
+      pollFixture.detectChanges();
+      orderServiceMock.refreshOpenOrders.mockClear();
+    });
+
+    afterEach(() => {
+      pollFixture.destroy();
+      vi.useRealTimers();
+    });
+
+    it('refreshes open orders every 30 seconds', () => {
+      vi.advanceTimersByTime(30_000);
+      expect(orderServiceMock.refreshOpenOrders).toHaveBeenCalledTimes(1);
+
+      vi.advanceTimersByTime(30_000);
+      expect(orderServiceMock.refreshOpenOrders).toHaveBeenCalledTimes(2);
+    });
+
+    it('stops polling once the component is destroyed', () => {
+      pollFixture.destroy();
+      vi.advanceTimersByTime(60_000);
+      expect(orderServiceMock.refreshOpenOrders).not.toHaveBeenCalled();
+    });
+
+    it('pauses while the document is hidden', () => {
+      Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
+      document.dispatchEvent(new Event('visibilitychange'));
+
+      vi.advanceTimersByTime(60_000);
+      expect(orderServiceMock.refreshOpenOrders).not.toHaveBeenCalled();
+
+      Object.defineProperty(document, 'hidden', { configurable: true, get: () => false });
+    });
+
+    it('refreshes immediately and resumes the interval when visibility returns', () => {
+      Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
+      document.dispatchEvent(new Event('visibilitychange'));
+      orderServiceMock.refreshOpenOrders.mockClear();
+
+      Object.defineProperty(document, 'hidden', { configurable: true, get: () => false });
+      document.dispatchEvent(new Event('visibilitychange'));
+      expect(orderServiceMock.refreshOpenOrders).toHaveBeenCalledTimes(1);
+
+      orderServiceMock.refreshOpenOrders.mockClear();
+      vi.advanceTimersByTime(30_000);
+      expect(orderServiceMock.refreshOpenOrders).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('assignment toast', () => {
+    beforeEach(() => {
+      // Stops the outer instance's effect so it doesn't react to the shared openOrders signal too.
+      fixture.destroy();
+    });
+
+    function createFixture(initialOrders: Order[]): ComponentFixture<BillPage> {
+      orderServiceMock.openOrders.set(initialOrders);
+      const f = TestBed.createComponent(BillPage);
+      f.detectChanges();
+      return f;
+    }
+
+    it('does not toast on the first snapshot, even if it already contains an order owned by the current user (seeding)', () => {
+      createFixture([makeOrder({ id: 1, ownerUserId: OWNER.id })]);
+      expect(toastServiceMock.info).not.toHaveBeenCalled();
+    });
+
+    it('toasts when an order owned by the current user appears after the initial snapshot', () => {
+      const f = createFixture([]);
+      orderServiceMock.openOrders.set([makeOrder({ id: 1, ownerUserId: OWNER.id })]);
+      f.detectChanges();
+      expect(toastServiceMock.info).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not toast for orders owned by another user', () => {
+      const f = createFixture([]);
+      orderServiceMock.openOrders.set([makeOrder({ id: 1, ownerUserId: OTHER_USER.id })]);
+      f.detectChanges();
+      expect(toastServiceMock.info).not.toHaveBeenCalled();
+    });
+
+    it('does not toast for an order created in the current session', () => {
+      const f = createFixture([]);
+      const createdOrder = makeOrder({ id: 7, ownerUserId: OWNER.id });
+      orderServiceMock.createOrder.mockReturnValue(of(createdOrder));
+      orderServiceMock.addRound.mockReturnValue(of({} as any));
+      orderServiceMock.getOrderById.mockReturnValue(of(createdOrder));
+
+      f.componentInstance.onLocationConfirmed({ locationId: 5 });
+      orderServiceMock.openOrders.set([makeOrder({ id: 7, ownerUserId: OWNER.id })]);
+      f.detectChanges();
+
+      expect(toastServiceMock.info).not.toHaveBeenCalled();
+    });
+
+    it('toasts when an already-known order changes owner to the current user', () => {
+      const f = createFixture([makeOrder({ id: 1, ownerUserId: OTHER_USER.id })]);
+      orderServiceMock.openOrders.set([makeOrder({ id: 1, ownerUserId: OWNER.id })]);
+      f.detectChanges();
+      expect(toastServiceMock.info).toHaveBeenCalledTimes(1);
     });
   });
 });

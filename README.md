@@ -277,7 +277,7 @@ The system uses 9 tables:
 - ✅ Locations management (DB migrations, backend API, admin UI with drag-and-drop reorder)
 - ✅ Custom extras management (DB migration, backend API, admin UI)
 - ✅ Persistent orders with multiple rounds (backend API: open/list/detail, add round, edit/delete items, cancel; location occupancy on `GET /api/locations`)
-- ⬜ Orders frontend (active orders view, new order flow, order detail view)
+- ✅ Orders frontend (active orders view with mine/all filter and 30s transfer-detection polling, new order flow, order detail view with round edit/delete and owner banner)
 - ⬜ Discounts at checkout (fixed/percentage)
 - ⬜ Account ownership and transfer between waiters
 - ⬜ Kitchen ticket printing (per round)

@@ -359,6 +359,18 @@
               <app-icon name="clipboard-document-check" sizeClass="size-4" />
             </button>
           </span>
+          } @else if (activeOrder() !== null) {
+          <span class="flex-1" title="Próximamente">
+            <button
+              type="button"
+              class="btn btn-soft btn-primary w-full"
+              data-testid="checkout-order"
+              disabled
+              aria-label="Cobrar cuenta">
+              Cobrar
+              <app-icon name="currency-dollar" sizeClass="size-4" />
+            </button>
+          </span>
           }
           <button
             type="button"
