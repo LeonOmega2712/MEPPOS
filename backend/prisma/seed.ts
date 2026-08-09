@@ -13,13 +13,21 @@ const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  console.log('🌱 Starting seed based on menu.md...');
-
   // ============================================
   // DEFAULT ADMIN USER
   // ============================================
 
-  const adminPassword = process.env.ADMIN_DEFAULT_PASSWORD || 'admin123';
+  const adminPassword = process.env.ADMIN_DEFAULT_PASSWORD;
+
+  if (!adminPassword || adminPassword.length < 12) {
+    throw new Error(
+      'ADMIN_DEFAULT_PASSWORD is required (min 12 characters). ' +
+        'Set it before seeding — there is no default password.',
+    );
+  }
+
+  console.log('🌱 Starting seed based on menu.md...');
+
   const hashedPassword = await bcrypt.hash(adminPassword, 12);
 
   await prisma.user.upsert({

@@ -122,8 +122,12 @@ FRONTEND_URL=http://localhost:4200
 # Authentication (Phase 2)
 JWT_ACCESS_SECRET=your-access-secret
 JWT_REFRESH_SECRET=your-refresh-secret
-ADMIN_DEFAULT_PASSWORD=admin123
+ADMIN_DEFAULT_PASSWORD=
 ```
+
+`ADMIN_DEFAULT_PASSWORD` is required and has no default: `prisma/seed.ts` throws if it is unset
+or shorter than 12 characters. Re-seeding does not overwrite an existing admin's password (the
+seed uses an upsert with an empty `update`); to rotate it, use `PUT /api/users/:id` instead.
 
 ---
 
