@@ -21,7 +21,11 @@ export function startOfBusinessDay(date: Date = new Date()): Date {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
-    hour12: false,
+    // `hour12: false` is not equivalent to 24h time: per ECMA-402 it lets the
+    // runtime pick a locale-dependent hourCycle, which on older ICU (e.g.
+    // Node 20) resolves to 'h24' and reports midnight as hour 24 instead of
+    // 0. Requesting 'h23' explicitly avoids that runtime-dependent behavior.
+    hourCycle: 'h23',
   });
 
   const parts = formatter.formatToParts(date);
@@ -30,7 +34,11 @@ export function startOfBusinessDay(date: Date = new Date()): Date {
 
   // Build the local wall-clock time as if it were UTC, then compute the
   // offset between that and the real UTC instant to find the timezone's
-  // current offset (handles DST transitions correctly).
+  // offset at `date`. Note: this offset is assumed constant through
+  // midnight, which is incorrect on the day of a DST transition. Not an
+  // issue today since America/Mexico_City has not observed DST since 2022,
+  // but must be revisited if issue #65 (configurable timezone) picks one
+  // that does.
   const asUtc = Date.UTC(get('year'), get('month') - 1, get('day'), get('hour'), get('minute'), get('second'));
   const offsetMs = asUtc - date.getTime();
 
