@@ -180,7 +180,7 @@ model OrderItem {
   customName String? @db.VarChar(255) @map("custom_name")
   unitPrice  Decimal @db.Decimal(10, 2) @map("unit_price")
   quantity   Int     @default(1)
-  subtotal   Decimal @db.Decimal(10, 2)
+  subtotal   Decimal @db.Decimal(10, 2) @default(dbgenerated())
   notes      String?
 
   round   OrderRound @relation(fields: [roundId], references: [id], onDelete: Cascade)

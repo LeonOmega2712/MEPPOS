@@ -1,5 +1,12 @@
 import { Injectable, signal } from '@angular/core';
 
+export interface ConfirmDialogSummaryLine {
+  /** Primary label, e.g. the product name. */
+  label: string;
+  /** Secondary detail shown below the label, e.g. "1 → se elimina". */
+  detail: string;
+}
+
 export interface ConfirmDialogOptions {
   title?: string;
   message: string;
@@ -7,6 +14,8 @@ export interface ConfirmDialogOptions {
   cancelText?: string;
   requireInput?: string;
   cancelable?: boolean;
+  /** Optional label/detail rows for reviewing changes (e.g. previous → new values) before confirming. */
+  summaryLines?: ConfirmDialogSummaryLine[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -19,6 +28,7 @@ export class ConfirmDialogService {
   readonly requireInput = signal('');
   readonly inputValue = signal('');
   readonly cancelable = signal(true);
+  readonly summaryLines = signal<ConfirmDialogSummaryLine[]>([]);
 
   private resolver: ((value: boolean) => void) | null = null;
 
@@ -30,6 +40,7 @@ export class ConfirmDialogService {
     this.requireInput.set(options.requireInput ?? '');
     this.inputValue.set('');
     this.cancelable.set(options.cancelable ?? true);
+    this.summaryLines.set(options.summaryLines ?? []);
     this.visible.set(true);
 
     return new Promise<boolean>((resolve) => {

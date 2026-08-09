@@ -260,7 +260,7 @@ export class CategoryManagerComponent implements OnInit {
     this.categoryService.deleteCategory(category.id).subscribe({
       next: () => {
         this.saving.set(null);
-        this.clearDraftAndCollapse(category.id);
+        this.resetDraftAndCollapse(category.id);
         this.toastService.success('Categoría desactivada');
         this.categoryService.refreshCategories();
       },
@@ -298,7 +298,7 @@ export class CategoryManagerComponent implements OnInit {
     this.categoryService.deleteCategory(category.id, true).subscribe({
       next: () => {
         this.saving.set(null);
-        this.clearDraftAndCollapse(category.id);
+        this.deleteDraftAndCollapse(category.id);
         this.toastService.success('Categoría eliminada permanentemente');
         this.categoryService.refreshCategories();
       },
@@ -327,7 +327,20 @@ export class CategoryManagerComponent implements OnInit {
     this.newCategory = this.emptyCategory();
   }
 
-  private clearDraftAndCollapse(categoryId: number): void {
+  /**
+   * Collapses the category's expanded panel after deactivating it and resets its draft to the
+   * saved values (rather than deleting it) so hasDraftChanges() reports clean and switching rows
+   * doesn't warn about unsaved changes. Deleting it would crash the active-category template on
+   * the render that happens before refreshCategories() resolves and the category is still bound.
+   */
+  private resetDraftAndCollapse(categoryId: number): void {
+    this.resetDraft(categoryId);
+    if (this.expandedCategoryId() === categoryId) this.expandedCategoryId.set(null);
+    if (this.expandedInactiveId() === categoryId) this.expandedInactiveId.set(null);
+  }
+
+  /** Collapses and drops the draft entirely for a permanently deleted category (the inactive-list template never reads drafts, so this is safe). */
+  private deleteDraftAndCollapse(categoryId: number): void {
     delete this.drafts[categoryId];
     if (this.expandedCategoryId() === categoryId) this.expandedCategoryId.set(null);
     if (this.expandedInactiveId() === categoryId) this.expandedInactiveId.set(null);

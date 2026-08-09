@@ -4,16 +4,39 @@ import type { CreateLocationDTO, UpdateLocationDTO } from '../types/location.typ
 
 export class LocationService {
   async getAllLocations() {
-    return prisma.location.findMany({
+    const locations = await prisma.location.findMany({
       orderBy: { displayOrder: 'asc' },
     });
+    return this.withOccupancy(locations);
   }
 
   async getActiveLocations() {
-    return prisma.location.findMany({
+    const locations = await prisma.location.findMany({
       where: { active: true },
       orderBy: { displayOrder: 'asc' },
     });
+    return this.withOccupancy(locations);
+  }
+
+  /**
+   * Annotates each location with `occupied`: true when a `table` location has
+   * an open order. Bars can host multiple simultaneous orders and are never
+   * reported as occupied.
+   */
+  private async withOccupancy<T extends { id: number; type: string }>(
+    locations: T[]
+  ): Promise<(T & { occupied: boolean })[]> {
+    const tableIds = locations.filter((location) => location.type === 'table').map((location) => location.id);
+
+    const openOrders = tableIds.length
+      ? await prisma.order.findMany({
+          where: { locationId: { in: tableIds }, status: 'open' },
+          select: { locationId: true },
+        })
+      : [];
+    const occupiedIds = new Set(openOrders.map((order) => order.locationId));
+
+    return locations.map((location) => ({ ...location, occupied: occupiedIds.has(location.id) }));
   }
 
   async getLocationById(id: number) {

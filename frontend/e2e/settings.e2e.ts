@@ -16,10 +16,13 @@ async function navigateToSettingsTab(page: Page, tabLabel: string): Promise<void
   await page.getByRole('radio', { name: tabLabel }).click();
 }
 
-async function expandNewPanel(page: Page, toggleTestId: string): Promise<void> {
+async function expandNewPanel(page: Page, toggleTestId: string, panelTestId: string): Promise<void> {
   const toggle = page.getByTestId(toggleTestId);
   await toggle.click();
   await expect(toggle).toBeChecked();
+  // The panel is a DaisyUI collapse that animates open; wait for its content
+  // to actually be painted before interacting with anything inside it.
+  await expect(page.getByTestId(panelTestId)).toBeVisible();
 }
 
 function listenForToast(page: Page, type: 'success' | 'error') {
@@ -54,14 +57,14 @@ test.describe('Settings page — Extras & Ubicaciones tabs', () => {
       await navigateToSettingsTab(page, 'Extras');
       await expect(page.locator('app-custom-extra-manager')).toBeVisible();
       await expect(page.locator('.loading-spinner')).not.toBeVisible({ timeout: 8_000 });
-      await expandNewPanel(page, 'new-extra-toggle');
+      await expandNewPanel(page, 'new-extra-toggle', 'new-extra-panel');
       await expect(page.getByTestId('new-extra-submit')).toBeDisabled();
     });
 
     test('create button stays disabled when price is empty', async ({ page }) => {
       await navigateToSettingsTab(page, 'Extras');
       await expect(page.locator('.loading-spinner')).not.toBeVisible({ timeout: 8_000 });
-      await expandNewPanel(page, 'new-extra-toggle');
+      await expandNewPanel(page, 'new-extra-toggle', 'new-extra-panel');
       await page.getByTestId('new-extra-name').fill(`SMOKE_NO_PRICE_${Date.now()}`);
       await expect(page.getByTestId('new-extra-submit')).toBeDisabled();
     });
@@ -71,7 +74,7 @@ test.describe('Settings page — Extras & Ubicaciones tabs', () => {
 
       await navigateToSettingsTab(page, 'Extras');
       await expect(page.locator('.loading-spinner')).not.toBeVisible({ timeout: 8_000 });
-      await expandNewPanel(page, 'new-extra-toggle');
+      await expandNewPanel(page, 'new-extra-toggle', 'new-extra-panel');
       await page.getByTestId('new-extra-name').fill(name);
       await page.getByTestId('new-extra-price').fill('15.50');
       await expect(page.getByTestId('new-extra-submit')).toBeEnabled();
@@ -79,9 +82,12 @@ test.describe('Settings page — Extras & Ubicaciones tabs', () => {
       const responsePromise = page.waitForResponse(
         (res) => res.url().includes('/api/extras') && res.request().method() === 'POST',
       );
-      await page.getByTestId('new-extra-submit').click({ force: true });
+      const toastPromise = listenForToast(page, 'success');
+      await page.getByTestId('new-extra-submit').scrollIntoViewIfNeeded();
+      await page.getByTestId('new-extra-submit').click();
       const response = await responsePromise;
       expect(response.status()).toBe(201);
+      await toastPromise;
 
       await expect(
         page.locator('[data-testid="extra-item-name"]', { hasText: name }),
@@ -93,14 +99,15 @@ test.describe('Settings page — Extras & Ubicaciones tabs', () => {
 
       await navigateToSettingsTab(page, 'Extras');
       await expect(page.locator('.loading-spinner')).not.toBeVisible({ timeout: 8_000 });
-      await expandNewPanel(page, 'new-extra-toggle');
+      await expandNewPanel(page, 'new-extra-toggle', 'new-extra-panel');
       await page.getByTestId('new-extra-name').fill(name);
       await page.getByTestId('new-extra-price').fill('5.00');
 
       const firstPost = page.waitForResponse(
         (res) => res.url().includes('/api/extras') && res.request().method() === 'POST',
       );
-      await page.getByTestId('new-extra-submit').click({ force: true });
+      await page.getByTestId('new-extra-submit').scrollIntoViewIfNeeded();
+      await page.getByTestId('new-extra-submit').click();
       const firstRes = await firstPost;
       expect(firstRes.status()).toBe(201);
 
@@ -115,9 +122,12 @@ test.describe('Settings page — Extras & Ubicaciones tabs', () => {
       const secondPost = page.waitForResponse(
         (res) => res.url().includes('/api/extras') && res.request().method() === 'POST',
       );
-      await page.getByTestId('new-extra-submit').click({ force: true });
+      const toastPromise = listenForToast(page, 'error');
+      await page.getByTestId('new-extra-submit').scrollIntoViewIfNeeded();
+      await page.getByTestId('new-extra-submit').click();
       const secondRes = await secondPost;
       expect(secondRes.status()).toBe(409);
+      await toastPromise;
     });
   });
 
@@ -145,7 +155,7 @@ test.describe('Settings page — Extras & Ubicaciones tabs', () => {
       await expect(page.locator('app-location-manager .loading-spinner')).not.toBeVisible({
         timeout: 8_000,
       });
-      await expandNewPanel(page, 'new-location-toggle');
+      await expandNewPanel(page, 'new-location-toggle', 'new-location-panel');
       await page.getByTestId('new-location-name').fill(name);
       await expect(page.getByTestId('new-location-type')).toHaveValue('table');
 
@@ -171,7 +181,7 @@ test.describe('Settings page — Extras & Ubicaciones tabs', () => {
       await expect(page.locator('app-location-manager .loading-spinner')).not.toBeVisible({
         timeout: 8_000,
       });
-      await expandNewPanel(page, 'new-location-toggle');
+      await expandNewPanel(page, 'new-location-toggle', 'new-location-panel');
       await page.getByTestId('new-location-name').fill(name);
       await page.getByTestId('new-location-type').selectOption('bar');
 

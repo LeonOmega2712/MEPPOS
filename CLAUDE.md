@@ -34,7 +34,7 @@ Web app to speed up bill calculation in a seafood restaurant. Editable catalog +
 
 ## Project: Phase 2 - Bill Registration & Ticket Printing (in progress)
 
-Persistent bill management with rounds, kitchen/final ticket printing, and location-based seating. Current progress: JWT authentication with roles (ADMIN/WAITER), login page, protected routes, public menu for QR access, user CRUD, security hardening, locations management (DB + backend API + admin UI — tables + bar; bar orders receive an auto-assigned daily consecutive number), and custom extras management (DB + backend API + admin UI) are complete. Pending: persistent orders with rounds, discounts at checkout, account ownership & transfer, ticket printing (kitchen + final), order history with reprint.
+Persistent bill management with rounds, kitchen/final ticket printing, and location-based seating. Current progress: JWT authentication with roles (ADMIN/WAITER), login page, protected routes, public menu for QR access, user CRUD, security hardening, locations management (DB + backend API + admin UI — tables + bar; bar orders receive an auto-assigned daily consecutive number), and custom extras management (DB + backend API + admin UI), and the orders core schema migration (orders, rounds, items, discounts tables) are complete. Pending: persistent orders with rounds (backend + frontend), discounts at checkout, account ownership & transfer, ticket printing (kitchen + final), order history with reprint.
 
 ### Tech Stack
 

@@ -122,7 +122,7 @@ export class CustomExtraManagerComponent implements OnInit {
     this.customExtraService.deleteExtra(extra.id).subscribe({
       next: () => {
         this.saving.set(null);
-        this.clearDraftAndCollapse(extra.id);
+        this.resetDraftAndCollapse(extra.id);
         this.toastService.success('Extra desactivado');
         this.customExtraService.refreshExtras();
       },
@@ -160,7 +160,7 @@ export class CustomExtraManagerComponent implements OnInit {
     this.customExtraService.deleteExtra(extra.id, true).subscribe({
       next: () => {
         this.saving.set(null);
-        this.clearDraftAndCollapse(extra.id);
+        this.deleteDraftAndCollapse(extra.id);
         this.toastService.success('Extra eliminado permanentemente');
         this.customExtraService.refreshExtras();
       },
@@ -236,7 +236,20 @@ export class CustomExtraManagerComponent implements OnInit {
     return `$${(+extra.defaultPrice).toFixed(2)}`;
   }
 
-  private clearDraftAndCollapse(extraId: number): void {
+  /**
+   * Collapses the extra's expanded panel after deactivating it and resets its draft to the saved
+   * values (rather than deleting it) so hasDraftChanges() reports clean and switching rows doesn't
+   * warn about unsaved changes. Deleting it would crash the active-extra template on the render
+   * that happens before refreshExtras() resolves and the extra is still bound.
+   */
+  private resetDraftAndCollapse(extraId: number): void {
+    this.resetDraft(extraId);
+    if (this.expandedExtraId() === extraId) this.expandedExtraId.set(null);
+    if (this.expandedInactiveId() === extraId) this.expandedInactiveId.set(null);
+  }
+
+  /** Collapses and drops the draft entirely for a permanently deleted extra (the inactive-list template never reads drafts, so this is safe). */
+  private deleteDraftAndCollapse(extraId: number): void {
     delete this.drafts[extraId];
     if (this.expandedExtraId() === extraId) this.expandedExtraId.set(null);
     if (this.expandedInactiveId() === extraId) this.expandedInactiveId.set(null);

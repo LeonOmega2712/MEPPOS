@@ -5,6 +5,17 @@
     }
     <p class="py-4">{{ dialogService.message() }}</p>
 
+    @if (dialogService.summaryLines().length > 0) {
+      <div class="divide-y divide-base-300 bg-base-200 rounded-lg px-3 max-h-48 overflow-y-auto">
+        @for (line of dialogService.summaryLines(); track line.label) {
+          <div class="py-2">
+            <p class="font-medium truncate">{{ line.label }}</p>
+            <p class="text-sm text-base-content/70">{{ line.detail }}</p>
+          </div>
+        }
+      </div>
+    }
+
     @if (dialogService.requireInput()) {
       <label class="input w-full mt-2">
         <input type="text" [placeholder]="dialogService.requireInput()"

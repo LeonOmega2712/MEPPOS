@@ -100,6 +100,19 @@ export async function setupApiMocks(page: Page): Promise<void> {
   await page.route(`${API_BASE}/menu`, (route) =>
     route.fulfill({ status: 200, json: { success: true, data: mockMenu } }),
   );
+
+  // The bill page loads locations + open orders on init. Default to empty so
+  // pages that don't exercise the orders flow (e.g. bill-calculator.e2e.ts)
+  // still load cleanly; setupOrdersMocks/setupSettingsMocks override these.
+  await page.route(`${API_BASE}/locations`, (route) =>
+    route.fulfill({ status: 200, json: { success: true, data: [], count: 0 } }),
+  );
+  await page.route(`${API_BASE}/orders`, (route) => {
+    if (route.request().method() === 'GET') {
+      return route.fulfill({ status: 200, json: { success: true, data: [], count: 0 } });
+    }
+    return route.fallback();
+  });
 }
 
 export async function setupLoginFailMocks(page: Page): Promise<void> {
@@ -169,6 +182,7 @@ type MockLocation = {
   displayOrder: number;
   createdAt: string;
   updatedAt: string | null;
+  occupied?: boolean;
 };
 
 // Stubs every `/api/*` endpoint reachable from the settings page.
@@ -284,5 +298,213 @@ export async function setupSettingsMocks(page: Page): Promise<void> {
       });
     }
     return route.fallback();
+  });
+}
+
+// ─── Orders (Cuenta / bill page) mocks ───────────────────────────────────────
+
+export type MockOrderItem = {
+  id: number;
+  roundId: number;
+  productId: number | null;
+  customName: string | null;
+  unitPrice: number;
+  quantity: number;
+  subtotal: number;
+  notes: string | null;
+};
+
+export type MockOrderRound = {
+  id: number;
+  orderId: number;
+  roundNumber: number;
+  userId: number;
+  createdAt: string;
+  items: MockOrderItem[];
+};
+
+export type MockOrder = {
+  id: number;
+  locationId: number | null;
+  barPosition: number | null;
+  takeoutNumber: number | null;
+  status: 'open' | 'charged' | 'cancelled';
+  ownerUserId: number;
+  openedAt: string;
+  closedAt: string | null;
+  notes: string | null;
+  location: MockLocation | null;
+  owner: { id: number; displayName: string };
+  rounds: MockOrderRound[];
+  discounts: [];
+};
+
+function orderTotals(order: MockOrder) {
+  const subtotal = order.rounds.reduce(
+    (sum, round) => sum + round.items.reduce((s, item) => s + item.subtotal, 0),
+    0,
+  );
+  return { subtotal, discountTotal: 0, total: subtotal };
+}
+
+function serializeOrder(order: MockOrder) {
+  return { ...order, ...orderTotals(order) };
+}
+
+// Stubs the orders API used by the bill page (chips, create/assign, rounds,
+// item edit/delete, cancel). Optionally pre-seeds `locations` so the location
+// picker has tables/bars to assign — pass the same array used for
+// `/api/locations` mocking (see `setupSettingsMocks`) when composing both.
+// `seedOrders` pre-populates already-open orders (e.g. owned by a different
+// waiter) so tests can exercise the mine/all toggle and the non-owner banner
+// without a second login.
+export async function setupOrdersMocks(
+  page: Page,
+  locations: MockLocation[] = [],
+  seedOrders: MockOrder[] = [],
+): Promise<void> {
+  const orders: MockOrder[] = [...seedOrders];
+  let nextOrderId = (seedOrders.reduce((max, o) => Math.max(max, o.id), 0) || 0) + 1;
+  let nextRoundId = 1;
+  let nextItemId = 1;
+
+  await page.route(`${API_BASE}/locations`, (route) =>
+    route.fulfill({
+      status: 200,
+      json: {
+        success: true,
+        data: locations.map((l) => ({
+          ...l,
+          occupied:
+            l.type === 'table' &&
+            ((l.occupied ?? false) || orders.some((o) => o.locationId === l.id && o.status === 'open')),
+        })),
+        count: locations.length,
+      },
+    }),
+  );
+
+  await page.route(`${API_BASE}/orders`, async (route) => {
+    const method = route.request().method();
+    if (method === 'GET') {
+      const open = orders.filter((o) => o.status === 'open').map(serializeOrder);
+      return route.fulfill({ status: 200, json: { success: true, data: open, count: open.length } });
+    }
+    if (method === 'POST') {
+      const body = JSON.parse(route.request().postData() ?? '{}') as { locationId?: number; notes?: string };
+      const location = body.locationId ? locations.find((l) => l.id === body.locationId) ?? null : null;
+      const order: MockOrder = {
+        id: nextOrderId++,
+        locationId: body.locationId ?? null,
+        barPosition: location?.type === 'bar' ? orders.length + 1 : null,
+        takeoutNumber: !body.locationId ? orders.length + 1 : null,
+        status: 'open',
+        ownerUserId: mockUser.id,
+        openedAt: new Date().toISOString(),
+        closedAt: null,
+        notes: body.notes ?? null,
+        location,
+        owner: { id: mockUser.id, displayName: mockUser.displayName },
+        rounds: [],
+        discounts: [],
+      };
+      orders.push(order);
+      return route.fulfill({
+        status: 201,
+        json: { success: true, data: serializeOrder(order), message: 'Order created successfully' },
+      });
+    }
+    return route.fallback();
+  });
+
+  await page.route(new RegExp(`${API_BASE}/orders/(\\d+)$`), async (route) => {
+    if (route.request().method() !== 'GET') return route.fallback();
+    const id = Number(route.request().url().split('/').pop());
+    const order = orders.find((o) => o.id === id);
+    if (!order) {
+      return route.fulfill({ status: 404, json: { success: false, error: 'Order not found' } });
+    }
+    return route.fulfill({ status: 200, json: { success: true, data: serializeOrder(order) } });
+  });
+
+  await page.route(new RegExp(`${API_BASE}/orders/(\\d+)/rounds$`), async (route) => {
+    if (route.request().method() !== 'POST') return route.fallback();
+    const orderId = Number(route.request().url().match(/orders\/(\d+)\/rounds/)?.[1]);
+    const order = orders.find((o) => o.id === orderId);
+    if (!order) {
+      return route.fulfill({ status: 404, json: { success: false, error: 'Order not found' } });
+    }
+    const body = JSON.parse(route.request().postData() ?? '{}') as {
+      items: { productId?: number; customName?: string; unitPrice: number; quantity: number }[];
+    };
+    const round: MockOrderRound = {
+      id: nextRoundId++,
+      orderId,
+      roundNumber: order.rounds.length + 1,
+      userId: 1,
+      createdAt: new Date().toISOString(),
+      items: body.items.map((item) => ({
+        id: nextItemId++,
+        roundId: -1, // set below, once round.id is known
+        productId: item.productId ?? null,
+        customName: item.customName ?? null,
+        unitPrice: item.unitPrice,
+        quantity: item.quantity,
+        subtotal: item.unitPrice * item.quantity,
+        notes: null,
+      })),
+    };
+    round.items.forEach((item) => (item.roundId = round.id));
+    order.rounds.push(round);
+    return route.fulfill({ status: 201, json: { success: true, data: round, message: 'Round added successfully' } });
+  });
+
+  await page.route(new RegExp(`${API_BASE}/orders/(\\d+)/rounds/(\\d+)/items/(\\d+)$`), async (route) => {
+    const method = route.request().method();
+    const match = route.request().url().match(/orders\/(\d+)\/rounds\/(\d+)\/items\/(\d+)/);
+    const [, orderIdStr, roundIdStr, itemIdStr] = match ?? [];
+    const order = orders.find((o) => o.id === Number(orderIdStr));
+    const round = order?.rounds.find((r) => r.id === Number(roundIdStr));
+    const item = round?.items.find((i) => i.id === Number(itemIdStr));
+    if (!order || !round || !item) {
+      return route.fulfill({ status: 404, json: { success: false, error: 'Item not found in this round' } });
+    }
+    if (method === 'PUT') {
+      const body = JSON.parse(route.request().postData() ?? '{}') as { unitPrice?: number; quantity?: number };
+      if (body.unitPrice != null) item.unitPrice = body.unitPrice;
+      if (body.quantity != null) item.quantity = body.quantity;
+      item.subtotal = item.unitPrice * item.quantity;
+      return route.fulfill({ status: 200, json: { success: true, data: item, message: 'Item updated successfully' } });
+    }
+    if (method === 'DELETE') {
+      round.items = round.items.filter((i) => i.id !== item.id);
+      return route.fulfill({ status: 200, json: { success: true, message: 'Item deleted successfully' } });
+    }
+    return route.fallback();
+  });
+
+  await page.route(new RegExp(`${API_BASE}/orders/(\\d+)/rounds/(\\d+)$`), async (route) => {
+    if (route.request().method() !== 'DELETE') return route.fallback();
+    const match = route.request().url().match(/orders\/(\d+)\/rounds\/(\d+)$/);
+    const [, orderIdStr, roundIdStr] = match ?? [];
+    const order = orders.find((o) => o.id === Number(orderIdStr));
+    const round = order?.rounds.find((r) => r.id === Number(roundIdStr));
+    if (!order || !round) {
+      return route.fulfill({ status: 404, json: { success: false, error: 'Round not found for this order' } });
+    }
+    order.rounds = order.rounds.filter((r) => r.id !== round.id);
+    return route.fulfill({ status: 200, json: { success: true, message: 'Round deleted successfully' } });
+  });
+
+  await page.route(new RegExp(`${API_BASE}/orders/(\\d+)/cancel$`), async (route) => {
+    if (route.request().method() !== 'POST') return route.fallback();
+    const id = Number(route.request().url().match(/orders\/(\d+)\/cancel/)?.[1]);
+    const order = orders.find((o) => o.id === id);
+    if (!order) {
+      return route.fulfill({ status: 404, json: { success: false, error: 'Order not found' } });
+    }
+    order.status = 'cancelled';
+    order.closedAt = new Date().toISOString();
+    return route.fulfill({ status: 200, json: { success: true, data: serializeOrder(order), message: 'Order cancelled successfully' } });
   });
 }

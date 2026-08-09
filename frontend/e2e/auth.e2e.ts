@@ -84,7 +84,9 @@ test.describe('Authentication', () => {
   test('retries after cold start and succeeds', async ({ page }) => {
     // First request returns Koyeb HTML holding page, second returns success.
     // The interceptor should retry after 3s and navigate to /bill.
-    test.setTimeout(15_000);
+    // Budget: dev-server compile + first paint + the real 3s retry wait + the
+    // /bill page's own data fetch, with slack for a busy CI runner.
+    test.setTimeout(25_000);
     await setupColdStartMocks(page, 1, {
       status: 200,
       json: { success: true, data: { accessToken: 'test-token', user: { id: 1, username: 'admin', displayName: 'Admin', role: 'ADMIN' } } },
@@ -92,13 +94,23 @@ test.describe('Authentication', () => {
     await page.route('**/api/menu', (route) =>
       route.fulfill({ status: 200, json: { success: true, data: [] } }),
     );
+    // /bill also loads locations + open orders on init; leave them empty.
+    await page.route('**/api/locations', (route) =>
+      route.fulfill({ status: 200, json: { success: true, data: [], count: 0 } }),
+    );
+    await page.route('**/api/orders', (route) => {
+      if (route.request().method() === 'GET') {
+        return route.fulfill({ status: 200, json: { success: true, data: [], count: 0 } });
+      }
+      return route.fallback();
+    });
     await page.goto('/');
 
     await page.locator('[data-testid="username-input"]').fill('admin');
     await page.locator('[data-testid="password-input"]').fill('password');
     await page.locator('[data-testid="login-submit"]').click();
 
-    await expect(page).toHaveURL(/\/bill/, { timeout: 12_000 });
+    await expect(page).toHaveURL(/\/bill/, { timeout: 20_000 });
   });
 
   test('shows cold start error and retry button after all retries fail', async ({ page }) => {

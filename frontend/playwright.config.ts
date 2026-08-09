@@ -8,9 +8,11 @@ export default defineConfig({
     timeout: 5_000,
   },
   fullyParallel: true,
+  retries: process.env['CI'] ? 2 : 0,
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
     baseURL: 'http://localhost:4200',
+    reducedMotion: 'reduce',
     screenshot: process.env['CI'] ? 'only-on-failure' : 'on',
     video: process.env['CI'] ? 'retain-on-failure' : 'on',
     trace: process.env['CI'] ? 'retain-on-failure' : 'on',

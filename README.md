@@ -145,11 +145,18 @@ ADMIN_DEFAULT_PASSWORD=admin123
 - `GET /api/products` - List all products with raw `price` + `categories` array (supports `?active=true`)
 - `GET /api/products/:id` - Get a product by ID
 - `GET /api/products/:id/price` - Get effective price (direct or inherited from category)
-- `GET /api/locations` - List all locations (supports `?active=true`)
+- `GET /api/locations` - List all locations (supports `?active=true`); each location includes `occupied` (a `table` is occupied while it has an open order; bars are never reported as occupied)
 - `GET /api/extras` - List all active custom extras
 - `POST /api/extras` - Create custom extra
 - `PUT /api/extras/:id` - Update custom extra
 - `DELETE /api/extras/:id` - Soft delete (deactivate) extra. Hard delete with `?permanent=true`
+- `GET /api/orders` - List open orders (supports `?mine=true` to filter by the authenticated user)
+- `GET /api/orders/:id` - Full order detail: location, owner, rounds with items, discounts, and computed totals
+- `POST /api/orders` - Open a new order. Send `locationId` to seat it at a table or bar (service type is derived from the location's `type`), or omit it for a takeout order. Bar orders and takeout orders receive an auto-assigned daily consecutive number
+- `POST /api/orders/:id/rounds` - Add a round of items (catalog products or custom items) to an open order
+- `PUT /api/orders/:id/rounds/:roundId/items/:itemId` - Edit an item's quantity, unit price, or notes
+- `DELETE /api/orders/:id/rounds/:roundId/items/:itemId` - Remove an item from a round
+- `POST /api/orders/:id/cancel` - Cancel an open order
 
 ### Admin-only Endpoints
 
@@ -210,13 +217,17 @@ ADMIN_DEFAULT_PASSWORD=admin123
 
 ### Data Model
 
-The system uses 5 tables:
+The system uses 9 tables:
 
 1. **categories** - Product categories with optional base price
 2. **products** - Individual products that can inherit price from their category or define their own
 3. **users** - Staff accounts with roles (ADMIN, WAITER) for authentication
 4. **custom_extras** - Reusable non-catalog items (extras) with a required default price, created by any authenticated user
 5. **locations** - Physical restaurant locations: tables and bar (type enforced via DB CHECK constraint). Bar orders receive a system-assigned numeric identifier (daily consecutive) at order-creation time; no separate identifier table is required.
+6. **orders** - Persistent bill per location/bar seat/takeout ticket; tracks `status` (open/charged/cancelled), owner waiter, and the daily-consecutive `bar_position`/`takeout_number` (reset at local midnight, currently hardcoded to `America/Mexico_City` — see [#65](https://github.com/LeonOmega2712/MEPPOS/issues/65) for making this configurable)
+7. **order_rounds** - Each batch of items added to an order, numbered sequentially per order
+8. **order_items** - Catalog products or custom items within a round; `subtotal` is a Postgres generated column (`unit_price * quantity`)
+9. **order_discounts** - Discounts applied at checkout (fixed amount or percentage) — not yet wired to an endpoint; charge/checkout is a later issue
 
 ---
 
@@ -265,7 +276,8 @@ The system uses 5 tables:
 - ✅ SWR caching for settings tabs (categories, products, users, locations, extras) — instant tab switches, background revalidation, manual refresh
 - ✅ Locations management (DB migrations, backend API, admin UI with drag-and-drop reorder)
 - ✅ Custom extras management (DB migration, backend API, admin UI)
-- ⬜ Persistent orders with multiple rounds
+- ✅ Persistent orders with multiple rounds (backend API: open/list/detail, add round, edit/delete items, cancel; location occupancy on `GET /api/locations`)
+- ✅ Orders frontend (active orders view with mine/all filter and 30s transfer-detection polling, new order flow, order detail view with round edit/delete and owner banner)
 - ⬜ Discounts at checkout (fixed/percentage)
 - ⬜ Account ownership and transfer between waiters
 - ⬜ Kitchen ticket printing (per round)
@@ -344,8 +356,8 @@ npm run prisma:seed
 
 ```bash
 backend/src/
-├── controllers/       # HTTP handlers (auth, user, category, product, menu, location, custom-extra)
-├── lib/              # Shared utilities (Prisma client, display-order helpers, JWT, error handling)
+├── controllers/       # HTTP handlers (auth, user, category, product, menu, location, custom-extra, order)
+├── lib/              # Shared utilities (Prisma client, display-order helpers, JWT, error handling, business-day)
 ├── middleware/        # Express middleware (auth, authorize)
 ├── services/         # Business logic
 ├── types/            # Zod schemas and TypeScript types

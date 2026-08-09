@@ -8,6 +8,8 @@ export interface Location {
   displayOrder: number;
   createdAt: string;
   updatedAt: string | null;
+  /** True when a `table` location has an open order. Bars are never reported as occupied. */
+  occupied?: boolean;
 }
 
 export interface CreateLocationPayload {

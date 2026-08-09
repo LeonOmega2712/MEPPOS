@@ -6,3 +6,16 @@ export type { User, Role, CreateUserPayload, UpdateUserPayload, UserDraft } from
 export { ROLE_LABELS } from './user.model';
 export type { Location, LocationType, LocationDraft, CreateLocationPayload, UpdateLocationPayload } from './location.model';
 export type { CustomExtra, CustomExtraDraft, CreateCustomExtraPayload, UpdateCustomExtraPayload } from './custom-extra.model';
+export type {
+  Order,
+  OrderStatus,
+  OrderOwner,
+  OrderRound,
+  OrderItem,
+  OrderDiscount,
+  DiscountType,
+  CreateOrderPayload,
+  OrderItemInput,
+  AddRoundPayload,
+  UpdateOrderItemPayload,
+} from './order.model';

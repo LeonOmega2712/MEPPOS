@@ -201,7 +201,7 @@ export class ProductManagerComponent implements OnInit {
     this.productService.deleteProduct(product.id).subscribe({
       next: () => {
         this.saving.set(null);
-        this.clearDraftAndCollapse(product.id);
+        this.resetDraftAndCollapse(product.id);
         this.toastService.success('Producto desactivado');
         this.productService.refreshProducts();
       },
@@ -225,7 +225,7 @@ export class ProductManagerComponent implements OnInit {
     this.productService.deleteProduct(product.id, true).subscribe({
       next: () => {
         this.saving.set(null);
-        this.clearDraftAndCollapse(product.id);
+        this.deleteDraftAndCollapse(product.id);
         this.toastService.success('Producto eliminado permanentemente');
         this.productService.refreshProducts();
       },
@@ -395,7 +395,20 @@ export class ProductManagerComponent implements OnInit {
     return this.toNumber(price);
   }
 
-  private clearDraftAndCollapse(productId: number): void {
+  /**
+   * Collapses the product's expanded panel after deactivating it and resets its draft to the
+   * saved values (rather than deleting it) so hasDraftChanges() reports clean and switching rows
+   * doesn't warn about unsaved changes. Deleting it would crash the active-product template on
+   * the render that happens before refreshProducts() resolves and the product is still bound.
+   */
+  private resetDraftAndCollapse(productId: number): void {
+    this.resetDraft(productId);
+    if (this.expandedProductId() === productId) this.expandedProductId.set(null);
+    if (this.expandedInactiveProductId() === productId) this.expandedInactiveProductId.set(null);
+  }
+
+  /** Collapses and drops the draft entirely for a permanently deleted product (the inactive-list template never reads drafts, so this is safe). */
+  private deleteDraftAndCollapse(productId: number): void {
     delete this.drafts[productId];
     if (this.expandedProductId() === productId) this.expandedProductId.set(null);
     if (this.expandedInactiveProductId() === productId) this.expandedInactiveProductId.set(null);
