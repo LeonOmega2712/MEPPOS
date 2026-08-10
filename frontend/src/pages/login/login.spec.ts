@@ -1,5 +1,5 @@
 import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -10,6 +10,7 @@ import { COLD_START_STATUS } from '../../core/interceptors/server-error.intercep
 describe('LoginPage', () => {
   let fixture: ComponentFixture<LoginPage>;
   let component: LoginPage;
+  let router: Router;
   let loginSubject: Subject<unknown>;
   let authServiceMock: { login: ReturnType<typeof vi.fn> };
 
@@ -23,13 +24,14 @@ describe('LoginPage', () => {
     await TestBed.configureTestingModule({
       imports: [LoginPage],
       providers: [
-        provideRouter([]),
+        provideRouter([{ path: 'bill', children: [] }]),
         { provide: AuthService, useValue: authServiceMock },
       ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(LoginPage);
     component = fixture.componentInstance;
+    router = TestBed.inject(Router);
     fixture.detectChanges();
   });
 
@@ -165,6 +167,7 @@ describe('LoginPage', () => {
     });
 
     it('hint is cleared when login succeeds', async () => {
+      const navigateSpy = vi.spyOn(router, 'navigate');
       vi.useFakeTimers();
       submitForm();
 
@@ -174,6 +177,7 @@ describe('LoginPage', () => {
       loginSubject.next({});
       loginSubject.complete();
       expect(component.coldStartHint()).toBe(false);
+      expect(navigateSpy).toHaveBeenCalledWith(['/bill']);
     });
 
     it('hint is cleared when login fails', async () => {
