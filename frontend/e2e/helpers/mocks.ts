@@ -123,6 +123,21 @@ export async function setupLoginFailMocks(page: Page): Promise<void> {
   );
 }
 
+export async function setupLoginRateLimitMocks(page: Page, retryAfterSeconds = 5): Promise<void> {
+  await mockRefreshFail(page);
+
+  await page.route(`${API_BASE}/auth/login`, (route) =>
+    route.fulfill({
+      status: 429,
+      json: {
+        success: false,
+        error: 'Too many failed login attempts, please try again later',
+        retryAfterSeconds,
+      },
+    }),
+  );
+}
+
 export async function setupNetworkErrorMocks(page: Page): Promise<void> {
   await mockRefreshFail(page);
 

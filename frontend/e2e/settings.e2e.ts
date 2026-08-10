@@ -6,7 +6,7 @@ import { setupApiMocks, setupAuthenticatedMocks, setupSettingsMocks } from './he
 async function loginAsAdmin(page: Page): Promise<void> {
   await page.goto('/');
   await page.locator('[data-testid="username-input"]').fill('admin');
-  await page.locator('[data-testid="password-input"]').fill('admin123');
+  await page.locator('[data-testid="password-input"]').fill('test-password-123');
   await page.locator('[data-testid="login-submit"]').click();
   await page.waitForURL('**/bill');
 }

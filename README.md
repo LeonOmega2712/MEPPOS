@@ -19,7 +19,7 @@ MEPPOS/
 
 ### Prerequisites
 
-- Node.js 18+
+- Node.js 24+
 - Docker and Docker Compose (for PostgreSQL)
 - npm
 
@@ -117,13 +117,26 @@ DIRECT_URL="postgresql://postgres:postgres@localhost:5432/meppos_db"
 
 PORT=3000
 NODE_ENV=development
+
+# Number of reverse-proxy hops in front of the app (used for req.ip and rate
+# limiting). Leave at 0 locally. In Koyeb, set to 1.
+TRUST_PROXY_HOPS=0
+
 FRONTEND_URL=http://localhost:4200
 
 # Authentication (Phase 2)
+# Required unless NODE_ENV=development (dev has an insecure fallback and the app refuses to start otherwise)
 JWT_ACCESS_SECRET=your-access-secret
 JWT_REFRESH_SECRET=your-refresh-secret
-ADMIN_DEFAULT_PASSWORD=admin123
+ADMIN_DEFAULT_PASSWORD=
 ```
+
+`ADMIN_DEFAULT_PASSWORD` is required and has no default: `prisma/seed.ts` throws if it is unset
+or shorter than 12 characters. Re-seeding does not overwrite an existing admin's password (the
+seed uses an upsert with an empty `update`); to rotate it, use `PUT /api/users/:id` instead.
+
+`POST /api/auth/login` is rate-limited to 10 failed attempts per IP per 15 minutes (successful
+logins don't count). See [Locked out of login](#locked-out-of-login) if it needs to be lifted.
 
 ---
 
@@ -203,7 +216,7 @@ ADMIN_DEFAULT_PASSWORD=admin123
 
 ### Backend
 
-- Node.js 18+
+- Node.js 24+
 - Express.js 5.2.1
 - TypeScript 5.9.3
 - Prisma ORM 7.3.0
@@ -325,6 +338,21 @@ npm run db:reset
 npm run prisma:migrate
 npm run prisma:seed
 ```
+
+### Locked out of login
+
+`POST /api/auth/login` rejects with `429` after 10 failed attempts from the same IP within 15
+minutes (successful logins don't count). The counter lives in the backend process's memory, so
+**restarting the service clears every lock**, at the cost of a ~30s cold start:
+
+```bash
+curl -X POST \
+  "https://app.koyeb.com/v1/services/$KOYEB_SERVICE_ID/redeploy" \
+  -H "Authorization: Bearer $KOYEB_API_TOKEN"
+```
+
+Or via the dashboard: Koyeb → your service → **Redeploy**. `KOYEB_SERVICE_ID` and
+`KOYEB_API_TOKEN` are the same values used by the CI redeploy step (`.github/workflows/ci.yml`).
 
 ---
 
