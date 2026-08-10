@@ -3,6 +3,7 @@ import {
   setupApiMocks,
   setupAuthenticatedMocks,
   setupLoginFailMocks,
+  setupLoginRateLimitMocks,
   setupNetworkErrorMocks,
   setupColdStartMocks,
   setupHangingRequestMocks,
@@ -129,6 +130,25 @@ test.describe('Authentication', () => {
     await expect(page.locator('[data-testid="login-error"]')).toBeVisible({ timeout: 15_000 });
     await expect(page.locator('[data-testid="login-error"]')).toContainText('Usuario o contraseña incorrectos');
     await expect(page.locator('[data-testid="login-retry"]')).not.toBeVisible();
+  });
+
+  test('shows a countdown and disables submit after a 429 rate limit response', async ({ page }) => {
+    await setupLoginRateLimitMocks(page, 3);
+    await page.goto('/');
+
+    await page.locator('[data-testid="username-input"]').fill('admin');
+    await page.locator('[data-testid="password-input"]').fill('wrong');
+    await page.locator('[data-testid="login-submit"]').click();
+
+    await expect(page.locator('[data-testid="login-error"]')).toBeVisible();
+    await expect(page.locator('[data-testid="login-error"]')).toContainText(
+      'Demasiados intentos fallidos',
+    );
+    await expect(page.locator('[data-testid="login-error"]')).toContainText('0:03');
+    await expect(page.locator('[data-testid="login-submit"]')).toBeDisabled();
+
+    await expect(page.locator('[data-testid="login-error"]')).not.toBeVisible({ timeout: 5_000 });
+    await expect(page.locator('[data-testid="login-submit"]')).toBeEnabled();
   });
 
   test('authenticated user accessing /login is redirected to /bill', async ({ page }) => {
