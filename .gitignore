@@ -140,6 +140,27 @@ Thumbs.db
 /notes/
 
 # =========================================
+# CLAUDE CODE (machine-local permissions/config)
+# =========================================
+
+.claude/settings.local.json
+
+# =========================================
+# SECRETS (env files anywhere, keys, credentials)
+# =========================================
+
+.env
+frontend/.env*
+backend/.env.production
+!backend/.env.example
+!backend/.env.test
+
+*.pem
+*.key
+*.p12
+*credentials*.json
+
+# =========================================
 # MISC
 # =========================================
 
