@@ -99,7 +99,7 @@ describe('GET /api/users', () => {
     await api.post('/api/users', validUser);
     await api.post('/api/users', {
       username: 'admin1',
-      password: 'admin123',
+      password: 'test-password-123',
       displayName: 'Admin One',
       role: 'ADMIN',
     });

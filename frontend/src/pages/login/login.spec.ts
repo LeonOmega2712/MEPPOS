@@ -101,6 +101,57 @@ describe('LoginPage', () => {
     });
   });
 
+  describe('429 rate limit block', () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('shows the retry countdown from retryAfterSeconds and disables submit', () => {
+      vi.useFakeTimers();
+      submitForm();
+      loginSubject.error(new HttpErrorResponse({ status: 429, error: { retryAfterSeconds: 5 } }));
+
+      expect(component.blockedSeconds()).toBe(5);
+      expect(component.error()).toContain('0:05');
+      expect(component.retryable()).toBe(false);
+    });
+
+    it('counts down every second and clears the error when it reaches zero', () => {
+      vi.useFakeTimers();
+      submitForm();
+      loginSubject.error(new HttpErrorResponse({ status: 429, error: { retryAfterSeconds: 2 } }));
+
+      vi.advanceTimersByTime(1000);
+      expect(component.blockedSeconds()).toBe(1);
+      expect(component.error()).toContain('0:01');
+
+      vi.advanceTimersByTime(1000);
+      expect(component.blockedSeconds()).toBeNull();
+      expect(component.error()).toBeNull();
+    });
+
+    it('falls back to a default duration when retryAfterSeconds is missing', () => {
+      vi.useFakeTimers();
+      submitForm();
+      loginSubject.error(new HttpErrorResponse({ status: 429, error: {} }));
+
+      expect(component.blockedSeconds()).toBe(15 * 60);
+    });
+
+    it('blocks a new submit attempt while the countdown is active', () => {
+      vi.useFakeTimers();
+      submitForm();
+      loginSubject.error(new HttpErrorResponse({ status: 429, error: { retryAfterSeconds: 60 } }));
+
+      authServiceMock.login.mockClear();
+      component.username = 'admin';
+      component.password = 'password';
+      component.onSubmit();
+
+      expect(authServiceMock.login).not.toHaveBeenCalled();
+    });
+  });
+
   describe('cold start hint timer', () => {
     it('hint appears after 4000ms of unresolved loading', async () => {
       vi.useFakeTimers();

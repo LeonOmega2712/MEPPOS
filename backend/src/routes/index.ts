@@ -8,6 +8,7 @@ import { locationController } from '../controllers/location.controller';
 import { customExtraController } from '../controllers/custom-extra.controller';
 import { orderController } from '../controllers/order.controller';
 import { authenticate, authorize } from '../middleware/auth.middleware';
+import { loginRateLimiter } from '../middleware/rate-limit';
 
 const router = Router();
 
@@ -19,7 +20,7 @@ const router = Router();
 router.get('/menu', menuController.getFullMenu.bind(menuController));
 
 // Auth
-router.post('/auth/login', authController.login.bind(authController));
+router.post('/auth/login', loginRateLimiter, authController.login.bind(authController));
 router.post('/auth/refresh', authController.refresh.bind(authController));
 router.post('/auth/logout', authController.logout.bind(authController));
 
