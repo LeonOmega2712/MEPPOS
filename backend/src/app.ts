@@ -10,6 +10,15 @@ dotenv.config({ quiet: true });
 
 const app = express();
 
+// Number of reverse-proxy hops in front of the app. Koyeb terminates TLS with a
+// single hop; set TRUST_PROXY_HOPS=1 there so req.ip (and the rate limiter's key)
+// resolve to the real client IP. Defaults to 0: trusting a hop that doesn't exist
+// would let anyone spoof X-Forwarded-For and bypass the limiter.
+const trustProxyHops = Number(process.env.TRUST_PROXY_HOPS ?? 0);
+if (Number.isInteger(trustProxyHops) && trustProxyHops > 0) {
+  app.set('trust proxy', trustProxyHops);
+}
+
 // ============================================
 // MIDDLEWARES
 // ============================================

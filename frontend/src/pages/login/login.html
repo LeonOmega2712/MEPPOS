@@ -50,7 +50,7 @@
           type="submit"
           data-testid="login-submit"
           class="btn btn-primary w-full"
-          [disabled]="loading() || !username || !password"
+          [disabled]="loading() || !username || !password || blockedSeconds() !== null"
         >
           @if (loading()) {
             <span class="loading loading-spinner loading-sm"></span>
