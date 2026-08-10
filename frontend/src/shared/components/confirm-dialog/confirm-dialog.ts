@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ConfirmDialogService } from '../../../core/services/confirm-dialog.service';
 import { IconComponent } from '../icon';
@@ -6,6 +6,7 @@ import { IconComponent } from '../icon';
 @Component({
   selector: 'app-confirm-dialog',
   imports: [FormsModule, IconComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   templateUrl: './confirm-dialog.html',
 })
 export class ConfirmDialogComponent {

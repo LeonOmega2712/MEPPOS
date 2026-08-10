@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import {
   ThemeService,
   DAISY_THEMES,
@@ -7,6 +7,7 @@ import {
 
 @Component({
   selector: 'app-theme-selector',
+  changeDetection: ChangeDetectionStrategy.Eager,
   templateUrl: './theme-selector.html',
 })
 export class ThemeSelectorComponent {

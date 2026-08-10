@@ -1,4 +1,4 @@
-import { Component, ElementRef, inject, viewChild } from '@angular/core';
+import { Component, ElementRef, inject, viewChild, ChangeDetectionStrategy } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { ThemeService } from '../core/services/theme.service';
 import { SplashService } from '../core/services/splash.service';
@@ -11,6 +11,7 @@ import { ConfirmDialogComponent } from '../shared/components/confirm-dialog';
   selector: 'app-root',
   imports: [RouterOutlet, RouterLink, RouterLinkActive, ToastComponent, ConfirmDialogComponent],
   templateUrl: './app.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './app.css'
 })
 export class App {

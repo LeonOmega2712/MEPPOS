@@ -1,4 +1,4 @@
-import { Component, computed, DestroyRef, effect, ElementRef, inject, OnInit, signal, viewChild, viewChildren } from '@angular/core';
+import { Component, computed, DestroyRef, effect, ElementRef, inject, OnInit, signal, viewChild, viewChildren, ChangeDetectionStrategy } from '@angular/core';
 import { forkJoin, type Observable } from 'rxjs';
 import { MenuService } from '../../core/services/menu.service';
 import { SplashService } from '../../core/services/splash.service';
@@ -24,6 +24,7 @@ interface BillItem {
   selector: 'app-bill-page',
   imports: [IconComponent, NumericInputDirective, LocationPickerComponent],
   templateUrl: './bill.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './bill.css',
 })
 export class BillPage implements OnInit, HasUnsavedChanges {

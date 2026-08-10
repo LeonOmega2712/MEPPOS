@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { ToastService, type ToastType } from '../../../core/services/toast.service';
 
 const ALERT_CLASS: Record<ToastType, string> = {
@@ -10,6 +10,7 @@ const ALERT_CLASS: Record<ToastType, string> = {
 
 @Component({
   selector: 'app-toast',
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <div class="toast toast-end toast-bottom z-50">
       @for (toast of toastService.toasts(); track toast.id) {
