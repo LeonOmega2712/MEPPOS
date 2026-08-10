@@ -8,11 +8,11 @@ export interface TokenPayload {
   role: Role;
 }
 
-const isProduction = process.env.NODE_ENV === 'production';
+const isDevelopment = process.env.NODE_ENV === 'development';
 
-if (isProduction && (!process.env.JWT_ACCESS_SECRET || !process.env.JWT_REFRESH_SECRET)) {
+if (!isDevelopment && (!process.env.JWT_ACCESS_SECRET || !process.env.JWT_REFRESH_SECRET)) {
   throw new Error(
-    'JWT_ACCESS_SECRET and JWT_REFRESH_SECRET must be set in production',
+    'JWT_ACCESS_SECRET and JWT_REFRESH_SECRET must be set unless NODE_ENV=development',
   );
 }
 
