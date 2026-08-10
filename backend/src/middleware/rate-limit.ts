@@ -1,4 +1,4 @@
-import rateLimit from 'express-rate-limit';
+import rateLimit, { type AugmentedRequest } from 'express-rate-limit';
 
 // Tighter limit than the global limiter — login is the highest-value target
 // for credential stuffing / brute force, so it gets its own, stricter budget.
@@ -12,7 +12,7 @@ export const loginRateLimiter = rateLimit({
   standardHeaders: 'draft-8',
   legacyHeaders: false,
   handler: (req, res) => {
-    const resetTime = req.rateLimit?.resetTime;
+    const resetTime = (req as AugmentedRequest).rateLimit?.resetTime;
     const retryAfterSeconds = resetTime
       ? Math.max(1, Math.ceil((resetTime.getTime() - Date.now()) / 1000))
       : undefined;

@@ -19,7 +19,7 @@ MEPPOS/
 
 ### Prerequisites
 
-- Node.js 18+
+- Node.js 24+
 - Docker and Docker Compose (for PostgreSQL)
 - npm
 
@@ -216,7 +216,7 @@ logins don't count). See [Locked out of login](#locked-out-of-login) if it needs
 
 ### Backend
 
-- Node.js 18+
+- Node.js 24+
 - Express.js 5.2.1
 - TypeScript 5.9.3
 - Prisma ORM 7.3.0
