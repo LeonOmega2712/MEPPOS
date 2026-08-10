@@ -26,6 +26,9 @@
   },
   "private": true,
   "packageManager": "npm@10.9.2",
+  "engines": {
+    "node": ">=24.15.0"
+  },
   "dependencies": {
     "@angular/cdk": "^21.2.4",
     "@angular/common": "^21.2.6",
