@@ -58,7 +58,7 @@
             <button
               class="btn btn-soft btn-success"
               title="Guardar"
-              [disabled]="!drafts[extra.id]?.name?.trim() || !isValidDraftPrice(drafts[extra.id]?.defaultPrice) || !hasDraftChanges(extra.id) || saving() === extra.id"
+              [disabled]="!drafts[extra.id]?.name?.trim() || !isValidDraftPrice($safeNavigationMigration(drafts[extra.id]?.defaultPrice)) || !hasDraftChanges(extra.id) || saving() === extra.id"
               (click)="saveExtra(extra)"
             >
               @if (saving() === extra.id) {

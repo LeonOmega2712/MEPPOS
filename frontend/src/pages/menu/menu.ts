@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, signal, ChangeDetectionStrategy } from '@angular/core';
 import { MenuService } from '../../core/services/menu.service';
 import { SplashService } from '../../core/services/splash.service';
 import type { MenuCategory } from '../../core/models';
@@ -7,6 +7,7 @@ import type { MenuCategory } from '../../core/models';
   selector: 'app-menu-page',
   imports: [],
   templateUrl: './menu.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './menu.css',
 })
 export class MenuPage implements OnInit {

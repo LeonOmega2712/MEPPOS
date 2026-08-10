@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, OnInit, signal, untracked } from '@angular/core';
+import { Component, computed, effect, inject, OnInit, signal, untracked, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
   CdkDropList,
@@ -19,6 +19,7 @@ import type { Category, CategoryDraft, CreateCategoryPayload, UpdateCategoryPayl
   selector: 'app-category-manager',
   imports: [FormsModule, CdkDropList, CdkDrag, CdkDragHandle, CdkDragPlaceholder, IconComponent, CurrencyInputDirective],
   templateUrl: './category-manager.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: '../../../../shared/styles/manager.css',
 })
 export class CategoryManagerComponent implements OnInit {

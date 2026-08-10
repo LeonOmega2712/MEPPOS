@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, OnInit, signal, untracked } from '@angular/core';
+import { Component, computed, effect, inject, OnInit, signal, untracked, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { UserService } from '../../../../core/services/user.service';
 import { AuthService } from '../../../../core/services/auth.service';
@@ -11,6 +11,7 @@ import type { User, UserDraft, CreateUserPayload, UpdateUserPayload } from '../.
 @Component({
   selector: 'app-user-manager',
   imports: [FormsModule, IconComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   templateUrl: './user-manager.html',
 })
 export class UserManagerComponent implements OnInit {

@@ -1,4 +1,4 @@
-import { Component, computed, EventEmitter, inject, Input, OnInit, Output, signal } from '@angular/core';
+import { Component, computed, EventEmitter, inject, Input, OnInit, Output, signal, ChangeDetectionStrategy } from '@angular/core';
 import { LocationService } from '../../../../core/services/location.service';
 import type { Location } from '../../../../core/models';
 
@@ -8,6 +8,7 @@ export type LocationSelection = { locationId: number } | { takeout: true };
   selector: 'app-location-picker',
   imports: [],
   templateUrl: './location-picker.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './location-picker.css',
 })
 export class LocationPickerComponent implements OnInit {

@@ -1,4 +1,4 @@
-import { Component, input } from '@angular/core';
+import { Component, input, ChangeDetectionStrategy } from '@angular/core';
 
 export type IconName =
   | 'check-circle'
@@ -102,6 +102,7 @@ export type IconName =
       }
     </svg>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './icon.css',
 })
 export class IconComponent {
