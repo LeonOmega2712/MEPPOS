@@ -4,6 +4,7 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    open-pull-requests-limit: 10
     groups:
       actions:
         patterns: ["*"]
@@ -12,7 +13,10 @@ updates:
     directory: /frontend
     schedule:
       interval: weekly
+    open-pull-requests-limit: 10
     groups:
+      angular:
+        patterns: ["@angular/*", "@angular-devkit/*"]
       frontend-minor-patch:
         update-types: [minor, patch]
 
@@ -20,6 +24,7 @@ updates:
     directory: /backend
     schedule:
       interval: weekly
+    open-pull-requests-limit: 10
     groups:
       backend-minor-patch:
         update-types: [minor, patch]
