@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, OnInit, signal, untracked } from '@angular/core';
+import { Component, computed, effect, inject, OnInit, signal, untracked, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CustomExtraService } from '../../../../core/services/custom-extra.service';
 import { ToastService } from '../../../../core/services/toast.service';
@@ -11,6 +11,7 @@ import type { CustomExtra, CustomExtraDraft, CreateCustomExtraPayload } from '..
   selector: 'app-custom-extra-manager',
   imports: [FormsModule, IconComponent, CurrencyInputDirective],
   templateUrl: './custom-extra-manager.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: '../../../../shared/styles/manager.css',
 })
 export class CustomExtraManagerComponent implements OnInit {

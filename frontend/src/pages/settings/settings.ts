@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal, viewChild } from '@angular/core';
+import { Component, inject, OnInit, signal, viewChild, ChangeDetectionStrategy } from '@angular/core';
 import { ThemeSelectorComponent } from './components/theme-selector/theme-selector';
 import { CategoryManagerComponent } from './components/category-manager/category-manager';
 import { ProductManagerComponent } from './components/product-manager/product-manager';
@@ -20,6 +20,7 @@ const TAB_ORDER: SettingsTab[] = ['categories', 'products', 'users', 'locations'
   selector: 'app-settings-page',
   imports: [ThemeSelectorComponent, CategoryManagerComponent, ProductManagerComponent, UserManagerComponent, LocationManagerComponent, CustomExtraManagerComponent, IconComponent],
   templateUrl: './settings.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './settings.css',
 })
 export class SettingsPage implements HasUnsavedChanges, OnInit {

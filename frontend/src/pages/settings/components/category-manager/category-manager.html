@@ -85,7 +85,7 @@
                 class="btn btn-soft btn-success"
                 title="Guardar"
                 aria-label="Guardar categoría"
-                [disabled]="!drafts[category.id]?.name?.trim() || !isValidDraftPrice(drafts[category.id]?.basePrice) || !hasDraftChanges(category.id) || saving() === category.id"
+                [disabled]="!drafts[category.id]?.name?.trim() || !isValidDraftPrice($safeNavigationMigration(drafts[category.id]?.basePrice)) || !hasDraftChanges(category.id) || saving() === category.id"
                 (click)="saveCategory(category)"
               >
                 @if (saving() === category.id) {
