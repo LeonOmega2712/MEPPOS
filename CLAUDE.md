@@ -42,6 +42,7 @@ Persistent bill management with rounds, kitchen/final ticket printing, and locat
 - **Backend:** Node.js 24+, Express.js 5.2.1, TypeScript 5.9.3, Prisma ORM 7.3.0, Zod 4.3.6, bcryptjs, jsonwebtoken, helmet, express-rate-limit, cookie-parser
 - **Database:** PostgreSQL 15+ (tables: `categories`, `products`, `users`, `custom_extras`, `locations`)
 - **Deploy:** Docker + docker-compose (dev), Koyeb (backend), Netlify/Vercel (frontend)
+- **CI/CD failure analysis:** `.github/workflows/claude-ci-failure-analysis.yml` posts a read-only Claude analysis (PR or commit comment) when the `CI/CD` workflow fails; it never writes to the repo, re-runs jobs, or touches Koyeb/Vercel.
 
 ### Data Model
 

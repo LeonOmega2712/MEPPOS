@@ -284,6 +284,7 @@ The system uses 9 tables:
 - ✅ Frontend unit tests with Vitest (interceptors, login page logic)
 - ✅ GitHub Actions CI pipeline (backend + frontend unit + E2E jobs on every push)
 - ✅ CD pipeline (auto-deploy to Koyeb + Vercel on push to master after CI passes)
+- ✅ Automatic CI/CD failure analysis with Claude, posted as a PR or commit comment
 - ✅ PWA auto-update: SwUpdate prompt with forced reload on new version
 - ✅ Detailed login error messages with Koyeb cold start auto-retry (exponential backoff)
 - ✅ SWR caching for settings tabs (categories, products, users, locations, extras) — instant tab switches, background revalidation, manual refresh
@@ -353,6 +354,24 @@ curl -X POST \
 
 Or via the dashboard: Koyeb → your service → **Redeploy**. `KOYEB_SERVICE_ID` and
 `KOYEB_API_TOKEN` are the same values used by the CI redeploy step (`.github/workflows/ci.yml`).
+
+### CI/CD failure analysis
+
+`.github/workflows/claude-ci-failure-analysis.yml` reacts to a **failed** run of the `CI/CD`
+workflow (any of `backend`, `frontend`, `deploy-backend`, `deploy-frontend`) and posts an
+automated analysis of the failing job/step, with file references and a proposed fix described
+in prose — never applied.
+
+- **PR failure** (`backend`/`frontend` job) → a sticky comment on the PR, updated in place on
+  every subsequent failing push instead of stacking new comments.
+- **Push-to-`master` failure** (CI or CD, since `deploy-backend`/`deploy-frontend` only run on
+  `master`) → a comment on the breaking commit.
+
+The workflow is strictly read-only: it never edits, commits, pushes, re-runs a job, or touches
+Koyeb/Vercel/the database. It requires the **Claude GitHub App** installed on the repository and
+a `CLAUDE_CODE_OAUTH_TOKEN` repository secret; without the secret it logs a notice and skips.
+`workflow_run` events from forked PRs are ignored so fork contributors never reach the analysis
+step or its secrets.
 
 ---
 
