@@ -362,10 +362,13 @@ workflow (any of `backend`, `frontend`, `deploy-backend`, `deploy-frontend`) and
 automated analysis of the failing job/step, with file references and a proposed fix described
 in prose — never applied.
 
-- **PR failure** (`backend`/`frontend` job) → a sticky comment on the PR, updated in place on
-  every subsequent failing push instead of stacking new comments.
+- **PR failure** (`backend`/`frontend` job) → a comment on the PR, `@mention`-ing the PR author.
 - **Push-to-`master` failure** (CI or CD, since `deploy-backend`/`deploy-frontend` only run on
-  `master`) → a comment on the breaking commit.
+  `master`) → a comment on the breaking commit, `@mention`-ing whoever pushed it.
+- A repeat failure **deletes the previous analysis comment and posts a new one**, rather than
+  editing it in place — GitHub does not send a notification for an edited comment (nor for a
+  mention added by an edit), so this is the only way a repeat failure reliably reaches the
+  mentioned person's GitHub inbox. Exactly one analysis comment stays visible at a time.
 
 The workflow is strictly read-only: it never edits, commits, pushes, re-runs a job, or touches
 Koyeb/Vercel/the database. It requires the **Claude GitHub App** installed on the repository and
