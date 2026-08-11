@@ -1,0 +1,261 @@
+name: CI Failure Analysis
+
+on:
+  workflow_run:
+    workflows: ["CI/CD"]
+    types: [completed]
+
+permissions:
+  contents: write
+  actions: read
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: claude-ci-failure-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze failure
+    if: >-
+      github.event.workflow_run.conclusion == 'failure' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RUN_ID: ${{ github.event.workflow_run.id }}
+      RUN_URL: ${{ github.event.workflow_run.html_url }}
+      HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+      HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+      TRIGGER_EVENT: ${{ github.event.workflow_run.event }}
+      EVIDENCE_DIR: ${{ runner.temp }}/evidence
+
+    steps:
+      - name: Check Claude auth secret is configured
+        id: secret-check
+        run: |
+          if [ -z "${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}" ]; then
+            echo "::notice::CLAUDE_CODE_OAUTH_TOKEN is not set - skipping automatic CI failure analysis. Add the secret and install the Claude GitHub App to enable it."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout failing commit
+        if: steps.secret-check.outputs.skip == 'false'
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.HEAD_SHA }}
+          fetch-depth: 1
+
+      - name: Collect evidence
+        if: steps.secret-check.outputs.skip == 'false'
+        run: |
+          set -euo pipefail
+          mkdir -p "$EVIDENCE_DIR"
+
+          gh api "repos/${{ github.repository }}/actions/runs/${RUN_ID}/jobs" \
+            > "$EVIDENCE_DIR/jobs.json"
+
+          gh api "repos/${{ github.repository }}/actions/runs/${RUN_ID}/artifacts" \
+            --jq '.artifacts[].name' > "$EVIDENCE_DIR/artifacts.txt" || true
+
+          gh run view "$RUN_ID" --log-failed > "$EVIDENCE_DIR/failed-raw.log" || true
+
+          # Redact obvious secret-shaped strings before anything downstream reads the log.
+          sed -E \
+            -e 's#([a-zA-Z]+://)[^:@/[:space:]]+:[^@/[:space:]]+@#\1***:***@#g' \
+            -e 's#(Bearer )[A-Za-z0-9._-]+#\1***#g' \
+            -e 's#[A-Za-z0-9+/]{40,}={0,2}#***REDACTED***#g' \
+            "$EVIDENCE_DIR/failed-raw.log" > "$EVIDENCE_DIR/failed-scrubbed.log"
+
+          # Keep the last 200 lines per (job, step) so noisy Playwright/Vitest output
+          # cannot blow up the prompt, then hard-cap the total size.
+          awk -F'\t' '
+            {
+              key = $1 "\t" $2
+              lines[key] = lines[key] $0 "\n"
+              count[key]++
+              if (count[key] > 200) {
+                split(lines[key], arr, "\n")
+                lines[key] = ""
+                for (i = length(arr) - 200; i <= length(arr); i++) {
+                  if (i > 0 && arr[i] != "") lines[key] = lines[key] arr[i] "\n"
+                }
+              }
+            }
+            END { for (k in lines) printf "%s", lines[k] }
+          ' "$EVIDENCE_DIR/failed-scrubbed.log" > "$EVIDENCE_DIR/failed.log" || \
+            cp "$EVIDENCE_DIR/failed-scrubbed.log" "$EVIDENCE_DIR/failed.log"
+
+          tail -c 400000 "$EVIDENCE_DIR/failed.log" > "$EVIDENCE_DIR/failed.log.tmp"
+          mv "$EVIDENCE_DIR/failed.log.tmp" "$EVIDENCE_DIR/failed.log"
+
+          for job_id in $(jq -r '.jobs[] | select(.conclusion=="failure") | .id' "$EVIDENCE_DIR/jobs.json"); do
+            gh api "repos/${{ github.repository }}/check-runs/${job_id}/annotations" \
+              >> "$EVIDENCE_DIR/annotations.json" 2>/dev/null || true
+          done
+
+      - name: Determine failure surface
+        if: steps.secret-check.outputs.skip == 'false'
+        id: surface
+        run: |
+          set -euo pipefail
+          if [ "$TRIGGER_EVENT" = "pull_request" ]; then
+            echo "surface=pr" >> "$GITHUB_OUTPUT"
+          else
+            echo "surface=commit" >> "$GITHUB_OUTPUT"
+          fi
+
+          is_cd=$(jq -r '[.jobs[] | select(.conclusion=="failure") | .name] | any(. == "Deploy Backend" or . == "Deploy Frontend")' "$EVIDENCE_DIR/jobs.json")
+          echo "is_cd=$is_cd" >> "$GITHUB_OUTPUT"
+
+      - name: Analyze failure with Claude
+        if: steps.secret-check.outputs.skip == 'false'
+        id: analyze
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            A GitHub Actions workflow run named "CI/CD" failed. You are strictly read-only:
+            do not edit, write, or commit any file, do not run git commands beyond reading
+            history, and do not suggest running or re-running any workflow.
+
+            Run URL: ${{ env.RUN_URL }}
+            Branch: ${{ env.HEAD_BRANCH }}
+            Commit: ${{ env.HEAD_SHA }}
+            Trigger: ${{ env.TRIGGER_EVENT }} (surface: ${{ steps.surface.outputs.surface }})
+            Contains a failed deploy job (CD): ${{ steps.surface.outputs.is_cd }}
+
+            Evidence files (already truncated and secret-scrubbed):
+            - ${{ env.EVIDENCE_DIR }}/jobs.json - every job/step with its conclusion
+            - ${{ env.EVIDENCE_DIR }}/failed.log - failed step logs
+            - ${{ env.EVIDENCE_DIR }}/annotations.json - GitHub check annotations (may be empty)
+            - ${{ env.EVIDENCE_DIR }}/artifacts.txt - names of uploaded artifacts, e.g. playwright-results
+
+            Read those files and the repository checkout at this commit to determine root cause.
+
+            For a CI failure (backend or frontend job), cite concrete `path/to/file.ts:line`
+            references from the repository.
+
+            For a CD failure (deploy-backend or deploy-frontend), point at the responsible
+            config instead: migration file, ci.yml deploy step, action/provider version, or a
+            missing secret. Use jobs.json to state explicitly whether the deploy left the
+            environment in a partial state (e.g. migration applied but redeploy failed) -
+            this matters more than anything else for CD failures.
+
+            If the failure is clearly infrastructural or provider-side (npm registry hiccup,
+            Koyeb/Vercel 5xx, transient network error), keep the analysis to one line
+            explaining that and suggest "retry" - do not write a long analysis for it.
+
+            If a fix is clear, describe it in prose and, optionally, as an illustrative diff.
+            Label it explicitly as NOT APPLIED. If the cause is not determinable with
+            confidence, say so explicitly instead of presenting a guess as fact.
+
+            Never include the literal value of any secret, token, password, or connection
+            string credential in your output, even if one appears in the evidence.
+          claude_args: |
+            --model claude-sonnet-5
+            --max-turns 15
+            --allowedTools "Read,Grep,Glob"
+            --json-schema '{"type":"object","required":["failure_kind","failing_job","failing_step","confidence","root_cause_markdown"],"properties":{"failure_kind":{"type":"string","enum":["ci","cd","infrastructure"]},"failing_job":{"type":"string"},"failing_step":{"type":"string"},"confidence":{"type":"string","enum":["high","medium","low"]},"partial_deploy_state":{"type":["string","null"]},"log_excerpt":{"type":"string"},"root_cause_markdown":{"type":"string"},"proposed_fix_markdown":{"type":["string","null"]}}}'
+
+      - name: Render comment body
+        if: steps.secret-check.outputs.skip == 'false'
+        id: render
+        env:
+          ANALYZE_CONCLUSION: ${{ steps.analyze.outputs.conclusion }}
+          STRUCTURED_OUTPUT: ${{ steps.analyze.outputs.structured_output }}
+        run: |
+          set -euo pipefail
+          MARKER="<!-- claude-ci-failure-analysis -->"
+          OUT="$EVIDENCE_DIR/comment.md"
+
+          if [ "$ANALYZE_CONCLUSION" != "success" ] || [ -z "$STRUCTURED_OUTPUT" ]; then
+            {
+              echo "$MARKER"
+              echo "### 🤖 Claude CI failure analysis"
+              echo ""
+              echo "Automatic analysis could not be generated for this run."
+              echo ""
+              echo "[View failed run]($RUN_URL)"
+            } > "$OUT"
+          else
+            printf '%s' "$STRUCTURED_OUTPUT" > "$EVIDENCE_DIR/structured.json"
+
+            jq -r '
+              def kindLabel:
+                if .failure_kind == "cd" then "🚀 CD (deploy)"
+                elif .failure_kind == "infrastructure" then "☁️ Infrastructure / provider"
+                else "🧪 CI" end;
+
+              "<!-- claude-ci-failure-analysis -->\n" +
+              "### 🤖 Claude CI failure analysis\n\n" +
+              "**Kind:** \(kindLabel) · **Job:** `\(.failing_job)` · **Step:** `\(.failing_step)` · **Confidence:** \(.confidence)\n" +
+              (if .confidence == "low" then "\n> ⚠️ Low confidence - needs manual investigation.\n" else "" end) +
+              (if .partial_deploy_state then "\n**⚠️ Partial deploy state:** \(.partial_deploy_state)\n" else "" end) +
+              "\n<details><summary>Log excerpt</summary>\n\n```\n\(.log_excerpt)\n```\n\n</details>\n" +
+              "\n**Root cause**\n\n\(.root_cause_markdown)\n" +
+              (if .proposed_fix_markdown then "\n**Proposed fix (not applied)**\n\n\(.proposed_fix_markdown)\n" else "") +
+              "\n[View failed run](\(env.RUN_URL))"
+            ' "$EVIDENCE_DIR/structured.json" > "$OUT"
+          fi
+
+      - name: Post or update PR comment
+        if: steps.secret-check.outputs.skip == 'false' && steps.surface.outputs.surface == 'pr'
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const fs = require('fs');
+            const marker = '<!-- claude-ci-failure-analysis -->';
+            const body = fs.readFileSync(`${process.env.EVIDENCE_DIR}/comment.md`, 'utf8');
+            const { owner, repo } = context.repo;
+
+            let prNumber = context.payload.workflow_run.pull_requests?.[0]?.number;
+
+            if (!prNumber) {
+              const branch = process.env.HEAD_BRANCH;
+              const { data: prs } = await github.rest.pulls.list({
+                owner, repo, state: 'open', head: `${owner}:${branch}`,
+              });
+              prNumber = prs[0]?.number;
+            }
+
+            if (!prNumber) {
+              core.notice('No open PR found for this failed run; skipping comment.');
+              return;
+            }
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner, repo, issue_number: prNumber, per_page: 100,
+            });
+            const existing = comments.find(c => c.body.includes(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number: prNumber, body });
+            }
+
+      - name: Post or update commit comment
+        if: steps.secret-check.outputs.skip == 'false' && steps.surface.outputs.surface == 'commit'
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const fs = require('fs');
+            const marker = '<!-- claude-ci-failure-analysis -->';
+            const body = fs.readFileSync(`${process.env.EVIDENCE_DIR}/comment.md`, 'utf8');
+            const { owner, repo } = context.repo;
+            const sha = process.env.HEAD_SHA;
+
+            const { data: comments } = await github.rest.repos.listCommentsForCommit({
+              owner, repo, commit_sha: sha, per_page: 100,
+            });
+            const existing = comments.find(c => c.body.includes(marker));
+
+            if (existing) {
+              await github.rest.repos.updateCommitComment({ owner, repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.repos.createCommitComment({ owner, repo, commit_sha: sha, body });
+            }
