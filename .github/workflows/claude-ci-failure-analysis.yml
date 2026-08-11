@@ -29,12 +29,16 @@ jobs:
       HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
       HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
       TRIGGER_EVENT: ${{ github.event.workflow_run.event }}
-      EVIDENCE_DIR: ${{ runner.temp }}/evidence
+      ACTOR_LOGIN: ${{ github.event.workflow_run.actor.login }}
 
     steps:
       - name: Check Claude auth secret is configured
         id: secret-check
         run: |
+          # runner.temp is not a valid context in jobs.<job_id>.env (only inside steps),
+          # so EVIDENCE_DIR is derived here from the always-available RUNNER_TEMP variable.
+          echo "EVIDENCE_DIR=$RUNNER_TEMP/evidence" >> "$GITHUB_ENV"
+
           if [ -z "${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}" ]; then
             echo "::notice::CLAUDE_CODE_OAUTH_TOKEN is not set - skipping automatic CI failure analysis. Add the secret and install the Claude GitHub App to enable it."
             echo "skip=true" >> "$GITHUB_OUTPUT"
@@ -92,10 +96,19 @@ jobs:
           tail -c 400000 "$EVIDENCE_DIR/failed.log" > "$EVIDENCE_DIR/failed.log.tmp"
           mv "$EVIDENCE_DIR/failed.log.tmp" "$EVIDENCE_DIR/failed.log"
 
+          mkdir -p "$EVIDENCE_DIR/annotations-raw"
           for job_id in $(jq -r '.jobs[] | select(.conclusion=="failure") | .id' "$EVIDENCE_DIR/jobs.json"); do
             gh api "repos/${{ github.repository }}/check-runs/${job_id}/annotations" \
-              >> "$EVIDENCE_DIR/annotations.json" 2>/dev/null || true
+              > "$EVIDENCE_DIR/annotations-raw/${job_id}.json" 2>/dev/null || echo "[]" > "$EVIDENCE_DIR/annotations-raw/${job_id}.json"
           done
+          # Guard the glob: if no job ever reached "failure" at the job level (e.g. the run
+          # failed before jobs.json could list any), annotations-raw/ stays empty and the glob
+          # would pass the literal "*.json" to jq, which errors under set -e.
+          if compgen -G "$EVIDENCE_DIR/annotations-raw/*.json" > /dev/null; then
+            jq -s 'add // []' "$EVIDENCE_DIR"/annotations-raw/*.json > "$EVIDENCE_DIR/annotations.json"
+          else
+            echo "[]" > "$EVIDENCE_DIR/annotations.json"
+          fi
 
       - name: Determine failure surface
         if: steps.secret-check.outputs.skip == 'false'
@@ -195,21 +208,21 @@ jobs:
               "**Kind:** \(kindLabel) · **Job:** `\(.failing_job)` · **Step:** `\(.failing_step)` · **Confidence:** \(.confidence)\n" +
               (if .confidence == "low" then "\n> ⚠️ Low confidence - needs manual investigation.\n" else "" end) +
               (if .partial_deploy_state then "\n**⚠️ Partial deploy state:** \(.partial_deploy_state)\n" else "" end) +
-              "\n<details><summary>Log excerpt</summary>\n\n```\n\(.log_excerpt)\n```\n\n</details>\n" +
+              "\n<details><summary>Log excerpt</summary>\n\n```\n\(.log_excerpt // "")\n```\n\n</details>\n" +
               "\n**Root cause**\n\n\(.root_cause_markdown)\n" +
-              (if .proposed_fix_markdown then "\n**Proposed fix (not applied)**\n\n\(.proposed_fix_markdown)\n" else "") +
+              (if .proposed_fix_markdown then "\n**Proposed fix (not applied)**\n\n\(.proposed_fix_markdown)\n" else "" end) +
               "\n[View failed run](\(env.RUN_URL))"
             ' "$EVIDENCE_DIR/structured.json" > "$OUT"
           fi
 
-      - name: Post or update PR comment
+      - name: Post PR comment (replacing any previous analysis)
         if: steps.secret-check.outputs.skip == 'false' && steps.surface.outputs.surface == 'pr'
         uses: actions/github-script@v8
         with:
           script: |
             const fs = require('fs');
             const marker = '<!-- claude-ci-failure-analysis -->';
-            const body = fs.readFileSync(`${process.env.EVIDENCE_DIR}/comment.md`, 'utf8');
+            const analysis = fs.readFileSync(`${process.env.EVIDENCE_DIR}/comment.md`, 'utf8');
             const { owner, repo } = context.repo;
 
             let prNumber = context.payload.workflow_run.pull_requests?.[0]?.number;
@@ -227,27 +240,44 @@ jobs:
               return;
             }
 
+            let mentionLogin = process.env.ACTOR_LOGIN;
+            try {
+              const { data: pr } = await github.rest.pulls.get({ owner, repo, pull_number: prNumber });
+              mentionLogin = pr.user?.login || mentionLogin;
+            } catch (err) {
+              core.warning(`Could not resolve PR author, falling back to run actor: ${err.message}`);
+            }
+            const body = `@${mentionLogin}\n\n${analysis}`;
+
+            // GitHub does not send a notification when an existing comment is edited (nor for a
+            // mention added by an edit), so a repeat failure deletes the previous analysis and
+            // posts a fresh one instead of updating in place - that is the only path guaranteed
+            // to notify the mentioned user, while still keeping exactly one visible comment.
             const { data: comments } = await github.rest.issues.listComments({
               owner, repo, issue_number: prNumber, per_page: 100,
             });
             const existing = comments.find(c => c.body.includes(marker));
 
             if (existing) {
-              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
-            } else {
-              await github.rest.issues.createComment({ owner, repo, issue_number: prNumber, body });
+              try {
+                await github.rest.issues.deleteComment({ owner, repo, comment_id: existing.id });
+              } catch (err) {
+                core.warning(`Could not delete previous analysis comment: ${err.message}`);
+              }
             }
+            await github.rest.issues.createComment({ owner, repo, issue_number: prNumber, body });
 
-      - name: Post or update commit comment
+      - name: Post commit comment (replacing any previous analysis)
         if: steps.secret-check.outputs.skip == 'false' && steps.surface.outputs.surface == 'commit'
         uses: actions/github-script@v8
         with:
           script: |
             const fs = require('fs');
             const marker = '<!-- claude-ci-failure-analysis -->';
-            const body = fs.readFileSync(`${process.env.EVIDENCE_DIR}/comment.md`, 'utf8');
+            const analysis = fs.readFileSync(`${process.env.EVIDENCE_DIR}/comment.md`, 'utf8');
             const { owner, repo } = context.repo;
             const sha = process.env.HEAD_SHA;
+            const body = `@${process.env.ACTOR_LOGIN}\n\n${analysis}`;
 
             const { data: comments } = await github.rest.repos.listCommentsForCommit({
               owner, repo, commit_sha: sha, per_page: 100,
@@ -255,7 +285,10 @@ jobs:
             const existing = comments.find(c => c.body.includes(marker));
 
             if (existing) {
-              await github.rest.repos.updateCommitComment({ owner, repo, comment_id: existing.id, body });
-            } else {
-              await github.rest.repos.createCommitComment({ owner, repo, commit_sha: sha, body });
+              try {
+                await github.rest.repos.deleteCommitComment({ owner, repo, comment_id: existing.id });
+              } catch (err) {
+                core.warning(`Could not delete previous analysis comment: ${err.message}`);
+              }
             }
+            await github.rest.repos.createCommitComment({ owner, repo, commit_sha: sha, body });
