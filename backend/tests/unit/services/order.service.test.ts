@@ -26,6 +26,9 @@ vi.mock('../../../src/lib/prisma', () => {
       update: vi.fn(),
       delete: vi.fn(),
     },
+    orderDiscount: {
+      create: vi.fn(),
+    },
     $executeRaw: vi.fn(),
   };
   prisma.$transaction = vi.fn(async (callback: (tx: unknown) => unknown) => callback(prisma));
@@ -45,7 +48,12 @@ const prismaMock = prisma as unknown as {
   location: Record<string, ReturnType<typeof vi.fn>>;
   orderRound: Record<string, ReturnType<typeof vi.fn>>;
   orderItem: Record<string, ReturnType<typeof vi.fn>>;
+  orderDiscount: Record<string, ReturnType<typeof vi.fn>>;
 };
+
+function roundWithItems(subtotals: number[]) {
+  return { items: subtotals.map((subtotal) => ({ subtotal })) };
+}
 
 describe('OrderService.createOrder', () => {
   beforeEach(() => {
@@ -254,6 +262,106 @@ describe('OrderService.cancelOrder', () => {
     prismaMock.order.findUnique.mockResolvedValue(null);
 
     await expect(orderService.cancelOrder(999)).rejects.toThrow(ORDER_ERRORS.ORDER_NOT_FOUND);
+  });
+});
+
+describe('OrderService.chargeOrder', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('charges an order with no discount', async () => {
+    prismaMock.order.findUnique
+      .mockResolvedValueOnce({ id: 1, status: 'open', rounds: [roundWithItems([100])] })
+      .mockResolvedValueOnce({ id: 1, status: 'charged' });
+
+    const result = await orderService.chargeOrder(1, {});
+
+    expect(prismaMock.orderDiscount.create).not.toHaveBeenCalled();
+    expect(prismaMock.order.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 1 }, data: expect.objectContaining({ status: 'charged' }) })
+    );
+    expect(result).toEqual({ id: 1, status: 'charged' });
+  });
+
+  it('snapshots a fixed discount amount equal to its value', async () => {
+    prismaMock.order.findUnique
+      .mockResolvedValueOnce({ id: 1, status: 'open', rounds: [roundWithItems([100])] })
+      .mockResolvedValueOnce({ id: 1, status: 'charged' });
+
+    await orderService.chargeOrder(1, { discount: { description: 'Promo', type: 'fixed', value: 30 } });
+
+    expect(prismaMock.orderDiscount.create).toHaveBeenCalledWith({
+      data: { orderId: 1, description: 'Promo', type: 'fixed', value: 30, amount: 30 },
+    });
+  });
+
+  it('computes a percentage discount amount rounded to cents', async () => {
+    prismaMock.order.findUnique
+      .mockResolvedValueOnce({ id: 1, status: 'open', rounds: [roundWithItems([175])] })
+      .mockResolvedValueOnce({ id: 1, status: 'charged' });
+
+    await orderService.chargeOrder(1, { discount: { description: 'Promo', type: 'percentage', value: 10 } });
+
+    expect(prismaMock.orderDiscount.create).toHaveBeenCalledWith({
+      data: { orderId: 1, description: 'Promo', type: 'percentage', value: 10, amount: 17.5 },
+    });
+  });
+
+  it('accepts a percentage discount that rounds down to zero', async () => {
+    prismaMock.order.findUnique
+      .mockResolvedValueOnce({ id: 1, status: 'open', rounds: [roundWithItems([1])] })
+      .mockResolvedValueOnce({ id: 1, status: 'charged' });
+
+    await orderService.chargeOrder(1, { discount: { description: 'Promo', type: 'percentage', value: 1 } });
+
+    expect(prismaMock.orderDiscount.create).toHaveBeenCalledWith({
+      data: { orderId: 1, description: 'Promo', type: 'percentage', value: 1, amount: 0.01 },
+    });
+  });
+
+  it('charges an order made entirely of zero-priced items', async () => {
+    prismaMock.order.findUnique
+      .mockResolvedValueOnce({ id: 1, status: 'open', rounds: [roundWithItems([0])] })
+      .mockResolvedValueOnce({ id: 1, status: 'charged' });
+
+    await orderService.chargeOrder(1, {});
+
+    expect(prismaMock.order.update).toHaveBeenCalled();
+  });
+
+  it('throws ORDER_NOT_FOUND when the order does not exist', async () => {
+    prismaMock.order.findUnique.mockResolvedValueOnce(null);
+
+    await expect(orderService.chargeOrder(999, {})).rejects.toThrow(ORDER_ERRORS.ORDER_NOT_FOUND);
+  });
+
+  it('throws ORDER_NOT_OPEN when the order is already charged', async () => {
+    prismaMock.order.findUnique.mockResolvedValueOnce({ id: 1, status: 'charged', rounds: [] });
+
+    await expect(orderService.chargeOrder(1, {})).rejects.toThrow(ORDER_ERRORS.ORDER_NOT_OPEN);
+    expect(prismaMock.order.update).not.toHaveBeenCalled();
+  });
+
+  it('throws ORDER_EMPTY when no round has any items', async () => {
+    prismaMock.order.findUnique.mockResolvedValueOnce({
+      id: 1,
+      status: 'open',
+      rounds: [{ items: [] }],
+    });
+
+    await expect(orderService.chargeOrder(1, {})).rejects.toThrow(ORDER_ERRORS.ORDER_EMPTY);
+    expect(prismaMock.order.update).not.toHaveBeenCalled();
+  });
+
+  it('throws DISCOUNT_EXCEEDS_SUBTOTAL when a fixed discount is larger than the subtotal', async () => {
+    prismaMock.order.findUnique.mockResolvedValueOnce({ id: 1, status: 'open', rounds: [roundWithItems([50])] });
+
+    await expect(
+      orderService.chargeOrder(1, { discount: { description: 'Promo', type: 'fixed', value: 60 } })
+    ).rejects.toThrow(ORDER_ERRORS.DISCOUNT_EXCEEDS_SUBTOTAL);
+    expect(prismaMock.orderDiscount.create).not.toHaveBeenCalled();
+    expect(prismaMock.order.update).not.toHaveBeenCalled();
   });
 });
 

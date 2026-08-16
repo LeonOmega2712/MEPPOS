@@ -19,6 +19,7 @@ vi.mock('../../src/services/order.service', async () => {
       deleteItem: vi.fn(),
       deleteRound: vi.fn(),
       cancelOrder: vi.fn(),
+      chargeOrder: vi.fn(),
       computeOrderTotal: actual.orderService.computeOrderTotal.bind(actual.orderService),
     },
   };
@@ -414,5 +415,130 @@ describe('POST /api/orders/:id/cancel', () => {
 
     expect(res.status).toBe(401);
     expect(orderService.cancelOrder).not.toHaveBeenCalled();
+  });
+});
+
+// ─── POST /orders/:id/charge ───────────────────────────────────────────────────
+
+describe('POST /api/orders/:id/charge', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+  });
+
+  it('charges an order without a discount', async () => {
+    vi.mocked(orderService.chargeOrder).mockResolvedValue({ ...mockOrder, status: 'charged' } as any);
+
+    const res = await request(app).post('/api/orders/1/charge').set('Authorization', `Bearer ${waiterToken}`).send({});
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.status).toBe('charged');
+    expect(orderService.chargeOrder).toHaveBeenCalledWith(1, {});
+  });
+
+  it('charges an order with a percentage discount', async () => {
+    vi.mocked(orderService.chargeOrder).mockResolvedValue({
+      ...mockOrder,
+      status: 'charged',
+      discounts: [{ id: 1, description: 'Promo', type: 'percentage', value: 10, amount: 5 }],
+    } as any);
+
+    const body = { discount: { description: 'Promo', type: 'percentage', value: 10 } };
+    const res = await request(app).post('/api/orders/1/charge').set('Authorization', `Bearer ${waiterToken}`).send(body);
+
+    expect(res.status).toBe(200);
+    expect(orderService.chargeOrder).toHaveBeenCalledWith(1, body);
+  });
+
+  it('returns 400 when the discount value is zero', async () => {
+    const res = await request(app)
+      .post('/api/orders/1/charge')
+      .set('Authorization', `Bearer ${waiterToken}`)
+      .send({ discount: { description: 'Promo', type: 'fixed', value: 0 } });
+
+    expect(res.status).toBe(400);
+    expect(orderService.chargeOrder).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 when a percentage discount exceeds 100', async () => {
+    const res = await request(app)
+      .post('/api/orders/1/charge')
+      .set('Authorization', `Bearer ${waiterToken}`)
+      .send({ discount: { description: 'Promo', type: 'percentage', value: 101 } });
+
+    expect(res.status).toBe(400);
+    expect(orderService.chargeOrder).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 when the discount is missing a description', async () => {
+    const res = await request(app)
+      .post('/api/orders/1/charge')
+      .set('Authorization', `Bearer ${waiterToken}`)
+      .send({ discount: { type: 'fixed', value: 10 } });
+
+    expect(res.status).toBe(400);
+    expect(orderService.chargeOrder).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 when the discount value has more than 2 decimal places', async () => {
+    const res = await request(app)
+      .post('/api/orders/1/charge')
+      .set('Authorization', `Bearer ${waiterToken}`)
+      .send({ discount: { description: 'Promo', type: 'fixed', value: 10.555 } });
+
+    expect(res.status).toBe(400);
+    expect(orderService.chargeOrder).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 for a non-numeric id', async () => {
+    const res = await request(app).post('/api/orders/abc/charge').set('Authorization', `Bearer ${waiterToken}`).send({});
+
+    expect(res.status).toBe(400);
+    expect(orderService.chargeOrder).not.toHaveBeenCalled();
+  });
+
+  it('returns 404 when the order does not exist', async () => {
+    vi.mocked(orderService.chargeOrder).mockRejectedValue(new Error(ORDER_ERRORS.ORDER_NOT_FOUND));
+
+    const res = await request(app).post('/api/orders/999/charge').set('Authorization', `Bearer ${waiterToken}`).send({});
+
+    expect(res.status).toBe(404);
+    expect(res.body.error).toBe(ORDER_ERRORS.ORDER_NOT_FOUND);
+  });
+
+  it('returns 409 when the order is not open', async () => {
+    vi.mocked(orderService.chargeOrder).mockRejectedValue(new Error(ORDER_ERRORS.ORDER_NOT_OPEN));
+
+    const res = await request(app).post('/api/orders/1/charge').set('Authorization', `Bearer ${waiterToken}`).send({});
+
+    expect(res.status).toBe(409);
+    expect(res.body.error).toBe(ORDER_ERRORS.ORDER_NOT_OPEN);
+  });
+
+  it('returns 409 when the order has no items', async () => {
+    vi.mocked(orderService.chargeOrder).mockRejectedValue(new Error(ORDER_ERRORS.ORDER_EMPTY));
+
+    const res = await request(app).post('/api/orders/1/charge').set('Authorization', `Bearer ${waiterToken}`).send({});
+
+    expect(res.status).toBe(409);
+    expect(res.body.error).toBe(ORDER_ERRORS.ORDER_EMPTY);
+  });
+
+  it('returns 409 when a fixed discount exceeds the subtotal', async () => {
+    vi.mocked(orderService.chargeOrder).mockRejectedValue(new Error(ORDER_ERRORS.DISCOUNT_EXCEEDS_SUBTOTAL));
+
+    const res = await request(app)
+      .post('/api/orders/1/charge')
+      .set('Authorization', `Bearer ${waiterToken}`)
+      .send({ discount: { description: 'Promo', type: 'fixed', value: 999 } });
+
+    expect(res.status).toBe(409);
+    expect(res.body.error).toBe(ORDER_ERRORS.DISCOUNT_EXCEEDS_SUBTOTAL);
+  });
+
+  it('returns 401 without token', async () => {
+    const res = await request(app).post('/api/orders/1/charge').send({});
+
+    expect(res.status).toBe(401);
+    expect(orderService.chargeOrder).not.toHaveBeenCalled();
   });
 });

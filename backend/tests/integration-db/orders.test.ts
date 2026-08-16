@@ -362,3 +362,129 @@ describe('POST /api/orders/:id/cancel', () => {
     expect(res.status).toBe(201);
   });
 });
+
+// ----- CHARGE -----
+
+describe('POST /api/orders/:id/charge', () => {
+  it('charges an order with no discount and stamps closedAt', async () => {
+    const { table } = await seedLocations();
+    const order = await api.post('/api/orders', { locationId: table.id });
+    const orderId = order.body.data.id;
+    await api.post(`/api/orders/${orderId}/rounds`, {
+      items: [{ customName: 'Cerveza', unitPrice: 30, quantity: 2 }],
+    });
+
+    const res = await api.post(`/api/orders/${orderId}/charge`, {});
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.status).toBe('charged');
+    expect(res.body.data.closedAt).not.toBeNull();
+    expect(res.body.data.subtotal).toBe(60);
+    expect(res.body.data.discountTotal).toBe(0);
+    expect(res.body.data.total).toBe(60);
+
+    const discounts = await prisma.orderDiscount.findMany({ where: { orderId } });
+    expect(discounts).toHaveLength(0);
+  });
+
+  it('charges an order with a percentage discount and persists the snapshot', async () => {
+    const { table } = await seedLocations();
+    const order = await api.post('/api/orders', { locationId: table.id });
+    const orderId = order.body.data.id;
+    await api.post(`/api/orders/${orderId}/rounds`, {
+      items: [{ customName: 'Cerveza', unitPrice: 100, quantity: 1 }],
+    });
+
+    const res = await api.post(`/api/orders/${orderId}/charge`, {
+      discount: { description: 'Cliente frecuente', type: 'percentage', value: 10 },
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.discountTotal).toBe(10);
+    expect(res.body.data.total).toBe(90);
+
+    const [discount] = await prisma.orderDiscount.findMany({ where: { orderId } });
+    expect(discount).toMatchObject({ description: 'Cliente frecuente', type: 'percentage' });
+    expect(Number(discount.value)).toBe(10);
+    expect(Number(discount.amount)).toBe(10);
+  });
+
+  it('frees the table when the order is charged', async () => {
+    const { table } = await seedLocations();
+    const order = await api.post('/api/orders', { locationId: table.id });
+    const orderId = order.body.data.id;
+    await api.post(`/api/orders/${orderId}/rounds`, {
+      items: [{ customName: 'Cerveza', unitPrice: 30, quantity: 1 }],
+    });
+
+    await api.post(`/api/orders/${orderId}/charge`, {});
+
+    const res = await api.get('/api/locations');
+    expect(res.body.data.find((l: any) => l.id === table.id).occupied).toBe(false);
+  });
+
+  it('returns 409 when re-charging an already-charged order', async () => {
+    const { table } = await seedLocations();
+    const order = await api.post('/api/orders', { locationId: table.id });
+    const orderId = order.body.data.id;
+    await api.post(`/api/orders/${orderId}/rounds`, {
+      items: [{ customName: 'Cerveza', unitPrice: 30, quantity: 1 }],
+    });
+    await api.post(`/api/orders/${orderId}/charge`, {});
+
+    const res = await api.post(`/api/orders/${orderId}/charge`, {});
+
+    expect(res.status).toBe(409);
+    expect(res.body.error).toBe('Order is not open');
+  });
+
+  it('returns 409 when the order has no items', async () => {
+    const { table } = await seedLocations();
+    const order = await api.post('/api/orders', { locationId: table.id });
+
+    const res = await api.post(`/api/orders/${order.body.data.id}/charge`, {});
+
+    expect(res.status).toBe(409);
+    expect(res.body.error).toBe('Order has no items');
+  });
+
+  it('returns 409 when all rounds were removed before charging', async () => {
+    const { table } = await seedLocations();
+    const order = await api.post('/api/orders', { locationId: table.id });
+    const orderId = order.body.data.id;
+    const round = await api.post(`/api/orders/${orderId}/rounds`, {
+      items: [{ customName: 'Cerveza', unitPrice: 30, quantity: 1 }],
+    });
+    await api.delete(`/api/orders/${orderId}/rounds/${round.body.data.id}`);
+
+    const res = await api.post(`/api/orders/${orderId}/charge`, {});
+
+    expect(res.status).toBe(409);
+    expect(res.body.error).toBe('Order has no items');
+  });
+
+  it('returns 409 when a fixed discount exceeds the subtotal', async () => {
+    const { table } = await seedLocations();
+    const order = await api.post('/api/orders', { locationId: table.id });
+    const orderId = order.body.data.id;
+    await api.post(`/api/orders/${orderId}/rounds`, {
+      items: [{ customName: 'Cerveza', unitPrice: 30, quantity: 1 }],
+    });
+
+    const res = await api.post(`/api/orders/${orderId}/charge`, {
+      discount: { description: 'Promo', type: 'fixed', value: 999 },
+    });
+
+    expect(res.status).toBe(409);
+    expect(res.body.error).toBe('Discount exceeds order subtotal');
+
+    const discounts = await prisma.orderDiscount.findMany({ where: { orderId } });
+    expect(discounts).toHaveLength(0);
+  });
+
+  it('returns 404 for a non-existent order', async () => {
+    const res = await api.post('/api/orders/999999/charge', {});
+
+    expect(res.status).toBe(404);
+  });
+});
