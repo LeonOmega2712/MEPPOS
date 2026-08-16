@@ -1,7 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { startOfBusinessDay } from '../lib/business-day';
-import type { AddRoundDTO, CreateOrderDTO, UpdateOrderItemDTO } from '../types/order.types';
+import type { AddRoundDTO, ChargeOrderDTO, CreateOrderDTO, UpdateOrderItemDTO } from '../types/order.types';
 
 // Domain error messages, matched by the controller to pick an HTTP status.
 export const ORDER_ERRORS = {
@@ -12,6 +12,8 @@ export const ORDER_ERRORS = {
   ORDER_NOT_OPEN: 'Order is not open',
   ROUND_NOT_FOUND: 'Round not found for this order',
   ITEM_NOT_FOUND: 'Item not found in this round',
+  ORDER_EMPTY: 'Order has no items',
+  DISCOUNT_EXCEEDS_SUBTOTAL: 'Discount exceeds order subtotal',
 } as const;
 
 // Advisory lock keys used to serialize daily-counter assignment across
@@ -23,12 +25,32 @@ const ADVISORY_LOCK = {
 
 type OrderRoundWithItems = Prisma.OrderRoundGetPayload<{ include: { items: true } }>;
 
+// Full detail shape shared by getOrderById and chargeOrder (the charge
+// response feeds the final ticket, so it needs the same includes).
+const ORDER_DETAIL_INCLUDE = {
+  location: true,
+  owner: { select: { id: true, displayName: true } },
+  rounds: {
+    orderBy: { roundNumber: 'asc' },
+    include: {
+      items: { orderBy: { id: 'asc' }, include: { product: true } },
+      user: { select: { id: true, displayName: true } },
+    },
+  },
+  discounts: true,
+} satisfies Prisma.OrderInclude;
+
 function sumItems(items: { subtotal: Prisma.Decimal }[]): number {
   return items.reduce((sum, item) => sum + Number(item.subtotal), 0);
 }
 
 function computeRoundTotal(round: OrderRoundWithItems): number {
   return sumItems(round.items);
+}
+
+// Matches the DECIMAL(10,2) column precision of order_discounts.amount.
+function roundToCents(value: number): number {
+  return Math.round(value * 100) / 100;
 }
 
 export class OrderService {
@@ -49,21 +71,7 @@ export class OrderService {
   }
 
   async getOrderById(id: number) {
-    return prisma.order.findUnique({
-      where: { id },
-      include: {
-        location: true,
-        owner: { select: { id: true, displayName: true } },
-        rounds: {
-          orderBy: { roundNumber: 'asc' },
-          include: {
-            items: { orderBy: { id: 'asc' }, include: { product: true } },
-            user: { select: { id: true, displayName: true } },
-          },
-        },
-        discounts: true,
-      },
-    });
+    return prisma.order.findUnique({ where: { id }, include: ORDER_DETAIL_INCLUDE });
   }
 
   async createOrder(data: CreateOrderDTO, ownerUserId: number) {
@@ -215,6 +223,34 @@ export class OrderService {
         where: { id },
         data: { status: 'cancelled', closedAt: new Date() },
       });
+    });
+  }
+
+  async chargeOrder(id: number, data: ChargeOrderDTO) {
+    return prisma.$transaction(async (tx) => {
+      const order = await tx.order.findUnique({
+        where: { id },
+        include: { rounds: { include: { items: true } } },
+      });
+      if (!order) throw new Error(ORDER_ERRORS.ORDER_NOT_FOUND);
+      if (order.status !== 'open') throw new Error(ORDER_ERRORS.ORDER_NOT_OPEN);
+
+      const hasItems = order.rounds.some((round) => round.items.length > 0);
+      if (!hasItems) throw new Error(ORDER_ERRORS.ORDER_EMPTY);
+
+      const subtotal = order.rounds.reduce((sum, round) => sum + computeRoundTotal(round), 0);
+
+      if (data.discount) {
+        const { description, type, value } = data.discount;
+        const amount = type === 'fixed' ? value : roundToCents((subtotal * value) / 100);
+        if (amount > subtotal) throw new Error(ORDER_ERRORS.DISCOUNT_EXCEEDS_SUBTOTAL);
+
+        await tx.orderDiscount.create({ data: { orderId: id, description, type, value, amount } });
+      }
+
+      await tx.order.update({ where: { id }, data: { status: 'charged', closedAt: new Date() } });
+
+      return tx.order.findUnique({ where: { id }, include: ORDER_DETAIL_INCLUDE });
     });
   }
 

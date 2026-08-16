@@ -66,6 +66,23 @@ export const OrderItemIdSchema = z.object({
   itemId: z.coerce.number().int().positive(),
 });
 
+// ============================================
+// Charge
+// ============================================
+
+const OrderDiscountInputSchema = z
+  .object({
+    description: z.string().min(1).max(255),
+    type: z.enum(['fixed', 'percentage']),
+    value: z.number().positive().multipleOf(0.01).max(99999999.99),
+  })
+  .refine((discount) => discount.type !== 'percentage' || discount.value <= 100, {
+    message: 'Percentage discount cannot exceed 100',
+    path: ['value'],
+  });
+
+export const ChargeOrderSchema = z.object({ discount: OrderDiscountInputSchema.optional() });
+
 export type CreateOrderDTO = z.infer<typeof CreateOrderSchema>;
 export type OrderItemInputDTO = z.infer<typeof OrderItemInputSchema>;
 export type AddRoundDTO = z.infer<typeof AddRoundSchema>;
@@ -74,3 +91,4 @@ export type ListOrdersQueryDTO = z.infer<typeof ListOrdersQuerySchema>;
 export type OrderIdDTO = z.infer<typeof OrderIdSchema>;
 export type OrderRoundIdDTO = z.infer<typeof OrderRoundIdSchema>;
 export type OrderItemIdDTO = z.infer<typeof OrderItemIdSchema>;
+export type ChargeOrderDTO = z.infer<typeof ChargeOrderSchema>;
