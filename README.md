@@ -170,6 +170,7 @@ logins don't count). See [Locked out of login](#locked-out-of-login) if it needs
 - `PUT /api/orders/:id/rounds/:roundId/items/:itemId` - Edit an item's quantity, unit price, or notes
 - `DELETE /api/orders/:id/rounds/:roundId/items/:itemId` - Remove an item from a round
 - `POST /api/orders/:id/cancel` - Cancel an open order
+- `POST /api/orders/:id/charge` - Close an order: optionally applies a single discount (`fixed` or `percentage`, snapshotted as `value` + computed `amount`), sets `status = charged` and `closedAt`, and returns the full order for ticket generation
 
 ### Admin-only Endpoints
 
@@ -240,7 +241,7 @@ The system uses 9 tables:
 6. **orders** - Persistent bill per location/bar seat/takeout ticket; tracks `status` (open/charged/cancelled), owner waiter, and the daily-consecutive `bar_position`/`takeout_number` (reset at local midnight, currently hardcoded to `America/Mexico_City` — see [#65](https://github.com/LeonOmega2712/MEPPOS/issues/65) for making this configurable)
 7. **order_rounds** - Each batch of items added to an order, numbered sequentially per order
 8. **order_items** - Catalog products or custom items within a round; `subtotal` is a Postgres generated column (`unit_price * quantity`)
-9. **order_discounts** - Discounts applied at checkout (fixed amount or percentage) — not yet wired to an endpoint; charge/checkout is a later issue
+9. **order_discounts** - Discounts applied at checkout (fixed amount or percentage), written by `POST /api/orders/:id/charge`; `value` and `amount` are permanent financial snapshots, never recalculated after charge (DB CHECK constraints enforce `value > 0`, `value <= 100` when `type = percentage`, and `amount >= 0` as defense-in-depth alongside Zod validation)
 
 ---
 
@@ -292,7 +293,8 @@ The system uses 9 tables:
 - ✅ Custom extras management (DB migration, backend API, admin UI)
 - ✅ Persistent orders with multiple rounds (backend API: open/list/detail, add round, edit/delete items, cancel; location occupancy on `GET /api/locations`)
 - ✅ Orders frontend (active orders view with mine/all filter and 30s transfer-detection polling, new order flow, order detail view with round edit/delete and owner banner)
-- ⬜ Discounts at checkout (fixed/percentage)
+- ✅ Charge endpoint with optional discount (backend API: `POST /api/orders/:id/charge`, fixed/percentage, DB-level integrity constraints)
+- ⬜ Checkout frontend (consolidated summary, discount UI, confirm charge)
 - ⬜ Account ownership and transfer between waiters
 - ⬜ Kitchen ticket printing (per round)
 - ⬜ Final ticket printing (consolidated)

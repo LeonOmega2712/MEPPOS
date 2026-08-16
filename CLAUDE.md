@@ -34,7 +34,7 @@ Web app to speed up bill calculation in a seafood restaurant. Editable catalog +
 
 ## Project: Phase 2 - Bill Registration & Ticket Printing (in progress)
 
-Persistent bill management with rounds, kitchen/final ticket printing, and location-based seating. Current progress: JWT authentication with roles (ADMIN/WAITER), login page, protected routes, public menu for QR access, user CRUD, security hardening, locations management (DB + backend API + admin UI — tables + bar; bar orders receive an auto-assigned daily consecutive number), and custom extras management (DB + backend API + admin UI), and the orders core schema migration (orders, rounds, items, discounts tables) are complete. Pending: persistent orders with rounds (backend + frontend), discounts at checkout, account ownership & transfer, ticket printing (kitchen + final), order history with reprint.
+Persistent bill management with rounds, kitchen/final ticket printing, and location-based seating. Current progress: JWT authentication with roles (ADMIN/WAITER), login page, protected routes, public menu for QR access, user CRUD, security hardening, locations management (DB + backend API + admin UI — tables + bar; bar orders receive an auto-assigned daily consecutive number), custom extras management (DB + backend API + admin UI), the orders core schema migration (orders, rounds, items, discounts tables), persistent orders with rounds (backend + frontend: open/list/detail, add round, edit/delete items/rounds, cancel), and the checkout charge endpoint with an optional discount (backend only — `POST /api/orders/:id/charge`, fixed/percentage, DB-level integrity constraints) are complete. Pending: checkout frontend (consolidated summary, discount UI, confirm charge), account ownership & transfer, ticket printing (kitchen + final), order history with reprint.
 
 ### Tech Stack
 
@@ -93,6 +93,15 @@ MEPPOS/
 - `POST   /api/extras` - Create custom extra
 - `PUT    /api/extras/:id` - Update custom extra
 - `DELETE /api/extras/:id` - Soft delete (deactivate) extra. Hard delete with `?permanent=true`
+- `GET    /api/orders` - List open orders (supports `?mine=true`)
+- `GET    /api/orders/:id` - Full order detail: location, owner, rounds with items, discounts, computed totals
+- `POST   /api/orders` - Open a new order (`locationId` for table/bar, omitted for takeout — auto-assigned daily number)
+- `POST   /api/orders/:id/rounds` - Add a round of items (catalog products or custom items) to an open order
+- `PUT    /api/orders/:id/rounds/:roundId/items/:itemId` - Edit an item's quantity, unit price, or notes
+- `DELETE /api/orders/:id/rounds/:roundId/items/:itemId` - Remove an item from a round
+- `DELETE /api/orders/:id/rounds/:roundId` - Remove an entire round (cascades to its items)
+- `POST   /api/orders/:id/cancel` - Cancel an open order
+- `POST   /api/orders/:id/charge` - Close an order: optionally applies a single discount (fixed/percentage, snapshotted as `value` + computed `amount`), sets `status = charged` and `closedAt`
 
 **Admin-only routes:**
 
