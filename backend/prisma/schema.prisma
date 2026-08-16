@@ -190,6 +190,9 @@ model OrderItem {
   @@map("order_items")
 }
 
+// DB-only integrity (not representable in Prisma schema, see migration
+// 20260816000000_add_order_discount_constraints): value > 0,
+// value <= 100 when type = percentage, amount >= 0.
 model OrderDiscount {
   id          Int          @id @default(autoincrement())
   orderId     Int          @map("order_id")
