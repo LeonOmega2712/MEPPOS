@@ -42,8 +42,15 @@ export class CheckoutPanelComponent {
   discountEnabled = signal(false);
   description = signal('');
   discountType = signal<DiscountType>('fixed');
-  discountValue = signal<number | null>(null);
   charging = signal(false);
+
+  /** Cached value per type, kept in sync on every edit (see setDiscountValue) so switching types back and forth never re-derives — and drifts — a value the user actually typed. */
+  private readonly fixedValue = signal<number | null>(null);
+  private readonly percentageValue = signal<number | null>(null);
+
+  discountValue = computed<number | null>(() =>
+    this.discountType() === 'fixed' ? this.fixedValue() : this.percentageValue()
+  );
 
   /** Consolidated summary lines, matching the shape of the final ticket rather than the per-round detail shown in the footer. */
   lines = computed<CheckoutLine[]>(() => {
@@ -117,22 +124,35 @@ export class CheckoutPanelComponent {
     this.discountEnabled.update((enabled) => !enabled);
   }
 
-  /** Switching type converts the current value so the discounted amount stays the same (e.g. 10% of 500 becomes 50, and back to 10% when toggled again). */
+  /** Switching type only changes which cached value is shown — see setDiscountValue for how the two stay in sync — so going back and forth never re-derives (and drifts) a value the user actually typed. */
   setDiscountType(type: DiscountType): void {
-    const previousType = this.discountType();
-    if (type === previousType) return;
-
-    const value = this.discountValue();
-    const subtotal = this.subtotal();
-    if (value !== null && value > 0 && subtotal > 0) {
-      const converted =
-        type === 'fixed'
-          ? Math.round(subtotal * value) / 100 // value was a percentage; mirrors the backend's roundToCents
-          : Math.round((value / subtotal) * 10000) / 100; // value was a fixed amount; round to 2 decimals
-      this.discountValue.set(converted);
-    }
-
     this.discountType.set(type);
+  }
+
+  /** Updates the value for whichever type is currently active, and re-derives the paired type's cached value from it (e.g. 10% of 500 becomes 50). The type not being edited keeps its own last value untouched, so switching back to it later is exact instead of a lossy re-conversion. */
+  setDiscountValue(value: number | null): void {
+    if (this.discountType() === 'fixed') {
+      this.fixedValue.set(value);
+      this.percentageValue.set(this.toPercentage(value));
+    } else {
+      this.percentageValue.set(value);
+      this.fixedValue.set(this.toFixed(value));
+    }
+  }
+
+  /** Mirrors the backend's roundToCents(subtotal * value / 100) so the derived fixed amount matches what would actually be charged. */
+  private toFixed(percentageValue: number | null): number | null {
+    if (percentageValue === null || percentageValue <= 0) return null;
+    const subtotal = this.subtotal();
+    if (subtotal <= 0) return null;
+    return Math.round(subtotal * percentageValue) / 100;
+  }
+
+  private toPercentage(fixedValue: number | null): number | null {
+    if (fixedValue === null || fixedValue <= 0) return null;
+    const subtotal = this.subtotal();
+    if (subtotal <= 0) return null;
+    return Math.round((fixedValue / subtotal) * 10000) / 100;
   }
 
   onDescriptionChange(event: Event): void {

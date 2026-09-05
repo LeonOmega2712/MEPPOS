@@ -79,7 +79,7 @@
               inputmode="decimal"
               appCurrencyInput
               [ngModel]="discountValue()"
-              (ngModelChange)="discountValue.set($event)"
+              (ngModelChange)="setDiscountValue($event)"
               placeholder="0.00"
               data-testid="discount-value" />
             @if (discountType() === 'percentage') {

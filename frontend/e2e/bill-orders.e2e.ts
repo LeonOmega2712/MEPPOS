@@ -333,6 +333,47 @@ test('converts the discount value automatically when switching between percentag
   await expect(page.locator('[data-testid="checkout-discount-amount"]')).toContainText('-$50.00');
 });
 
+test('a fixed discount round-trips exactly through percentage even when it does not round evenly (regression: $70 of $270 must not drift to $70.01)', async ({ page }) => {
+  const order = seedOrder({
+    id: 110,
+    locationId: 1,
+    location: LOCATIONS[0],
+    rounds: [
+      {
+        id: 1,
+        orderId: 110,
+        roundNumber: 1,
+        userId: 1,
+        createdAt: new Date().toISOString(),
+        items: [
+          { id: 1, roundId: 1, productId: 1, customName: null, unitPrice: 270, quantity: 1, subtotal: 270, notes: null },
+        ],
+      },
+    ],
+  });
+  await setupApiMocks(page);
+  await setupOrdersMocks(page, LOCATIONS, [order]);
+  await login(page);
+
+  await page.locator('[data-testid="order-chip"]', { hasText: 'Mesa 1' }).click();
+  await page.locator('[data-testid="checkout-order"]').click();
+
+  await page.locator('input.toggle').click();
+  const valueInput = page.locator('[data-testid="discount-value"]');
+  // Cents-first entry: the digits "7000" become 70.00.
+  await valueInput.fill('7000');
+  await expect(page.locator('[data-testid="checkout-discount-amount"]')).toContainText('-$70.00');
+
+  // 70 / 270 * 100 = 25.925925..., rounded to 25.93% — not exactly reversible by naive re-conversion.
+  await page.getByRole('button', { name: 'Porcentaje' }).click();
+  await expect(valueInput).toHaveValue('25.93');
+
+  // Switching back to fixed must restore the original 70.00 exactly, not 70.01.
+  await page.getByRole('button', { name: 'Fijo' }).click();
+  await expect(valueInput).toHaveValue('70.00');
+  await expect(page.locator('[data-testid="checkout-discount-amount"]')).toContainText('-$70.00');
+});
+
 test('detects an order assigned to the current user after 30s of polling', async ({ page }) => {
   await setupApiMocks(page);
   await setupOrdersMocks(page, LOCATIONS);

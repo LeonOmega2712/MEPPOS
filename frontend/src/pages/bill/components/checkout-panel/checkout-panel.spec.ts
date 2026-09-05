@@ -137,7 +137,7 @@ describe('CheckoutPanelComponent', () => {
       component.toggleDiscount();
       component.description.set('Promo');
       component.setDiscountType('fixed');
-      component.discountValue.set(3);
+      component.setDiscountValue(3);
 
       expect(component.discountAmount()).toBe(3);
       expect(component.total()).toBe(7);
@@ -147,7 +147,7 @@ describe('CheckoutPanelComponent', () => {
       component.toggleDiscount();
       component.description.set('Promo');
       component.setDiscountType('percentage');
-      component.discountValue.set(10);
+      component.setDiscountValue(10);
 
       expect(component.discountAmount()).toBe(1);
       expect(component.total()).toBe(9);
@@ -157,7 +157,7 @@ describe('CheckoutPanelComponent', () => {
       component.toggleDiscount();
       component.description.set('Promo');
       component.setDiscountType('percentage');
-      component.discountValue.set(101);
+      component.setDiscountValue(101);
 
       expect(component.validationError()).toMatch(/100%/);
       expect(component.canConfirm()).toBe(false);
@@ -167,7 +167,7 @@ describe('CheckoutPanelComponent', () => {
       component.toggleDiscount();
       component.description.set('Promo');
       component.setDiscountType('fixed');
-      component.discountValue.set(20);
+      component.setDiscountValue(20);
 
       expect(component.validationError()).toMatch(/subtotal/);
       expect(component.canConfirm()).toBe(false);
@@ -176,14 +176,14 @@ describe('CheckoutPanelComponent', () => {
     it('rejects a value with more than 2 decimals', () => {
       component.toggleDiscount();
       component.description.set('Promo');
-      component.discountValue.set(1.234);
+      component.setDiscountValue(1.234);
 
       expect(component.validationError()).toMatch(/decimales/);
     });
 
     it('requires a description when the discount is enabled', () => {
       component.toggleDiscount();
-      component.discountValue.set(1);
+      component.setDiscountValue(1);
 
       expect(component.validationError()).toMatch(/descripción/);
     });
@@ -191,7 +191,7 @@ describe('CheckoutPanelComponent', () => {
     it('canConfirm is true once a valid discount is filled in', () => {
       component.toggleDiscount();
       component.description.set('Promo');
-      component.discountValue.set(2);
+      component.setDiscountValue(2);
 
       expect(component.canConfirm()).toBe(true);
     });
@@ -203,7 +203,7 @@ describe('CheckoutPanelComponent', () => {
     it('converts a percentage value to the equivalent fixed amount', () => {
       component.toggleDiscount();
       component.setDiscountType('percentage');
-      component.discountValue.set(10);
+      component.setDiscountValue(10);
 
       component.setDiscountType('fixed');
 
@@ -213,7 +213,7 @@ describe('CheckoutPanelComponent', () => {
     it('converts a fixed value back to the equivalent percentage', () => {
       component.toggleDiscount();
       component.setDiscountType('fixed');
-      component.discountValue.set(50);
+      component.setDiscountValue(50);
 
       component.setDiscountType('percentage');
 
@@ -223,7 +223,7 @@ describe('CheckoutPanelComponent', () => {
     it('keeps the discounted amount stable across a full round trip', () => {
       component.toggleDiscount();
       component.setDiscountType('percentage');
-      component.discountValue.set(10);
+      component.setDiscountValue(10);
       expect(component.discountAmount()).toBe(50);
 
       component.setDiscountType('fixed');
@@ -234,10 +234,28 @@ describe('CheckoutPanelComponent', () => {
       expect(component.discountValue()).toBe(10);
     });
 
+    it('preserves the exact original fixed value across a round trip, even when the equivalent percentage does not round evenly (regression: $70 of $270 must not drift to $70.01)', () => {
+      setOrder([makeRound({ items: [makeItem({ quantity: 1, unitPrice: 270 })] })]);
+      component.toggleDiscount();
+      component.setDiscountType('fixed');
+      component.setDiscountValue(70);
+
+      component.setDiscountType('percentage');
+      expect(component.discountValue()).toBeCloseTo(25.93, 2); // 70 / 270 * 100, rounded to 2 decimals
+
+      component.setDiscountType('fixed');
+      expect(component.discountValue()).toBe(70);
+
+      // Repeated back-and-forth must not compound any drift.
+      component.setDiscountType('percentage');
+      component.setDiscountType('fixed');
+      expect(component.discountValue()).toBe(70);
+    });
+
     it('does nothing when switching to the type that is already selected', () => {
       component.toggleDiscount();
       component.setDiscountType('fixed');
-      component.discountValue.set(50);
+      component.setDiscountValue(50);
 
       component.setDiscountType('fixed');
 
@@ -251,15 +269,16 @@ describe('CheckoutPanelComponent', () => {
       expect(component.discountValue()).toBeNull();
     });
 
-    it('does not divide by zero when the order subtotal is 0', () => {
+    it('does not divide by zero when the order subtotal is 0, leaving the other type uncached', () => {
       setOrder([]);
       component.toggleDiscount();
       component.setDiscountType('fixed');
-      component.discountValue.set(10);
+      component.setDiscountValue(10);
+      expect(component.discountValue()).toBe(10);
 
       component.setDiscountType('percentage');
 
-      expect(component.discountValue()).toBe(10);
+      expect(component.discountValue()).toBeNull();
     });
   });
 
@@ -295,7 +314,7 @@ describe('CheckoutPanelComponent', () => {
 
     it('reflects a value set programmatically (e.g. from a type conversion) fully formatted', async () => {
       component.setDiscountType('fixed');
-      component.discountValue.set(50);
+      component.setDiscountValue(50);
       fixture.detectChanges();
       await fixture.whenStable();
 
@@ -336,7 +355,7 @@ describe('CheckoutPanelComponent', () => {
 
     it('does nothing when canConfirm is false', async () => {
       component.toggleDiscount();
-      component.discountValue.set(9999);
+      component.setDiscountValue(9999);
       component.setDiscountType('fixed');
       await component.confirmCharge();
       expect(orderServiceMock.chargeOrder).not.toHaveBeenCalled();
@@ -360,7 +379,7 @@ describe('CheckoutPanelComponent', () => {
       component.toggleDiscount();
       component.description.set('Promo');
       component.setDiscountType('fixed');
-      component.discountValue.set(1);
+      component.setDiscountValue(1);
 
       await component.confirmCharge();
 
