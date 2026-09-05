@@ -294,7 +294,7 @@ The system uses 9 tables:
 - ✅ Persistent orders with multiple rounds (backend API: open/list/detail, add round, edit/delete items, cancel; location occupancy on `GET /api/locations`)
 - ✅ Orders frontend (active orders view with mine/all filter and 30s transfer-detection polling, new order flow, order detail view with round edit/delete and owner banner)
 - ✅ Charge endpoint with optional discount (backend API: `POST /api/orders/:id/charge`, fixed/percentage, DB-level integrity constraints)
-- ⬜ Checkout frontend (consolidated summary, discount UI, confirm charge)
+- ✅ Checkout frontend (consolidated summary, discount UI with live recalculation, confirm charge)
 - ⬜ Account ownership and transfer between waiters
 - ⬜ Kitchen ticket printing (per round)
 - ⬜ Final ticket printing (consolidated)

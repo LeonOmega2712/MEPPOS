@@ -3,6 +3,13 @@
   class="flex-1 min-h-0"
   (confirmed)="onLocationConfirmed($event)"
   (back)="closePicker()" />
+} @else if (checkoutOpen() && activeOrder(); as order) {
+<app-checkout-panel
+  class="flex-1 min-h-0"
+  [order]="order"
+  [isOwner]="isOwner(order)"
+  (charged)="onOrderCharged($event)"
+  (back)="closeCheckout()" />
 } @else {
 
 <!-- Chips row: open orders + multi-purpose confirm/new-bill action -->
@@ -360,13 +367,14 @@
             </button>
           </span>
           } @else if (activeOrder() !== null) {
-          <span class="flex-1" title="Próximamente">
+          <span class="flex-1">
             <button
               type="button"
               class="btn btn-soft btn-primary w-full"
               data-testid="checkout-order"
-              disabled
-              aria-label="Cobrar cuenta">
+              [disabled]="!canCheckout()"
+              aria-label="Cobrar cuenta"
+              (click)="openCheckout()">
               Cobrar
               <app-icon name="currency-dollar" sizeClass="size-4" />
             </button>

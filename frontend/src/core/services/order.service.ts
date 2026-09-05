@@ -9,6 +9,7 @@ import type {
   CreateOrderPayload,
   AddRoundPayload,
   UpdateOrderItemPayload,
+  ChargeOrderPayload,
   OrderRound,
   OrderItem,
 } from '../models';
@@ -82,6 +83,12 @@ export class OrderService {
   cancelOrder(id: number): Observable<Order> {
     return this.http
       .post<ApiResponse<Order>>(`${this.ordersUrl}/${id}/cancel`, {})
+      .pipe(map((r) => r.data));
+  }
+
+  chargeOrder(id: number, data: ChargeOrderPayload): Observable<Order> {
+    return this.http
+      .post<ApiResponse<Order>>(`${this.ordersUrl}/${id}/charge`, data)
       .pipe(map((r) => r.data));
   }
 }

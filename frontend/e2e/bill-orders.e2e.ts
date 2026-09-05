@@ -207,6 +207,89 @@ test('checkout button appears in the empty-cart slot and is disabled', async ({ 
   await expect(page.locator('[data-testid="checkout-order"]')).toHaveCount(0);
 });
 
+test('checkout button is enabled once the order has a sent round, and disabled while a round edit is pending', async ({ page }) => {
+  const order = seedOrder({
+    id: 107,
+    locationId: 1,
+    location: LOCATIONS[0],
+    rounds: [
+      {
+        id: 1,
+        orderId: 107,
+        roundNumber: 1,
+        userId: 1,
+        createdAt: new Date().toISOString(),
+        items: [
+          { id: 1, roundId: 1, productId: 1, customName: null, unitPrice: 100, quantity: 1, subtotal: 100, notes: null },
+        ],
+      },
+    ],
+  });
+  await setupApiMocks(page);
+  await setupOrdersMocks(page, LOCATIONS, [order]);
+  await login(page);
+
+  await page.locator('[data-testid="order-chip"]', { hasText: 'Mesa 1' }).click();
+  await expect(page.locator('[data-testid="checkout-order"]')).toBeEnabled();
+
+  // Opening the round editor alone doesn't disable checkout — only an actual unsaved quantity change does,
+  // since that's when the on-screen total would stop matching what the backend would charge.
+  await page.getByRole('button', { name: 'Editar cantidades de la ronda' }).click();
+  await expect(page.locator('[data-testid="checkout-order"]')).toBeEnabled();
+
+  await page.getByRole('button', { name: 'Aumentar cantidad' }).click();
+  await expect(page.locator('[data-testid="checkout-order"]')).toBeDisabled();
+
+  await page.getByRole('button', { name: 'Cancelar edición de la ronda' }).click();
+  await page.locator('.modal-box').getByRole('button', { name: 'Descartar cambios' }).click();
+  await expect(page.locator('[data-testid="checkout-order"]')).toBeEnabled();
+});
+
+test('completes a checkout with a percentage discount and removes the order from the chips', async ({ page }) => {
+  const order = seedOrder({
+    id: 108,
+    locationId: 1,
+    location: LOCATIONS[0],
+    rounds: [
+      {
+        id: 1,
+        orderId: 108,
+        roundNumber: 1,
+        userId: 1,
+        createdAt: new Date().toISOString(),
+        items: [
+          { id: 1, roundId: 1, productId: 1, customName: null, unitPrice: 100, quantity: 1, subtotal: 100, notes: null },
+        ],
+      },
+    ],
+  });
+  await setupApiMocks(page);
+  await setupOrdersMocks(page, LOCATIONS, [order]);
+  await login(page);
+
+  await page.locator('[data-testid="order-chip"]', { hasText: 'Mesa 1' }).click();
+  await page.locator('[data-testid="checkout-order"]').click();
+  await expect(page.locator('[data-testid="checkout-total"]')).toContainText('100.00');
+
+  await page.locator('input.toggle').click();
+  await page.getByPlaceholder('Ej. Promoción del día').fill('Promo');
+  await page.getByRole('button', { name: 'Porcentaje' }).click();
+  const valueInput = page.locator('[data-testid="discount-value"]');
+  await valueInput.fill('10');
+  await valueInput.blur();
+
+  await expect(page.locator('[data-testid="checkout-discount-amount"]')).toContainText('-$10.00');
+  await expect(page.locator('[data-testid="checkout-total"]')).toContainText('90.00');
+
+  await page.locator('[data-testid="confirm-checkout"]').click();
+  const dialog = page.locator('.modal-box');
+  await expect(dialog).toBeVisible();
+  await dialog.locator('input[type="text"]').fill('90.00');
+  await dialog.getByRole('button', { name: 'Cobrar cuenta' }).click();
+
+  await expect(page.locator('[data-testid="order-chip"]')).toHaveCount(0);
+});
+
 test('detects an order assigned to the current user after 30s of polling', async ({ page }) => {
   await setupApiMocks(page);
   await setupOrdersMocks(page, LOCATIONS);

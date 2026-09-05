@@ -9,9 +9,11 @@ import { LocationService } from '../../core/services/location.service';
 import { AuthService } from '../../core/services/auth.service';
 import type { HasUnsavedChanges } from '../../core/guards/unsaved-changes.guard';
 import type { MenuCategory, MenuProduct, Order, OrderItemInput } from '../../core/models';
+import { orderLabel } from '../../core/utils/order-label';
 import { IconComponent } from '../../shared/components/icon';
 import { NumericInputDirective } from '../../shared/directives/numeric-input.directive';
 import { LocationPickerComponent, type LocationSelection } from './components/location-picker/location-picker';
+import { CheckoutPanelComponent } from './components/checkout-panel/checkout-panel';
 
 interface BillItem {
   productId: number;
@@ -22,7 +24,7 @@ interface BillItem {
 
 @Component({
   selector: 'app-bill-page',
-  imports: [IconComponent, NumericInputDirective, LocationPickerComponent],
+  imports: [IconComponent, NumericInputDirective, LocationPickerComponent, CheckoutPanelComponent],
   templateUrl: './bill.html',
   changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './bill.css',
@@ -52,6 +54,7 @@ export class BillPage implements OnInit, HasUnsavedChanges {
   /** Bumped whenever activeOrder changes so stale loadOrder responses can be discarded. */
   private orderLoadToken = 0;
   pickerOpen = signal(false);
+  checkoutOpen = signal(false);
   confirming = signal(false);
   sendingRound = signal(false);
 
@@ -167,6 +170,9 @@ export class BillPage implements OnInit, HasUnsavedChanges {
     this.activeOrder() === null ? 'Limpiar cuenta' : 'Limpiar ronda'
   );
 
+  /** True when the active order has sent rounds and no unsaved round edit, so the on-screen total matches what would be charged. */
+  canCheckout = computed(() => this.existingRounds().length > 0 && this.pendingRoundEdits().size === 0);
+
   ngOnInit(): void {
     this.orderService.ensureOpenOrders();
     this.locationService.ensureLocations();
@@ -185,14 +191,7 @@ export class BillPage implements OnInit, HasUnsavedChanges {
   }
 
   chipLabel(order: Order): string {
-    if (order.location) {
-      if (order.location.type === 'bar' && order.barPosition != null) {
-        return `${order.location.name} #${order.barPosition}`;
-      }
-      return order.location.name;
-    }
-    if (order.takeoutNumber != null) return `Folio #${order.takeoutNumber}`;
-    return `Orden #${order.id}`;
+    return orderLabel(order);
   }
 
   isActiveChip(order: Order): boolean {
@@ -627,6 +626,15 @@ export class BillPage implements OnInit, HasUnsavedChanges {
     this.pickerOpen.set(false);
   }
 
+  openCheckout(): void {
+    if (!this.canCheckout()) return;
+    this.checkoutOpen.set(true);
+  }
+
+  closeCheckout(): void {
+    this.checkoutOpen.set(false);
+  }
+
   private cartToRoundItems(): OrderItemInput[] {
     return this.billItemsList().map((item) => ({
       productId: item.productId,
@@ -708,5 +716,20 @@ export class BillPage implements OnInit, HasUnsavedChanges {
       },
       error: () => this.toastService.error('Error al cancelar la cuenta'),
     });
+  }
+
+  /** Called once CheckoutPanelComponent confirms the charge. Clears the active order the same way cancelActiveOrder() does. */
+  onOrderCharged(_order: Order): void {
+    // Hook point for #43 (final ticket print) once that feature lands.
+    this.orderLoadToken++;
+    this.activeOrder.set(null);
+    this.billItems.set(new Map());
+    this.footerExpanded.set(false);
+    this.editingRounds.set(new Set());
+    this.pendingRoundEdits.set(new Map());
+    this.checkoutOpen.set(false);
+    this.orderService.refreshOpenOrders();
+    this.locationService.refreshLocations();
+    this.toastService.success('Cuenta cobrada');
   }
 }

@@ -1,0 +1,138 @@
+<div class="flex flex-col h-full">
+  <div class="flex items-center gap-2 p-3 sm:p-4 border-b border-base-300 shrink-0">
+    <button class="btn btn-ghost btn-sm btn-circle" aria-label="Volver" (click)="goBack()">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+      </svg>
+    </button>
+    <h2 class="text-lg font-bold">Cobrar cuenta</h2>
+    <span class="text-base-content/60">· {{ chipLabel() }}</span>
+  </div>
+
+  <div class="flex-1 overflow-y-auto p-3 sm:p-4 container mx-auto">
+    @if (!isOwner()) {
+    <div class="alert alert-warning mb-4" data-testid="checkout-owner-warning">
+      <app-icon name="user-circle" sizeClass="size-5" />
+      <span>Esta cuenta pertenece a otro mesero.</span>
+    </div>
+    }
+
+    <div class="bg-base-200 shadow-sm rounded-box p-3 mb-4">
+      <div class="divide-y divide-base-300" data-testid="checkout-lines">
+        @for (line of lines(); track line.key) {
+        <div class="flex items-center py-2 gap-2">
+          <span class="badge badge-primary font-bold w-8 shrink-0 justify-center">{{ line.quantity }}</span>
+          <div class="flex-1 min-w-0">
+            <div class="font-medium truncate">{{ line.name }}</div>
+            @if (line.notes) {
+            <div class="text-xs text-base-content/60 truncate">{{ line.notes }}</div>
+            }
+          </div>
+          <span class="text-base-content/60 whitespace-nowrap">${{ line.unitPrice.toFixed(2) }} c/u</span>
+          <span class="badge badge-success font-bold justify-end">${{ line.subtotal.toFixed(2) }}</span>
+        </div>
+        }
+      </div>
+    </div>
+
+    <div class="bg-base-200 shadow-sm rounded-box p-3 mb-4">
+      <label class="label cursor-pointer">
+        <input type="checkbox" class="toggle" [checked]="discountEnabled()" (change)="toggleDiscount()" />
+        Aplicar descuento
+      </label>
+
+      @if (discountEnabled()) {
+      <div class="flex flex-col gap-3 mt-3">
+        <label class="input w-full">
+          <span class="label w-24 shrink-0">Descripción</span>
+          <input
+            type="text"
+            [value]="description()"
+            (input)="onDescriptionChange($event)"
+            maxlength="255"
+            placeholder="Ej. Promoción del día" />
+        </label>
+
+        <div class="flex items-center gap-3">
+          <div class="join">
+            <button
+              type="button"
+              class="join-item btn btn-soft"
+              [class.btn-active]="discountType() === 'fixed'"
+              (click)="setDiscountType('fixed')">
+              Fijo
+            </button>
+            <button
+              type="button"
+              class="join-item btn btn-soft"
+              [class.btn-active]="discountType() === 'percentage'"
+              (click)="setDiscountType('percentage')">
+              Porcentaje
+            </button>
+          </div>
+          <label class="input w-32">
+            @if (discountType() === 'fixed') {
+            <span class="label">$</span>
+            }
+            <input
+              type="number"
+              [value]="discountValue() ?? ''"
+              (change)="onDiscountValueChange($event)"
+              min="0"
+              step="0.01"
+              appNumericInput
+              mode="decimal"
+              data-testid="discount-value" />
+            @if (discountType() === 'percentage') {
+            <span class="label">%</span>
+            }
+          </label>
+        </div>
+
+        @if (validationError(); as error) {
+        <div class="alert alert-error" data-testid="checkout-validation-error">
+          <span>{{ error }}</span>
+        </div>
+        }
+      </div>
+      }
+    </div>
+
+    <div class="bg-base-200 shadow-sm rounded-box p-3 flex flex-col gap-1">
+      <div class="flex justify-between">
+        <span class="text-base-content/60">Subtotal</span>
+        <span data-testid="checkout-subtotal">${{ subtotal().toFixed(2) }}</span>
+      </div>
+      @if (discountAmount(); as amount) {
+      <div class="flex justify-between text-warning">
+        <span>Descuento</span>
+        <span data-testid="checkout-discount-amount">-${{ amount.toFixed(2) }}</span>
+      </div>
+      }
+      <div class="divider my-1"></div>
+      <div class="flex justify-between items-center font-bold text-lg">
+        <span>Total</span>
+        <span class="badge badge-lg badge-success font-bold" data-testid="checkout-total">
+          <app-icon name="currency-dollar" />
+          {{ total().toFixed(2) }}
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <div class="p-3 sm:p-4 border-t border-base-300 shrink-0">
+    <button
+      type="button"
+      class="btn btn-soft btn-success btn-block"
+      data-testid="confirm-checkout"
+      [disabled]="!canConfirm()"
+      (click)="confirmCharge()">
+      @if (charging()) {
+      <span class="loading loading-spinner loading-sm"></span>
+      } @else {
+      Cobrar ${{ total().toFixed(2) }}
+      <app-icon name="currency-dollar" sizeClass="size-4" />
+      }
+    </button>
+  </div>
+</div>

@@ -338,6 +338,16 @@ export type MockOrderRound = {
   items: MockOrderItem[];
 };
 
+export type MockOrderDiscount = {
+  id: number;
+  orderId: number;
+  description: string;
+  type: 'fixed' | 'percentage';
+  value: number;
+  amount: number;
+  createdAt: string;
+};
+
 export type MockOrder = {
   id: number;
   locationId: number | null;
@@ -351,7 +361,7 @@ export type MockOrder = {
   location: MockLocation | null;
   owner: { id: number; displayName: string };
   rounds: MockOrderRound[];
-  discounts: [];
+  discounts: MockOrderDiscount[];
 };
 
 function orderTotals(order: MockOrder) {
@@ -359,7 +369,8 @@ function orderTotals(order: MockOrder) {
     (sum, round) => sum + round.items.reduce((s, item) => s + item.subtotal, 0),
     0,
   );
-  return { subtotal, discountTotal: 0, total: subtotal };
+  const discountTotal = order.discounts.reduce((sum, discount) => sum + discount.amount, 0);
+  return { subtotal, discountTotal, total: subtotal - discountTotal };
 }
 
 function serializeOrder(order: MockOrder) {
@@ -382,6 +393,7 @@ export async function setupOrdersMocks(
   let nextOrderId = (seedOrders.reduce((max, o) => Math.max(max, o.id), 0) || 0) + 1;
   let nextRoundId = 1;
   let nextItemId = 1;
+  let nextDiscountId = 1;
 
   await page.route(`${API_BASE}/locations`, (route) =>
     route.fulfill({
@@ -521,5 +533,48 @@ export async function setupOrdersMocks(
     order.status = 'cancelled';
     order.closedAt = new Date().toISOString();
     return route.fulfill({ status: 200, json: { success: true, data: serializeOrder(order), message: 'Order cancelled successfully' } });
+  });
+
+  await page.route(new RegExp(`${API_BASE}/orders/(\\d+)/charge$`), async (route) => {
+    if (route.request().method() !== 'POST') return route.fallback();
+    const id = Number(route.request().url().match(/orders\/(\d+)\/charge/)?.[1]);
+    const order = orders.find((o) => o.id === id);
+    if (!order) {
+      return route.fulfill({ status: 404, json: { success: false, error: 'Order not found' } });
+    }
+    if (order.status !== 'open') {
+      return route.fulfill({ status: 409, json: { success: false, error: 'Order is not open' } });
+    }
+    const hasItems = order.rounds.some((round) => round.items.length > 0);
+    if (!hasItems) {
+      return route.fulfill({ status: 409, json: { success: false, error: 'Order has no items' } });
+    }
+
+    const body = JSON.parse(route.request().postData() ?? '{}') as {
+      discount?: { description: string; type: 'fixed' | 'percentage'; value: number };
+    };
+    if (body.discount) {
+      const { subtotal } = orderTotals(order);
+      const amount =
+        body.discount.type === 'fixed'
+          ? body.discount.value
+          : Math.round(subtotal * body.discount.value) / 100;
+      if (amount > subtotal) {
+        return route.fulfill({ status: 409, json: { success: false, error: 'Discount exceeds order subtotal' } });
+      }
+      order.discounts.push({
+        id: nextDiscountId++,
+        orderId: order.id,
+        description: body.discount.description,
+        type: body.discount.type,
+        value: body.discount.value,
+        amount,
+        createdAt: new Date().toISOString(),
+      });
+    }
+
+    order.status = 'charged';
+    order.closedAt = new Date().toISOString();
+    return route.fulfill({ status: 200, json: { success: true, data: serializeOrder(order), message: 'Order charged successfully' } });
   });
 }
