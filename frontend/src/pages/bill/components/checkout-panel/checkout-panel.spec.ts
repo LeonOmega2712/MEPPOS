@@ -197,6 +197,72 @@ describe('CheckoutPanelComponent', () => {
     });
   });
 
+  describe('setDiscountType conversion', () => {
+    beforeEach(() => setOrder([makeRound({ items: [makeItem({ quantity: 1, unitPrice: 500 })] })]));
+
+    it('converts a percentage value to the equivalent fixed amount', () => {
+      component.toggleDiscount();
+      component.setDiscountType('percentage');
+      component.discountValue.set(10);
+
+      component.setDiscountType('fixed');
+
+      expect(component.discountValue()).toBe(50);
+    });
+
+    it('converts a fixed value back to the equivalent percentage', () => {
+      component.toggleDiscount();
+      component.setDiscountType('fixed');
+      component.discountValue.set(50);
+
+      component.setDiscountType('percentage');
+
+      expect(component.discountValue()).toBe(10);
+    });
+
+    it('keeps the discounted amount stable across a full round trip', () => {
+      component.toggleDiscount();
+      component.setDiscountType('percentage');
+      component.discountValue.set(10);
+      expect(component.discountAmount()).toBe(50);
+
+      component.setDiscountType('fixed');
+      expect(component.discountAmount()).toBe(50);
+
+      component.setDiscountType('percentage');
+      expect(component.discountAmount()).toBe(50);
+      expect(component.discountValue()).toBe(10);
+    });
+
+    it('does nothing when switching to the type that is already selected', () => {
+      component.toggleDiscount();
+      component.setDiscountType('fixed');
+      component.discountValue.set(50);
+
+      component.setDiscountType('fixed');
+
+      expect(component.discountValue()).toBe(50);
+    });
+
+    it('does not attempt a conversion when no value has been entered yet', () => {
+      component.toggleDiscount();
+      component.setDiscountType('percentage');
+
+      expect(component.discountValue()).toBeNull();
+    });
+
+    it('does not divide by zero when the order subtotal is 0', () => {
+      setOrder([]);
+      component.toggleDiscount();
+      component.setDiscountType('fixed');
+      component.discountValue.set(10);
+
+      component.setDiscountType('percentage');
+
+      expect(component.discountValue()).toBe(10);
+    });
+  });
+
   describe('ownership warning', () => {
     it('is not shown for the owner', () => {
       setOrder([makeRound({ items: [makeItem()] })], true);

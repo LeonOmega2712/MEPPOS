@@ -290,6 +290,49 @@ test('completes a checkout with a percentage discount and removes the order from
   await expect(page.locator('[data-testid="order-chip"]')).toHaveCount(0);
 });
 
+test('converts the discount value automatically when switching between percentage and fixed', async ({ page }) => {
+  const order = seedOrder({
+    id: 109,
+    locationId: 1,
+    location: LOCATIONS[0],
+    rounds: [
+      {
+        id: 1,
+        orderId: 109,
+        roundNumber: 1,
+        userId: 1,
+        createdAt: new Date().toISOString(),
+        items: [
+          { id: 1, roundId: 1, productId: 1, customName: null, unitPrice: 500, quantity: 1, subtotal: 500, notes: null },
+        ],
+      },
+    ],
+  });
+  await setupApiMocks(page);
+  await setupOrdersMocks(page, LOCATIONS, [order]);
+  await login(page);
+
+  await page.locator('[data-testid="order-chip"]', { hasText: 'Mesa 1' }).click();
+  await page.locator('[data-testid="checkout-order"]').click();
+
+  await page.locator('input.toggle').click();
+  await page.getByRole('button', { name: 'Porcentaje' }).click();
+  const valueInput = page.locator('[data-testid="discount-value"]');
+  await valueInput.fill('10');
+  await valueInput.blur();
+  await expect(page.locator('[data-testid="checkout-discount-amount"]')).toContainText('-$50.00');
+
+  // Switching to fixed converts 10% of 500 into the equivalent amount, 50.
+  await page.getByRole('button', { name: 'Fijo' }).click();
+  await expect(valueInput).toHaveValue('50');
+  await expect(page.locator('[data-testid="checkout-discount-amount"]')).toContainText('-$50.00');
+
+  // Switching back to percentage restores 10%.
+  await page.getByRole('button', { name: 'Porcentaje' }).click();
+  await expect(valueInput).toHaveValue('10');
+  await expect(page.locator('[data-testid="checkout-discount-amount"]')).toContainText('-$50.00');
+});
+
 test('detects an order assigned to the current user after 30s of polling', async ({ page }) => {
   await setupApiMocks(page);
   await setupOrdersMocks(page, LOCATIONS);

@@ -116,7 +116,21 @@ export class CheckoutPanelComponent {
     this.discountEnabled.update((enabled) => !enabled);
   }
 
+  /** Switching type converts the current value so the discounted amount stays the same (e.g. 10% of 500 becomes 50, and back to 10% when toggled again). */
   setDiscountType(type: DiscountType): void {
+    const previousType = this.discountType();
+    if (type === previousType) return;
+
+    const value = this.discountValue();
+    const subtotal = this.subtotal();
+    if (value !== null && value > 0 && subtotal > 0) {
+      const converted =
+        type === 'fixed'
+          ? Math.round(subtotal * value) / 100 // value was a percentage; mirrors the backend's roundToCents
+          : Math.round((value / subtotal) * 10000) / 100; // value was a fixed amount; round to 2 decimals
+      this.discountValue.set(converted);
+    }
+
     this.discountType.set(type);
   }
 
