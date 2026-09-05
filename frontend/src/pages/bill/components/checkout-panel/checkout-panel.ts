@@ -1,7 +1,6 @@
 import { Component, computed, inject, input, output, signal, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
-import { ConfirmDialogService } from '../../../../core/services/confirm-dialog.service';
 import { ToastService } from '../../../../core/services/toast.service';
 import { OrderService } from '../../../../core/services/order.service';
 import type { DiscountType, Order } from '../../../../core/models';
@@ -30,7 +29,6 @@ const MAX_DISCOUNT_VALUE = 99_999_999.99;
   styleUrl: './checkout-panel.css',
 })
 export class CheckoutPanelComponent {
-  private readonly confirmDialogService = inject(ConfirmDialogService);
   private readonly toastService = inject(ToastService);
   private readonly orderService = inject(OrderService);
 
@@ -43,6 +41,10 @@ export class CheckoutPanelComponent {
   description = signal('');
   discountType = signal<DiscountType>('fixed');
   charging = signal(false);
+
+  /** Cash payment step, opened once the checkout summary is confirmed: the waiter enters what the customer hands over and the dialog computes the change. */
+  cashDialogOpen = signal(false);
+  receivedAmount = signal<number | null>(null);
 
   /** Cached value per type, kept in sync on every edit (see setDiscountValue) so switching types back and forth never re-derives — and drifts — a value the user actually typed. */
   private readonly fixedValue = signal<number | null>(null);
@@ -116,6 +118,17 @@ export class CheckoutPanelComponent {
     () => this.lines().length > 0 && !this.charging() && this.validationError() === null
   );
 
+  /** Change to hand back, or null until the waiter enters what the customer paid with. Negative means the amount received doesn't cover the total yet. */
+  changeAmount = computed<number | null>(() => {
+    const received = this.receivedAmount();
+    return received === null ? null : received - this.total();
+  });
+
+  canConfirmCash = computed(() => {
+    const change = this.changeAmount();
+    return change !== null && change >= 0 && !this.charging();
+  });
+
   chipLabel(): string {
     return orderLabel(this.order());
   }
@@ -163,25 +176,20 @@ export class CheckoutPanelComponent {
     this.back.emit();
   }
 
-  async confirmCharge(): Promise<void> {
+  openCashDialog(): void {
     if (!this.canConfirm()) return;
+    this.receivedAmount.set(null);
+    this.cashDialogOpen.set(true);
+  }
 
-    const total = this.total().toFixed(2);
-    const summaryLines = this.discountAmount() !== null
-      ? [
-          { label: this.description().trim(), detail: `-$${this.discountAmount()!.toFixed(2)}` },
-          { label: 'Total a cobrar', detail: `$${total}` },
-        ]
-      : [];
+  cancelCashPayment(): void {
+    this.cashDialogOpen.set(false);
+    this.receivedAmount.set(null);
+  }
 
-    const confirmed = await this.confirmDialogService.confirm({
-      title: 'Cobrar cuenta',
-      message: `Esta acción no se puede deshacer. Escriba el total a cobrar (${total}) para confirmar:`,
-      confirmText: 'Cobrar cuenta',
-      requireInput: total,
-      summaryLines,
-    });
-    if (!confirmed) return;
+  confirmCashPayment(): void {
+    if (!this.canConfirmCash()) return;
+    this.cashDialogOpen.set(false);
 
     const discount = this.discountEnabled()
       ? { description: this.description().trim(), type: this.discountType(), value: this.discountValue()! }

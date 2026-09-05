@@ -125,7 +125,7 @@
       class="btn btn-soft btn-success btn-block"
       data-testid="confirm-checkout"
       [disabled]="!canConfirm()"
-      (click)="confirmCharge()">
+      (click)="openCashDialog()">
       @if (charging()) {
       <span class="loading loading-spinner loading-sm"></span>
       } @else {
@@ -135,3 +135,59 @@
     </button>
   </div>
 </div>
+
+@if (cashDialogOpen()) {
+<dialog class="modal modal-open" data-testid="cash-payment-dialog">
+  <div class="modal-box">
+    <h3 class="font-bold text-lg">Cobrar cuenta</h3>
+    <p class="py-4">Ingrese la cantidad con la que paga el cliente:</p>
+
+    <label class="input w-full">
+      <span class="label">$</span>
+      <input
+        type="text"
+        inputmode="decimal"
+        appCurrencyInput
+        [ngModel]="receivedAmount()"
+        (ngModelChange)="receivedAmount.set($event)"
+        [placeholder]="total().toFixed(2)"
+        data-testid="received-amount" />
+    </label>
+
+    @if (receivedAmount() !== null) {
+    <div class="divide-y divide-base-300 bg-base-200 rounded-lg px-3 mt-2">
+      <div class="py-2">
+        @if (canConfirmCash()) {
+        <p class="font-medium">Cambio a entregar</p>
+        <p class="text-sm text-success font-semibold" data-testid="change-amount">${{ changeAmount()!.toFixed(2) }}</p>
+        } @else {
+        <p class="font-medium">Falta por cobrar</p>
+        <p class="text-sm text-error font-semibold" data-testid="change-amount">${{ (-changeAmount()!).toFixed(2) }}</p>
+        }
+      </div>
+    </div>
+    }
+
+    <div class="modal-action">
+      <button class="btn btn-soft btn-error" (click)="cancelCashPayment()" aria-label="Cancelar">
+        <app-icon name="x-circle" />
+      </button>
+      <button
+        class="btn btn-soft btn-success"
+        data-testid="confirm-cash-payment"
+        [disabled]="!canConfirmCash()"
+        (click)="confirmCashPayment()"
+        aria-label="Cobrar cuenta">
+        @if (charging()) {
+        <span class="loading loading-spinner loading-sm"></span>
+        } @else {
+        <app-icon name="check-circle" />
+        }
+      </button>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop">
+    <button (click)="cancelCashPayment()">close</button>
+  </form>
+</dialog>
+}

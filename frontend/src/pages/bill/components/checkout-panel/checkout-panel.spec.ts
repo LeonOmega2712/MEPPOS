@@ -3,7 +3,6 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { of, throwError } from 'rxjs';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { CheckoutPanelComponent } from './checkout-panel';
-import { ConfirmDialogService } from '../../../../core/services/confirm-dialog.service';
 import { ToastService } from '../../../../core/services/toast.service';
 import { OrderService } from '../../../../core/services/order.service';
 import type { Order, OrderItem, OrderRound, Product } from '../../../../core/models';
@@ -68,19 +67,16 @@ describe('CheckoutPanelComponent', () => {
   let component: CheckoutPanelComponent;
   let orderServiceMock: any;
   let toastServiceMock: any;
-  let confirmDialogMock: any;
 
   beforeEach(async () => {
     orderServiceMock = { chargeOrder: vi.fn() };
     toastServiceMock = { success: vi.fn(), error: vi.fn(), warning: vi.fn(), info: vi.fn() };
-    confirmDialogMock = { confirm: vi.fn().mockResolvedValue(true) };
 
     await TestBed.configureTestingModule({
       imports: [CheckoutPanelComponent],
       providers: [
         { provide: OrderService, useValue: orderServiceMock },
         { provide: ToastService, useValue: toastServiceMock },
-        { provide: ConfirmDialogService, useValue: confirmDialogMock },
       ],
     }).compileComponents();
 
@@ -336,6 +332,78 @@ describe('CheckoutPanelComponent', () => {
     });
   });
 
+  describe('cash payment dialog (DOM)', () => {
+    function getDialog(): Element | null {
+      return fixture.nativeElement.querySelector('[data-testid="cash-payment-dialog"]');
+    }
+
+    function getReceivedInput(): HTMLInputElement {
+      return fixture.nativeElement.querySelector('[data-testid="received-amount"]') as HTMLInputElement;
+    }
+
+    function getConfirmButton(): HTMLButtonElement {
+      return fixture.nativeElement.querySelector('[data-testid="confirm-cash-payment"]') as HTMLButtonElement;
+    }
+
+    function typeDigit(input: HTMLInputElement, digit: string): void {
+      input.value = input.value + digit;
+      input.setSelectionRange(input.value.length, input.value.length);
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      fixture.detectChanges();
+    }
+
+    beforeEach(() => setOrder([makeRound({ items: [makeItem({ quantity: 1, unitPrice: 5 })] })]));
+
+    it('is not rendered until openCashDialog is called', () => {
+      expect(getDialog()).toBeNull();
+    });
+
+    it('renders once opened, with the confirm button disabled and no change shown yet', () => {
+      component.openCashDialog();
+      fixture.detectChanges();
+
+      expect(getDialog()).not.toBeNull();
+      expect(getConfirmButton().disabled).toBe(true);
+      expect(fixture.nativeElement.querySelector('[data-testid="change-amount"]')).toBeNull();
+    });
+
+    it('shows the change, cents-first, and enables confirm once payment covers the total', () => {
+      component.openCashDialog();
+      fixture.detectChanges();
+
+      const input = getReceivedInput();
+      typeDigit(input, '1'); // 0.01
+      typeDigit(input, '0');
+      typeDigit(input, '0'); // 1.00
+      typeDigit(input, '0'); // 10.00
+
+      expect(fixture.nativeElement.querySelector('[data-testid="change-amount"]').textContent).toContain('5.00');
+      expect(getConfirmButton().disabled).toBe(false);
+    });
+
+    it('shows what is missing, in red, while the payment falls short', () => {
+      component.openCashDialog();
+      fixture.detectChanges();
+
+      typeDigit(getReceivedInput(), '3'); // 0.03 < 5.00
+
+      const changeEl = fixture.nativeElement.querySelector('[data-testid="change-amount"]');
+      expect(changeEl.textContent).toContain('4.97');
+      expect(changeEl.className).toContain('text-error');
+      expect(getConfirmButton().disabled).toBe(true);
+    });
+
+    it('cancel button closes the dialog', () => {
+      component.openCashDialog();
+      fixture.detectChanges();
+
+      (fixture.nativeElement.querySelector('[aria-label="Cancelar"]') as HTMLButtonElement).click();
+      fixture.detectChanges();
+
+      expect(getDialog()).toBeNull();
+    });
+  });
+
   describe('ownership warning', () => {
     it('is not shown for the owner', () => {
       setOrder([makeRound({ items: [makeItem()] })], true);
@@ -350,67 +418,129 @@ describe('CheckoutPanelComponent', () => {
     });
   });
 
-  describe('confirmCharge', () => {
-    beforeEach(() => setOrder([makeRound({ items: [makeItem({ quantity: 1, unitPrice: 5 })] })]));
-
-    it('does nothing when canConfirm is false', async () => {
-      component.toggleDiscount();
-      component.setDiscountValue(9999);
-      component.setDiscountType('fixed');
-      await component.confirmCharge();
-      expect(orderServiceMock.chargeOrder).not.toHaveBeenCalled();
+  describe('openCashDialog', () => {
+    it('does nothing when canConfirm is false (no lines)', () => {
+      setOrder([]);
+      component.openCashDialog();
+      expect(component.cashDialogOpen()).toBe(false);
     });
 
-    it('asks for confirmation and charges the order without a discount', async () => {
+    it('opens the dialog and resets any previously entered amount', () => {
+      setOrder([makeRound({ items: [makeItem({ quantity: 1, unitPrice: 5 })] })]);
+      component.receivedAmount.set(999);
+
+      component.openCashDialog();
+
+      expect(component.cashDialogOpen()).toBe(true);
+      expect(component.receivedAmount()).toBeNull();
+    });
+  });
+
+  describe('change calculation', () => {
+    beforeEach(() => {
+      setOrder([makeRound({ items: [makeItem({ quantity: 1, unitPrice: 5 })] })]);
+      component.openCashDialog();
+    });
+
+    it('changeAmount is null until an amount is entered', () => {
+      expect(component.changeAmount()).toBeNull();
+      expect(component.canConfirmCash()).toBe(false);
+    });
+
+    it('computes the change once the customer\'s payment is entered', () => {
+      component.receivedAmount.set(10);
+      expect(component.changeAmount()).toBe(5);
+      expect(component.canConfirmCash()).toBe(true);
+    });
+
+    it('is exact (no change) when paying with the exact total', () => {
+      component.receivedAmount.set(5);
+      expect(component.changeAmount()).toBe(0);
+      expect(component.canConfirmCash()).toBe(true);
+    });
+
+    it('reports a negative change and blocks confirm when the payment falls short', () => {
+      component.receivedAmount.set(3);
+      expect(component.changeAmount()).toBe(-2);
+      expect(component.canConfirmCash()).toBe(false);
+    });
+  });
+
+  describe('cancelCashPayment', () => {
+    it('closes the dialog and clears the entered amount without charging', () => {
+      setOrder([makeRound({ items: [makeItem({ quantity: 1, unitPrice: 5 })] })]);
+      component.openCashDialog();
+      component.receivedAmount.set(10);
+
+      component.cancelCashPayment();
+
+      expect(component.cashDialogOpen()).toBe(false);
+      expect(component.receivedAmount()).toBeNull();
+      expect(orderServiceMock.chargeOrder).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('confirmCashPayment', () => {
+    beforeEach(() => {
+      setOrder([makeRound({ items: [makeItem({ quantity: 1, unitPrice: 5 })] })]);
+      component.openCashDialog();
+    });
+
+    it('does nothing when the payment does not cover the total', () => {
+      component.receivedAmount.set(3);
+      component.confirmCashPayment();
+      expect(orderServiceMock.chargeOrder).not.toHaveBeenCalled();
+      expect(component.cashDialogOpen()).toBe(true);
+    });
+
+    it('charges the order and closes the dialog once the payment covers the total', () => {
       const charged = makeOrder([]);
       orderServiceMock.chargeOrder.mockReturnValue(of(charged));
       const spy = vi.fn();
       component.charged.subscribe(spy);
 
-      await component.confirmCharge();
+      component.receivedAmount.set(10);
+      component.confirmCashPayment();
 
-      expect(confirmDialogMock.confirm).toHaveBeenCalledWith(expect.objectContaining({ requireInput: '5.00' }));
+      expect(component.cashDialogOpen()).toBe(false);
       expect(orderServiceMock.chargeOrder).toHaveBeenCalledWith(1, { discount: undefined });
       expect(spy).toHaveBeenCalledWith(charged);
     });
 
-    it('sends the discount payload when enabled', async () => {
+    it('sends the discount payload when enabled', () => {
       orderServiceMock.chargeOrder.mockReturnValue(of(makeOrder([])));
       component.toggleDiscount();
       component.description.set('Promo');
       component.setDiscountType('fixed');
       component.setDiscountValue(1);
 
-      await component.confirmCharge();
+      component.receivedAmount.set(10);
+      component.confirmCashPayment();
 
       expect(orderServiceMock.chargeOrder).toHaveBeenCalledWith(1, {
         discount: { description: 'Promo', type: 'fixed', value: 1 },
       });
     });
 
-    it('does not charge when the confirmation dialog is dismissed', async () => {
-      confirmDialogMock.confirm.mockResolvedValue(false);
-      await component.confirmCharge();
-      expect(orderServiceMock.chargeOrder).not.toHaveBeenCalled();
-    });
-
-    it('toasts a friendly message and stays open on a generic error', async () => {
+    it('toasts a friendly message and stays open on a generic error', () => {
       orderServiceMock.chargeOrder.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 409, error: { error: 'Order has no items' } })));
       const backSpy = vi.fn();
       component.back.subscribe(backSpy);
 
-      await component.confirmCharge();
+      component.receivedAmount.set(10);
+      component.confirmCashPayment();
 
       expect(toastServiceMock.error).toHaveBeenCalledWith('La cuenta no tiene productos');
       expect(backSpy).not.toHaveBeenCalled();
     });
 
-    it('closes the panel when the order no longer exists', async () => {
+    it('closes the panel when the order no longer exists', () => {
       orderServiceMock.chargeOrder.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 404, error: { error: 'Order not found' } })));
       const backSpy = vi.fn();
       component.back.subscribe(backSpy);
 
-      await component.confirmCharge();
+      component.receivedAmount.set(10);
+      component.confirmCashPayment();
 
       expect(toastServiceMock.error).toHaveBeenCalledWith('La cuenta ya no existe');
       expect(backSpy).toHaveBeenCalled();

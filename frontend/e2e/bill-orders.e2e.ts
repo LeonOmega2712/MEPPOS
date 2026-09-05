@@ -282,12 +282,64 @@ test('completes a checkout with a percentage discount and removes the order from
   await expect(page.locator('[data-testid="checkout-total"]')).toContainText('90.00');
 
   await page.locator('[data-testid="confirm-checkout"]').click();
-  const dialog = page.locator('.modal-box');
+  const dialog = page.locator('[data-testid="cash-payment-dialog"]');
   await expect(dialog).toBeVisible();
-  await dialog.locator('input[type="text"]').fill('90.00');
+
+  // Customer pays with $100 on a $90 total (after discount) -> $10.00 change.
+  await dialog.locator('[data-testid="received-amount"]').fill('10000');
+  await expect(dialog.locator('[data-testid="change-amount"]')).toContainText('10.00');
   await dialog.getByRole('button', { name: 'Cobrar cuenta' }).click();
 
   await expect(page.locator('[data-testid="order-chip"]')).toHaveCount(0);
+});
+
+test('the cash payment dialog blocks confirm on a short payment and cancel discards it without charging', async ({ page }) => {
+  const order = seedOrder({
+    id: 111,
+    locationId: 1,
+    location: LOCATIONS[0],
+    rounds: [
+      {
+        id: 1,
+        orderId: 111,
+        roundNumber: 1,
+        userId: 1,
+        createdAt: new Date().toISOString(),
+        items: [
+          { id: 1, roundId: 1, productId: 1, customName: null, unitPrice: 100, quantity: 1, subtotal: 100, notes: null },
+        ],
+      },
+    ],
+  });
+  await setupApiMocks(page);
+  await setupOrdersMocks(page, LOCATIONS, [order]);
+  await login(page);
+
+  await page.locator('[data-testid="order-chip"]', { hasText: 'Mesa 1' }).click();
+  await page.locator('[data-testid="checkout-order"]').click();
+  await page.locator('[data-testid="confirm-checkout"]').click();
+
+  const dialog = page.locator('[data-testid="cash-payment-dialog"]');
+  const confirmButton = dialog.getByRole('button', { name: 'Cobrar cuenta' });
+  const receivedInput = dialog.locator('[data-testid="received-amount"]');
+
+  // No amount entered yet: nothing to confirm.
+  await expect(confirmButton).toBeDisabled();
+
+  // $80 on a $100 total falls short by $20.
+  await receivedInput.fill('8000');
+  await expect(dialog.locator('[data-testid="change-amount"]')).toContainText('20.00');
+  await expect(confirmButton).toBeDisabled();
+
+  // Topping up to the exact total clears the shortfall.
+  await receivedInput.fill('10000');
+  await expect(dialog.locator('[data-testid="change-amount"]')).toContainText('0.00');
+  await expect(confirmButton).toBeEnabled();
+
+  // Cancelling discards the dialog without charging the order; the checkout screen itself stays open.
+  await dialog.locator('[aria-label="Cancelar"]').click();
+  await expect(dialog).toBeHidden();
+  await expect(page.locator('[data-testid="checkout-total"]')).toContainText('100.00');
 });
 
 test('converts the discount value automatically when switching between percentage and fixed', async ({ page }) => {
