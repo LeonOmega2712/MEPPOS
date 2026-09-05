@@ -275,8 +275,8 @@ test('completes a checkout with a percentage discount and removes the order from
   await page.getByPlaceholder('Ej. Promoción del día').fill('Promo');
   await page.getByRole('button', { name: 'Porcentaje' }).click();
   const valueInput = page.locator('[data-testid="discount-value"]');
-  await valueInput.fill('10');
-  await valueInput.blur();
+  // Cents-first entry, like the settings price inputs: the digits "1000" become 10.00.
+  await valueInput.fill('1000');
 
   await expect(page.locator('[data-testid="checkout-discount-amount"]')).toContainText('-$10.00');
   await expect(page.locator('[data-testid="checkout-total"]')).toContainText('90.00');
@@ -318,18 +318,18 @@ test('converts the discount value automatically when switching between percentag
   await page.locator('input.toggle').click();
   await page.getByRole('button', { name: 'Porcentaje' }).click();
   const valueInput = page.locator('[data-testid="discount-value"]');
-  await valueInput.fill('10');
-  await valueInput.blur();
+  // Cents-first entry, like the settings price inputs: the digits "1000" become 10.00.
+  await valueInput.fill('1000');
   await expect(page.locator('[data-testid="checkout-discount-amount"]')).toContainText('-$50.00');
 
   // Switching to fixed converts 10% of 500 into the equivalent amount, 50.
   await page.getByRole('button', { name: 'Fijo' }).click();
-  await expect(valueInput).toHaveValue('50');
+  await expect(valueInput).toHaveValue('50.00');
   await expect(page.locator('[data-testid="checkout-discount-amount"]')).toContainText('-$50.00');
 
   // Switching back to percentage restores 10%.
   await page.getByRole('button', { name: 'Porcentaje' }).click();
-  await expect(valueInput).toHaveValue('10');
+  await expect(valueInput).toHaveValue('10.00');
   await expect(page.locator('[data-testid="checkout-discount-amount"]')).toContainText('-$50.00');
 });
 

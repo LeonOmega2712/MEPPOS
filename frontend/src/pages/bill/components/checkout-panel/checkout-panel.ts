@@ -1,4 +1,5 @@
 import { Component, computed, inject, input, output, signal, ChangeDetectionStrategy } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ConfirmDialogService } from '../../../../core/services/confirm-dialog.service';
 import { ToastService } from '../../../../core/services/toast.service';
@@ -6,7 +7,7 @@ import { OrderService } from '../../../../core/services/order.service';
 import type { DiscountType, Order } from '../../../../core/models';
 import { orderLabel } from '../../../../core/utils/order-label';
 import { IconComponent } from '../../../../shared/components/icon';
-import { NumericInputDirective } from '../../../../shared/directives/numeric-input.directive';
+import { CurrencyInputDirective } from '../../../../shared/directives/currency-input.directive';
 
 /** One row of the consolidated checkout summary: identical items across rounds (same product/custom name, price and notes) merged into one line. */
 interface CheckoutLine {
@@ -23,7 +24,7 @@ const MAX_DISCOUNT_VALUE = 99_999_999.99;
 
 @Component({
   selector: 'app-checkout-panel',
-  imports: [IconComponent, NumericInputDirective],
+  imports: [IconComponent, FormsModule, CurrencyInputDirective],
   templateUrl: './checkout-panel.html',
   changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './checkout-panel.css',
@@ -136,12 +137,6 @@ export class CheckoutPanelComponent {
 
   onDescriptionChange(event: Event): void {
     this.description.set((event.target as HTMLInputElement).value);
-  }
-
-  onDiscountValueChange(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const parsed = parseFloat(input.value);
-    this.discountValue.set(Number.isNaN(parsed) ? null : parsed);
   }
 
   goBack(): void {

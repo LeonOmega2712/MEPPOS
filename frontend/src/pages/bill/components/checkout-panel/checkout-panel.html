@@ -75,13 +75,12 @@
             <span class="label">$</span>
             }
             <input
-              type="number"
-              [value]="discountValue() ?? ''"
-              (change)="onDiscountValueChange($event)"
-              min="0"
-              step="0.01"
-              appNumericInput
-              mode="decimal"
+              type="text"
+              inputmode="decimal"
+              appCurrencyInput
+              [ngModel]="discountValue()"
+              (ngModelChange)="discountValue.set($event)"
+              placeholder="0.00"
               data-testid="discount-value" />
             @if (discountType() === 'percentage') {
             <span class="label">%</span>

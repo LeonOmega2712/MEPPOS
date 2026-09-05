@@ -263,6 +263,60 @@ describe('CheckoutPanelComponent', () => {
     });
   });
 
+  describe('discount value input (currency, cents-first entry like the settings price inputs)', () => {
+    function getValueInput(): HTMLInputElement {
+      return fixture.nativeElement.querySelector('[data-testid="discount-value"]') as HTMLInputElement;
+    }
+
+    function typeDigit(input: HTMLInputElement, digit: string): void {
+      input.value = input.value + digit;
+      input.setSelectionRange(input.value.length, input.value.length);
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      fixture.detectChanges();
+    }
+
+    beforeEach(() => {
+      setOrder([makeRound({ items: [makeItem({ quantity: 1, unitPrice: 500 })] })]);
+      component.toggleDiscount();
+      fixture.detectChanges();
+    });
+
+    it('builds the amount from the cents up, like a cash register, and formats it with 2 decimals', () => {
+      const input = getValueInput();
+      typeDigit(input, '5');
+      expect(input.value).toBe('0.05');
+      typeDigit(input, '0');
+      expect(input.value).toBe('0.50');
+      typeDigit(input, '0');
+      expect(input.value).toBe('5.00');
+
+      expect(component.discountValue()).toBe(5);
+    });
+
+    it('reflects a value set programmatically (e.g. from a type conversion) fully formatted', async () => {
+      component.setDiscountType('fixed');
+      component.discountValue.set(50);
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(getValueInput().value).toBe('50.00');
+    });
+
+    it('clears back to empty once the last digit is removed', () => {
+      const input = getValueInput();
+      typeDigit(input, '5');
+      expect(input.value).toBe('0.05');
+
+      // Simulates a native backspace removing the digit (which then fires 'input').
+      input.value = '';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      fixture.detectChanges();
+
+      expect(input.value).toBe('');
+      expect(component.discountValue()).toBeNull();
+    });
+  });
+
   describe('ownership warning', () => {
     it('is not shown for the owner', () => {
       setOrder([makeRound({ items: [makeItem()] })], true);
