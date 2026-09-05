@@ -18,4 +18,6 @@ export type {
   OrderItemInput,
   AddRoundPayload,
   UpdateOrderItemPayload,
+  OrderDiscountInput,
+  ChargeOrderPayload,
 } from './order.model';

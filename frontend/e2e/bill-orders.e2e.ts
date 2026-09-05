@@ -207,6 +207,225 @@ test('checkout button appears in the empty-cart slot and is disabled', async ({ 
   await expect(page.locator('[data-testid="checkout-order"]')).toHaveCount(0);
 });
 
+test('checkout button is enabled once the order has a sent round, and disabled while a round edit is pending', async ({ page }) => {
+  const order = seedOrder({
+    id: 107,
+    locationId: 1,
+    location: LOCATIONS[0],
+    rounds: [
+      {
+        id: 1,
+        orderId: 107,
+        roundNumber: 1,
+        userId: 1,
+        createdAt: new Date().toISOString(),
+        items: [
+          { id: 1, roundId: 1, productId: 1, customName: null, unitPrice: 100, quantity: 1, subtotal: 100, notes: null },
+        ],
+      },
+    ],
+  });
+  await setupApiMocks(page);
+  await setupOrdersMocks(page, LOCATIONS, [order]);
+  await login(page);
+
+  await page.locator('[data-testid="order-chip"]', { hasText: 'Mesa 1' }).click();
+  await expect(page.locator('[data-testid="checkout-order"]')).toBeEnabled();
+
+  // Opening the round editor alone doesn't disable checkout — only an actual unsaved quantity change does,
+  // since that's when the on-screen total would stop matching what the backend would charge.
+  await page.getByRole('button', { name: 'Editar cantidades de la ronda' }).click();
+  await expect(page.locator('[data-testid="checkout-order"]')).toBeEnabled();
+
+  await page.getByRole('button', { name: 'Aumentar cantidad' }).click();
+  await expect(page.locator('[data-testid="checkout-order"]')).toBeDisabled();
+
+  await page.getByRole('button', { name: 'Cancelar edición de la ronda' }).click();
+  await page.locator('.modal-box').getByRole('button', { name: 'Descartar cambios' }).click();
+  await expect(page.locator('[data-testid="checkout-order"]')).toBeEnabled();
+});
+
+test('completes a checkout with a percentage discount and removes the order from the chips', async ({ page }) => {
+  const order = seedOrder({
+    id: 108,
+    locationId: 1,
+    location: LOCATIONS[0],
+    rounds: [
+      {
+        id: 1,
+        orderId: 108,
+        roundNumber: 1,
+        userId: 1,
+        createdAt: new Date().toISOString(),
+        items: [
+          { id: 1, roundId: 1, productId: 1, customName: null, unitPrice: 100, quantity: 1, subtotal: 100, notes: null },
+        ],
+      },
+    ],
+  });
+  await setupApiMocks(page);
+  await setupOrdersMocks(page, LOCATIONS, [order]);
+  await login(page);
+
+  await page.locator('[data-testid="order-chip"]', { hasText: 'Mesa 1' }).click();
+  await page.locator('[data-testid="checkout-order"]').click();
+  await expect(page.locator('[data-testid="checkout-total"]')).toContainText('100.00');
+
+  await page.locator('input.toggle').click();
+  await page.getByPlaceholder('Ej. Promoción del día').fill('Promo');
+  await page.getByRole('button', { name: 'Porcentaje' }).click();
+  const valueInput = page.locator('[data-testid="discount-value"]');
+  // Cents-first entry, like the settings price inputs: the digits "1000" become 10.00.
+  await valueInput.fill('1000');
+
+  await expect(page.locator('[data-testid="checkout-discount-amount"]')).toContainText('-$10.00');
+  await expect(page.locator('[data-testid="checkout-total"]')).toContainText('90.00');
+
+  await page.locator('[data-testid="confirm-checkout"]').click();
+  const dialog = page.locator('[data-testid="cash-payment-dialog"]');
+  await expect(dialog).toBeVisible();
+
+  // Customer pays with $100 on a $90 total (after discount) -> $10.00 change.
+  await dialog.locator('[data-testid="received-amount"]').fill('10000');
+  await expect(dialog.locator('[data-testid="change-amount"]')).toContainText('10.00');
+  await dialog.getByRole('button', { name: 'Cobrar cuenta' }).click();
+
+  await expect(page.locator('[data-testid="order-chip"]')).toHaveCount(0);
+});
+
+test('the cash payment dialog blocks confirm on a short payment and cancel discards it without charging', async ({ page }) => {
+  const order = seedOrder({
+    id: 111,
+    locationId: 1,
+    location: LOCATIONS[0],
+    rounds: [
+      {
+        id: 1,
+        orderId: 111,
+        roundNumber: 1,
+        userId: 1,
+        createdAt: new Date().toISOString(),
+        items: [
+          { id: 1, roundId: 1, productId: 1, customName: null, unitPrice: 100, quantity: 1, subtotal: 100, notes: null },
+        ],
+      },
+    ],
+  });
+  await setupApiMocks(page);
+  await setupOrdersMocks(page, LOCATIONS, [order]);
+  await login(page);
+
+  await page.locator('[data-testid="order-chip"]', { hasText: 'Mesa 1' }).click();
+  await page.locator('[data-testid="checkout-order"]').click();
+  await page.locator('[data-testid="confirm-checkout"]').click();
+
+  const dialog = page.locator('[data-testid="cash-payment-dialog"]');
+  const confirmButton = dialog.getByRole('button', { name: 'Cobrar cuenta' });
+  const receivedInput = dialog.locator('[data-testid="received-amount"]');
+
+  // No amount entered yet: nothing to confirm.
+  await expect(confirmButton).toBeDisabled();
+
+  // $80 on a $100 total falls short by $20.
+  await receivedInput.fill('8000');
+  await expect(dialog.locator('[data-testid="change-amount"]')).toContainText('20.00');
+  await expect(confirmButton).toBeDisabled();
+
+  // Topping up to the exact total clears the shortfall.
+  await receivedInput.fill('10000');
+  await expect(dialog.locator('[data-testid="change-amount"]')).toContainText('0.00');
+  await expect(confirmButton).toBeEnabled();
+
+  // Cancelling discards the dialog without charging the order; the checkout screen itself stays open.
+  await dialog.locator('[aria-label="Cancelar"]').click();
+  await expect(dialog).toBeHidden();
+  await expect(page.locator('[data-testid="checkout-total"]')).toContainText('100.00');
+});
+
+test('converts the discount value automatically when switching between percentage and fixed', async ({ page }) => {
+  const order = seedOrder({
+    id: 109,
+    locationId: 1,
+    location: LOCATIONS[0],
+    rounds: [
+      {
+        id: 1,
+        orderId: 109,
+        roundNumber: 1,
+        userId: 1,
+        createdAt: new Date().toISOString(),
+        items: [
+          { id: 1, roundId: 1, productId: 1, customName: null, unitPrice: 500, quantity: 1, subtotal: 500, notes: null },
+        ],
+      },
+    ],
+  });
+  await setupApiMocks(page);
+  await setupOrdersMocks(page, LOCATIONS, [order]);
+  await login(page);
+
+  await page.locator('[data-testid="order-chip"]', { hasText: 'Mesa 1' }).click();
+  await page.locator('[data-testid="checkout-order"]').click();
+
+  await page.locator('input.toggle').click();
+  await page.getByRole('button', { name: 'Porcentaje' }).click();
+  const valueInput = page.locator('[data-testid="discount-value"]');
+  // Cents-first entry, like the settings price inputs: the digits "1000" become 10.00.
+  await valueInput.fill('1000');
+  await expect(page.locator('[data-testid="checkout-discount-amount"]')).toContainText('-$50.00');
+
+  // Switching to fixed converts 10% of 500 into the equivalent amount, 50.
+  await page.getByRole('button', { name: 'Fijo' }).click();
+  await expect(valueInput).toHaveValue('50.00');
+  await expect(page.locator('[data-testid="checkout-discount-amount"]')).toContainText('-$50.00');
+
+  // Switching back to percentage restores 10%.
+  await page.getByRole('button', { name: 'Porcentaje' }).click();
+  await expect(valueInput).toHaveValue('10.00');
+  await expect(page.locator('[data-testid="checkout-discount-amount"]')).toContainText('-$50.00');
+});
+
+test('a fixed discount round-trips exactly through percentage even when it does not round evenly (regression: $70 of $270 must not drift to $70.01)', async ({ page }) => {
+  const order = seedOrder({
+    id: 110,
+    locationId: 1,
+    location: LOCATIONS[0],
+    rounds: [
+      {
+        id: 1,
+        orderId: 110,
+        roundNumber: 1,
+        userId: 1,
+        createdAt: new Date().toISOString(),
+        items: [
+          { id: 1, roundId: 1, productId: 1, customName: null, unitPrice: 270, quantity: 1, subtotal: 270, notes: null },
+        ],
+      },
+    ],
+  });
+  await setupApiMocks(page);
+  await setupOrdersMocks(page, LOCATIONS, [order]);
+  await login(page);
+
+  await page.locator('[data-testid="order-chip"]', { hasText: 'Mesa 1' }).click();
+  await page.locator('[data-testid="checkout-order"]').click();
+
+  await page.locator('input.toggle').click();
+  const valueInput = page.locator('[data-testid="discount-value"]');
+  // Cents-first entry: the digits "7000" become 70.00.
+  await valueInput.fill('7000');
+  await expect(page.locator('[data-testid="checkout-discount-amount"]')).toContainText('-$70.00');
+
+  // 70 / 270 * 100 = 25.925925..., rounded to 25.93% — not exactly reversible by naive re-conversion.
+  await page.getByRole('button', { name: 'Porcentaje' }).click();
+  await expect(valueInput).toHaveValue('25.93');
+
+  // Switching back to fixed must restore the original 70.00 exactly, not 70.01.
+  await page.getByRole('button', { name: 'Fijo' }).click();
+  await expect(valueInput).toHaveValue('70.00');
+  await expect(page.locator('[data-testid="checkout-discount-amount"]')).toContainText('-$70.00');
+});
+
 test('detects an order assigned to the current user after 30s of polling', async ({ page }) => {
   await setupApiMocks(page);
   await setupOrdersMocks(page, LOCATIONS);

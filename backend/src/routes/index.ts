@@ -61,6 +61,7 @@ router.put('/orders/:id/rounds/:roundId/items/:itemId', orderController.updateIt
 router.delete('/orders/:id/rounds/:roundId/items/:itemId', orderController.deleteItem.bind(orderController));
 router.delete('/orders/:id/rounds/:roundId', orderController.deleteRound.bind(orderController));
 router.post('/orders/:id/cancel', orderController.cancelOrder.bind(orderController));
+router.post('/orders/:id/charge', orderController.chargeOrder.bind(orderController));
 
 // ============================================
 // ADMIN-ONLY ROUTES

@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { orderService, ORDER_ERRORS } from '../services/order.service';
 import {
   AddRoundSchema,
+  ChargeOrderSchema,
   CreateOrderSchema,
   ListOrdersQuerySchema,
   OrderIdSchema,
@@ -22,6 +23,8 @@ const CONFLICT_ERRORS: string[] = [
   ORDER_ERRORS.LOCATION_INACTIVE,
   ORDER_ERRORS.LOCATION_OCCUPIED,
   ORDER_ERRORS.ORDER_NOT_OPEN,
+  ORDER_ERRORS.ORDER_EMPTY,
+  ORDER_ERRORS.DISCOUNT_EXCEEDS_SUBTOTAL,
 ];
 
 function handleDomainError(error: unknown, res: Response, fallbackMessage: string): boolean {
@@ -181,6 +184,26 @@ export class OrderController {
     } catch (error) {
       if (handleDomainError(error, res, 'Error cancelling order:')) return;
       res.status(500).json({ success: false, error: 'Failed to cancel order' });
+    }
+  }
+
+  async chargeOrder(req: Request, res: Response): Promise<void> {
+    const idResult = OrderIdSchema.safeParse(req.params);
+    if (!idResult.success) {
+      res.status(400).json({ success: false, error: 'Invalid order ID' });
+      return;
+    }
+    try {
+      const data = ChargeOrderSchema.parse(req.body);
+      const order = await orderService.chargeOrder(idResult.data.id, data);
+      res.json({ success: true, data: serializeOrderSummary(order!), message: 'Order charged successfully' });
+    } catch (error) {
+      if (isZodError(error)) {
+        res.status(400).json({ success: false, error: 'Invalid request body' });
+        return;
+      }
+      if (handleDomainError(error, res, 'Error charging order:')) return;
+      res.status(500).json({ success: false, error: 'Failed to charge order' });
     }
   }
 }

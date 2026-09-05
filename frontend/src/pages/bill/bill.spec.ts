@@ -44,6 +44,7 @@ describe('BillPage', () => {
   let orderServiceMock: any;
   let authServiceMock: any;
   let toastServiceMock: any;
+  let locationServiceMock: any;
 
   beforeEach(async () => {
     toastServiceMock = { success: vi.fn(), error: vi.fn(), warning: vi.fn(), info: vi.fn() };
@@ -62,9 +63,11 @@ describe('BillPage', () => {
       deleteItem: vi.fn(),
       deleteRound: vi.fn(),
       cancelOrder: vi.fn(),
+      chargeOrder: vi.fn(),
     };
 
     authServiceMock = { user: signal<AuthUser | null>(OWNER) };
+    locationServiceMock = { locations: signal([]), locationsLoading: signal(false), ensureLocations: vi.fn(), refreshLocations: vi.fn() };
 
     await TestBed.configureTestingModule({
       imports: [BillPage],
@@ -75,7 +78,7 @@ describe('BillPage', () => {
         { provide: ConfirmDialogService, useValue: { confirm: vi.fn().mockResolvedValue(true) } },
         { provide: ToastService, useValue: toastServiceMock },
         { provide: OrderService, useValue: orderServiceMock },
-        { provide: LocationService, useValue: { locations: signal([]), locationsLoading: signal(false), ensureLocations: vi.fn(), refreshLocations: vi.fn() } },
+        { provide: LocationService, useValue: locationServiceMock },
         { provide: AuthService, useValue: authServiceMock },
       ],
     }).compileComponents();
@@ -298,6 +301,72 @@ describe('BillPage', () => {
       orderServiceMock.openOrders.set([makeOrder({ id: 1, ownerUserId: OWNER.id })]);
       f.detectChanges();
       expect(toastServiceMock.info).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('canCheckout / checkout flow', () => {
+    const roundWithItems = {
+      id: 10,
+      orderId: 1,
+      roundNumber: 1,
+      userId: OWNER.id,
+      createdAt: '2026-07-12T18:31:00Z',
+      items: [
+        { id: 100, roundId: 10, productId: 1, customName: null, unitPrice: 5, quantity: 2, subtotal: 10, notes: null },
+      ],
+    };
+
+    it('is false with no active order', () => {
+      expect(component.canCheckout()).toBe(false);
+    });
+
+    it('is false when the active order has no sent rounds', () => {
+      (component as any).activeOrder.set(makeOrder({ rounds: [] }));
+      expect(component.canCheckout()).toBe(false);
+    });
+
+    it('is true when the active order has rounds and no pending edits', () => {
+      (component as any).activeOrder.set(makeOrder({ rounds: [roundWithItems] }));
+      expect(component.canCheckout()).toBe(true);
+    });
+
+    it('is false while a round edit is pending', () => {
+      (component as any).activeOrder.set(makeOrder({ rounds: [roundWithItems] }));
+      (component as any).pendingRoundEdits.set(new Map([[10, new Map([[100, 1]])]]));
+      expect(component.canCheckout()).toBe(false);
+    });
+
+    it('openCheckout is a no-op when canCheckout is false', () => {
+      (component as any).activeOrder.set(makeOrder({ rounds: [] }));
+      component.openCheckout();
+      expect(component.checkoutOpen()).toBe(false);
+    });
+
+    it('openCheckout opens the panel when canCheckout is true', () => {
+      (component as any).activeOrder.set(makeOrder({ rounds: [roundWithItems] }));
+      component.openCheckout();
+      expect(component.checkoutOpen()).toBe(true);
+    });
+
+    it('closeCheckout closes the panel', () => {
+      component.checkoutOpen.set(true);
+      component.closeCheckout();
+      expect(component.checkoutOpen()).toBe(false);
+    });
+
+    it('onOrderCharged clears the active order and refreshes orders and locations', () => {
+      (component as any).activeOrder.set(makeOrder({ rounds: [roundWithItems] }));
+      component.checkoutOpen.set(true);
+      component.footerExpanded.set(true);
+
+      component.onOrderCharged(makeOrder({ status: 'charged' }));
+
+      expect(component.activeOrder()).toBeNull();
+      expect(component.checkoutOpen()).toBe(false);
+      expect(component.footerExpanded()).toBe(false);
+      expect(orderServiceMock.refreshOpenOrders).toHaveBeenCalled();
+      expect(locationServiceMock.refreshLocations).toHaveBeenCalled();
+      expect(toastServiceMock.success).toHaveBeenCalledWith('Cuenta cobrada');
     });
   });
 });

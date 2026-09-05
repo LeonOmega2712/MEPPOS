@@ -82,3 +82,13 @@ export interface UpdateOrderItemPayload {
   quantity?: number;
   notes?: string | null;
 }
+
+export interface OrderDiscountInput {
+  description: string;
+  type: DiscountType;
+  value: number;
+}
+
+export interface ChargeOrderPayload {
+  discount?: OrderDiscountInput;
+}
