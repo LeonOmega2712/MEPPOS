@@ -217,7 +217,7 @@ jobs:
 
       - name: Post PR comment (replacing any previous analysis)
         if: steps.secret-check.outputs.skip == 'false' && steps.surface.outputs.surface == 'pr'
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const fs = require('fs');
@@ -269,7 +269,7 @@ jobs:
 
       - name: Post commit comment (replacing any previous analysis)
         if: steps.secret-check.outputs.skip == 'false' && steps.surface.outputs.surface == 'commit'
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const fs = require('fs');
